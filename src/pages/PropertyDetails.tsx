@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -86,12 +87,13 @@ const PropertyDetails = () => {
     "https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
   ];
   
-  const isFavorite = id ? isFavorite(id) : false;
+  // Fix the duplicate isFavorite variable - rename it to isPropertyFavorite
+  const isPropertyFavorite = id ? isFavorite(id) : false;
   
   const handleFavoriteClick = () => {
     if (!property) return;
     
-    if (isFavorite) {
+    if (isPropertyFavorite) {
       removeFavorite(property.id);
     } else {
       addFavorite(property);
@@ -146,13 +148,13 @@ const PropertyDetails = () => {
                     size="icon"
                     className={cn(
                       "rounded-full",
-                      isFavorite && "bg-primary text-primary-foreground hover:bg-primary/90"
+                      isPropertyFavorite && "bg-primary text-primary-foreground hover:bg-primary/90"
                     )}
                     onClick={handleFavoriteClick}
                   >
                     <Heart 
                       size={18} 
-                      className={isFavorite ? "fill-current" : ""} 
+                      className={isPropertyFavorite ? "fill-current" : ""} 
                     />
                   </Button>
                   <Button 

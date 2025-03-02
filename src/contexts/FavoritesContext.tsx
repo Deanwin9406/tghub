@@ -11,7 +11,7 @@ type PropertyType = {
   price: number;
   priceUnit: "XOF" | "USD" | "EUR";
   type: "apartment" | "house" | "villa" | "office" | "land" | "other";
-  purpose: string;
+  purpose: "rent" | "sale";
   location: string;
   beds: number;
   baths: number;
@@ -72,6 +72,7 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
               price: prop.price || 0,
               priceUnit: "XOF" as const,
               type: prop.property_type as "apartment" | "house" | "villa" | "office" | "land" | "other",
+              // Fixed purpose property to match expected type
               purpose: prop.status === 'for_rent' ? 'rent' : 'sale',
               location: `${prop.city}, ${prop.country}`,
               beds: prop.bedrooms || 0,

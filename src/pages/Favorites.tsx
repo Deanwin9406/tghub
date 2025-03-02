@@ -53,11 +53,20 @@ const Favorites = () => {
               >
                 <PropertyCard 
                   property={{
-                    ...property,
-                    // Ensure property type matches the PropertyCard's expected type
+                    id: property.id,
+                    title: property.title,
+                    price: property.price,
+                    priceUnit: property.priceUnit,
+                    // Convert to type expected by PropertyCard
                     type: property.type === 'villa' || property.type === 'office' || property.type === 'other' 
                       ? 'house' 
                       : property.type as 'house' | 'apartment' | 'land' | 'commercial',
+                    purpose: property.purpose,
+                    location: property.location,
+                    beds: property.beds,
+                    baths: property.baths,
+                    area: property.area,
+                    image: property.image,
                   }} 
                 />
               </motion.div>
