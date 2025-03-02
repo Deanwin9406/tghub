@@ -1,199 +1,238 @@
 
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import Layout from '@/components/Layout';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { useToast } from '@/hooks/use-toast';
-import PropertyCard from '@/components/PropertyCard';
-import mockProperties from '@/data/mockProperties';
-import { MapPin, Users, Calendar, MessageCircle, Share2, Flag, Home, FileText, Send } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-
-interface Community {
-  id: string;
-  name: string;
-  location: string;
-  propertyCount: number;
-  residentCount: number;
-  description: string;
-  image: string;
-}
+import { fetchCommunityDetails, joinCommunity, leaveCommunity } from '@/services/communityService';
+import { Community } from '@/types/community';
+import { useToast } from '@/hooks/use-toast';
+import Layout from '@/components/Layout';
+import CommunityTabs from '@/components/community/CommunityTabs';
+import { Button } from '@/components/ui/button';
+import { MapPin, Building, Users, Bell, BellOff, LogOut } from 'lucide-react';
 
 const CommunityDetails = () => {
-  const { communityId } = useParams<{ communityId: string }>();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('properties');
-  const [comment, setComment] = useState('');
-  const [comments, setComments] = useState([
-    { id: '1', user: 'John Doe', text: 'Great community!', createdAt: '2023-01-01' },
-    { id: '2', user: 'Jane Smith', text: 'Looking forward to joining.', createdAt: '2023-01-02' }
-  ]);
+  const [community, setCommunity] = useState<Community | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isMember, setIsMember] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
 
-  const [community, setCommunity] = useState<Community>({
-    id: '1',
-    name: 'Riverside Gardens',
-    location: 'Accra, Ghana',
-    propertyCount: 45,
-    residentCount: 120,
-    description: 'A beautiful riverside community with modern amenities and 24/7 security.',
-    image: 'https://images.unsplash.com/photo-1543373072-69f3d4788832?q=80&w=774&auto=format&fit=crop'
-  });
+  useEffect(() => {
+    const loadCommunity = async () => {
+      if (!id) {
+        navigate('/communities');
+        return;
+      }
+      
+      try {
+        const data = await fetchCommunityDetails(id);
+        setCommunity(data);
+        
+        // Check if user is a member - in a real app this would be a database query
+        // Here we're just simulating for demonstration
+        setIsMember(Math.random() > 0.5);
+        setIsSubscribed(Math.random() > 0.5);
+      } catch (error) {
+        console.error("Failed to load community details:", error);
+        toast({
+          title: "Failed to load community",
+          description: "Could not load community details. Please try again.",
+          variant: "destructive"
+        });
+        navigate('/communities');
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const handlePostComment = () => {
-    if (comment.trim() !== '') {
-      const newComment = {
-        id: String(comments.length + 1),
-        user: 'Current User',
-        text: comment,
-        createdAt: new Date().toLocaleDateString()
-      };
-      setComments([...comments, newComment]);
-      setComment('');
+    loadCommunity();
+  }, [id, navigate, toast]);
+
+  const handleJoinCommunity = async () => {
+    if (!user) {
       toast({
-        title: "Comment Posted",
-        description: "Your comment has been added to the community discussion.",
+        title: "Authentication required",
+        description: "Please log in to join this community",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      setIsJoining(true);
+      if (!id) return;
+      
+      await joinCommunity(id, user.id);
+      setIsMember(true);
+      setIsSubscribed(true);
+      
+      toast({
+        title: "Successfully joined",
+        description: `You are now a member of ${community?.name}`,
+      });
+    } catch (error) {
+      console.error("Failed to join community:", error);
+      toast({
+        title: "Failed to join community",
+        description: "An error occurred while joining the community.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsJoining(false);
+    }
+  };
+
+  const handleLeaveCommunity = async () => {
+    if (!user || !id) return;
+    
+    try {
+      await leaveCommunity(id, user.id);
+      setIsMember(false);
+      setIsSubscribed(false);
+      
+      toast({
+        title: "Left community",
+        description: `You are no longer a member of ${community?.name}`,
+      });
+    } catch (error) {
+      console.error("Failed to leave community:", error);
+      toast({
+        title: "Failed to leave community",
+        description: "An error occurred while leaving the community.",
+        variant: "destructive"
       });
     }
   };
 
+  const toggleNotifications = () => {
+    setIsSubscribed(prev => !prev);
+    
+    toast({
+      title: isSubscribed ? "Notifications turned off" : "Notifications turned on",
+      description: isSubscribed 
+        ? `You will no longer receive notifications from ${community?.name}` 
+        : `You will now receive notifications from ${community?.name}`,
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-8">
+          <div className="animate-pulse">
+            <div className="h-64 bg-gray-200 mb-8 rounded-lg"></div>
+            <div className="h-8 bg-gray-200 w-1/3 mb-4 rounded"></div>
+            <div className="h-4 bg-gray-200 w-1/2 mb-8 rounded"></div>
+            <div className="h-12 bg-gray-200 mb-8 rounded"></div>
+            <div className="h-96 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!community) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-8">
+          <div className="text-center py-16">
+            <h2 className="text-2xl font-bold mb-4">Community Not Found</h2>
+            <p className="text-muted-foreground mb-6">The community you're looking for doesn't exist or has been removed.</p>
+            <Button onClick={() => navigate('/communities')}>Browse Communities</Button>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
+
   return (
     <Layout>
       <div className="container mx-auto py-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Community Details Section */}
-          <div className="md:col-span-2">
-            <div className="relative rounded-md overflow-hidden">
+        {/* Hero Section */}
+        <div className="relative mb-8 rounded-lg overflow-hidden">
+          <div className="h-64 bg-gradient-to-r from-blue-600 to-violet-600">
+            {community.image_url && (
               <img
-                src={community.image}
+                src={community.image_url}
                 alt={community.name}
-                className="w-full h-64 object-cover"
+                className="w-full h-full object-cover"
               />
-              <div className="absolute top-4 left-4 text-white">
-                <h1 className="text-2xl font-bold">{community.name}</h1>
-                <div className="flex items-center text-sm">
-                  <MapPin className="h-4 w-4 mr-1" />
+            )}
+          </div>
+          <div className="absolute inset-0 bg-black bg-opacity-30 flex items-end">
+            <div className="p-6 text-white">
+              <h1 className="text-3xl md:text-4xl font-bold mb-2">{community.name}</h1>
+              {community.location && (
+                <div className="flex items-center text-white/80 mb-4">
+                  <MapPin className="h-5 w-5 mr-2" />
                   <span>{community.location}</span>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center bg-black/30 px-3 py-1 rounded-full">
+                  <Users className="h-4 w-4 mr-2" />
+                  <span>{community.member_count || 0} Members</span>
+                </div>
+                <div className="flex items-center bg-black/30 px-3 py-1 rounded-full">
+                  <Building className="h-4 w-4 mr-2" />
+                  <span>{community.property_count || 0} Properties</span>
                 </div>
               </div>
             </div>
-
-            <div className="mt-4">
-              <Tabs defaultValue="about" className="w-full">
-                <TabsList>
-                  <TabsTrigger value="about">About</TabsTrigger>
-                  <TabsTrigger value="properties">Properties</TabsTrigger>
-                  <TabsTrigger value="discussion">Discussion</TabsTrigger>
-                  <TabsTrigger value="members">Members</TabsTrigger>
-                </TabsList>
-                <TabsContent value="about" className="mt-4">
-                  <h2 className="text-lg font-semibold mb-2">About {community.name}</h2>
-                  <p className="text-muted-foreground">{community.description}</p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                    <div className="flex items-center">
-                      <Users className="h-5 w-5 mr-2 text-muted-foreground" />
-                      <span>{community.residentCount} Residents</span>
-                    </div>
-                    <div className="flex items-center">
-                      <Home className="h-5 w-5 mr-2 text-muted-foreground" />
-                      <span>{community.propertyCount} Properties</span>
-                    </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="properties" className="mt-4">
-                  <h2 className="text-lg font-semibold mb-2">Properties in {community.name}</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {mockProperties.map((property) => (
-                      <PropertyCard key={property.id} property={property} />
-                    ))}
-                  </div>
-                </TabsContent>
-                <TabsContent value="discussion" className="mt-4">
-                  <h2 className="text-lg font-semibold mb-2">Community Discussion</h2>
-                  <div className="space-y-4">
-                    {comments.map((comment) => (
-                      <div key={comment.id} className="border rounded-md p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <div className="font-semibold">{comment.user}</div>
-                          <div className="text-sm text-muted-foreground">{comment.createdAt}</div>
-                        </div>
-                        <p>{comment.text}</p>
-                      </div>
-                    ))}
-                    <div className="flex items-center space-x-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src="https://github.com/shadcn.png" alt="Your Avatar" />
-                        <AvatarFallback>CN</AvatarFallback>
-                      </Avatar>
-                      <input
-                        type="text"
-                        placeholder="Add a comment..."
-                        className="flex-1 border rounded-md p-2"
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                      />
-                      <Button onClick={handlePostComment}>
-                        <Send className="h-4 w-4 mr-2" />
-                        Post
-                      </Button>
-                    </div>
-                  </div>
-                </TabsContent>
-                <TabsContent value="members" className="mt-4">
-                  <h2 className="text-lg font-semibold mb-2">Community Members</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[1, 2, 3, 4, 5].map((member) => (
-                      <div key={member} className="flex items-center space-x-4">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={`https://i.pravatar.cc/150?img=${member}`} alt={`Member ${member}`} />
-                          <AvatarFallback>M{member}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-medium">Member {member}</p>
-                          <p className="text-sm text-muted-foreground">Active Now</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
-
-          {/* Community Actions Section */}
-          <div>
-            <div className="border rounded-md p-4">
-              <h3 className="text-lg font-semibold mb-2">Community Actions</h3>
-              <Button className="w-full mb-2">
-                <MessageCircle className="h-4 w-4 mr-2" />
-                Contact Community Manager
-              </Button>
-              <Button className="w-full mb-2">
-                <Share2 className="h-4 w-4 mr-2" />
-                Share Community
-              </Button>
-              <Button variant="outline" className="w-full">
-                <Flag className="h-4 w-4 mr-2" />
-                Report Community
-              </Button>
-            </div>
-            <div className="mt-4 border rounded-md p-4">
-              <h3 className="text-lg font-semibold mb-2">Upcoming Events</h3>
-              {[1, 2].map((event) => (
-                <div key={event} className="flex items-center mb-2">
-                  <Calendar className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span>Event {event} - Date</span>
-                </div>
-              ))}
-              <Button variant="link">View All Events</Button>
-            </div>
           </div>
         </div>
+
+        {/* Action Buttons */}
+        <div className="flex flex-wrap gap-3 mb-8">
+          {isMember ? (
+            <>
+              <Button 
+                variant="outline" 
+                onClick={toggleNotifications}
+              >
+                {isSubscribed ? (
+                  <>
+                    <BellOff className="h-4 w-4 mr-2" />
+                    Mute Notifications
+                  </>
+                ) : (
+                  <>
+                    <Bell className="h-4 w-4 mr-2" />
+                    Enable Notifications
+                  </>
+                )}
+              </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleLeaveCommunity}
+              >
+                <LogOut className="h-4 w-4 mr-2" />
+                Leave Community
+              </Button>
+            </>
+          ) : (
+            <Button 
+              onClick={handleJoinCommunity}
+              disabled={isJoining}
+            >
+              {isJoining ? "Joining..." : "Join Community"}
+            </Button>
+          )}
+        </div>
+
+        {/* Description */}
+        {community.description && (
+          <div className="mb-8">
+            <p className="text-muted-foreground">{community.description}</p>
+          </div>
+        )}
+
+        {/* Tabs Content */}
+        <CommunityTabs community={community} />
       </div>
     </Layout>
   );
