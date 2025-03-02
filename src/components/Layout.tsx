@@ -22,7 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import AuthDialog from '@/components/AuthDialog';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { session, user, signOut } = useAuth();
+  const { session, user, signOut, roles } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { comparisonList, clearComparison } = useComparison();
@@ -33,6 +33,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   useEffect(() => {
     console.log("Layout - current path:", location.pathname);
   }, [location.pathname]);
+
+  // Check if the user is only a tenant without management roles
+  const isTenantOnly = roles.includes('tenant') && 
+    !(roles.includes('landlord') || 
+      roles.includes('manager') || 
+      roles.includes('agent') || 
+      roles.includes('admin'));
+
+  console.log("Layout - isTenantOnly:", isTenantOnly, "Roles:", roles);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -96,15 +105,17 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             ))}
             {session ? (
               <>
-                <li>
-                  <Link 
-                    to="/property-management" 
-                    onClick={closeMenu}
-                    className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <span>Mes Propriétés</span>
-                  </Link>
-                </li>
+                {!isTenantOnly && (
+                  <li>
+                    <Link 
+                      to="/property-management" 
+                      onClick={closeMenu}
+                      className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
+                    >
+                      <span>Mes Propriétés</span>
+                    </Link>
+                  </li>
+                )}
                 <li>
                   <Link 
                     to="/dashboard" 
@@ -154,12 +165,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 ))}
                 {session && (
                   <>
-                    <Link
-                      to="/property-management"
-                      className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-                    >
-                      Mes Propriétés
-                    </Link>
+                    {!isTenantOnly && (
+                      <Link
+                        to="/property-management"
+                        className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                      >
+                        Mes Propriétés
+                      </Link>
+                    )}
                     <Link
                       to="/dashboard"
                       className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
