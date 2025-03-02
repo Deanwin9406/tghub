@@ -106,7 +106,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         throw error;
       }
 
-      setRoles(data.map(item => item.role as UserRole));
+      const userRoles = data.map(item => item.role as UserRole);
+      setRoles(userRoles);
     } catch (error) {
       console.error('Error fetching roles:', error);
     }

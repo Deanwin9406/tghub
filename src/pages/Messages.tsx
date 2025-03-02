@@ -1,14 +1,10 @@
-
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Search, Send, User } from 'lucide-react';
@@ -30,7 +26,7 @@ interface Message {
   content: string;
   created_at: string;
   is_read: boolean;
-  sender: {
+  sender?: {
     first_name: string;
     last_name: string;
     avatar_url?: string;
@@ -39,7 +35,6 @@ interface Message {
 
 const Messages = () => {
   const { user, profile } = useAuth();
-  const navigate = useNavigate();
   const { toast } = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -49,38 +44,34 @@ const Messages = () => {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch contacts
-  useEffect(() => {
+  const fetchContacts = useCallback(async () => {
     if (!user) return;
+    
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('get_message_contacts', {
+        current_user_id: user.id
+      });
 
-    const fetchContacts = async () => {
-      setLoading(true);
-      try {
-        // Get unique users the current user has messaged with
-        const { data: messageUsers, error: messageError } = await supabase
-          .rpc('get_message_contacts', {
-            current_user_id: user.id
-          });
-
-        if (messageError) throw messageError;
-
-        setContacts(messageUsers || []);
-      } catch (error) {
-        console.error('Error fetching contacts:', error);
-        toast({
-          title: 'Error',
-          description: 'Failed to load contacts. Please try again later.',
-          variant: 'destructive',
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchContacts();
+      if (error) throw error;
+      
+      setContacts(data || []);
+    } catch (error) {
+      console.error('Error fetching contacts:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load contacts. Please try again later.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
   }, [user, toast]);
 
-  // Fetch messages when a contact is selected
+  useEffect(() => {
+    fetchContacts();
+  }, [fetchContacts]);
+
   useEffect(() => {
     if (!user || !currentContact) return;
 
@@ -95,24 +86,16 @@ const Messages = () => {
             content,
             created_at,
             is_read,
-            sender:sender_id(first_name, last_name, avatar_url)
+            sender:profiles!messages_sender_id_fkey(first_name, last_name, avatar_url)
           `)
-          .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-          .or(`sender_id.eq.${currentContact.id},recipient_id.eq.${currentContact.id}`)
+          .or(`and(sender_id.eq.${user.id},recipient_id.eq.${currentContact.id}),and(sender_id.eq.${currentContact.id},recipient_id.eq.${user.id})`)
           .order('created_at', { ascending: true });
 
         if (error) throw error;
 
-        // Filter to only include messages between the current user and selected contact
-        const filteredMessages = data.filter(m => 
-          (m.sender_id === user.id && m.recipient_id === currentContact.id) || 
-          (m.sender_id === currentContact.id && m.recipient_id === user.id)
-        );
+        setMessages(data);
 
-        setMessages(filteredMessages);
-
-        // Mark unread messages as read
-        const unreadMessageIds = filteredMessages
+        const unreadMessageIds = data
           .filter(m => m.recipient_id === user.id && !m.is_read)
           .map(m => m.id);
 
@@ -121,6 +104,8 @@ const Messages = () => {
             .from('messages')
             .update({ is_read: true })
             .in('id', unreadMessageIds);
+            
+          fetchContacts();
         }
       } catch (error) {
         console.error('Error fetching messages:', error);
@@ -134,35 +119,31 @@ const Messages = () => {
 
     fetchMessages();
 
-    // Subscribe to new messages
-    const subscription = supabase
-      .channel('messages')
+    const messageSubscription = supabase
+      .channel('public:messages')
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'messages',
         filter: `recipient_id=eq.${user.id}`
       }, (payload) => {
-        if (payload.new.sender_id === currentContact?.id) {
-          // Add the new message to the current conversation
+        if (payload.new.sender_id === currentContact.id) {
           setMessages(prev => [...prev, payload.new as Message]);
           
-          // Mark as read immediately
           supabase
             .from('messages')
             .update({ is_read: true })
             .eq('id', payload.new.id);
         } else {
-          // Refresh the contacts list to update unread counts
           fetchContacts();
         }
       })
       .subscribe();
 
     return () => {
-      subscription.unsubscribe();
+      supabase.removeChannel(messageSubscription);
     };
-  }, [user, currentContact, toast]);
+  }, [user, currentContact, toast, fetchContacts]);
 
   const sendMessage = async () => {
     if (!user || !currentContact || !newMessage.trim()) return;
@@ -211,7 +192,6 @@ const Messages = () => {
     return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
   };
 
-  // Filter contacts based on search query
   const filteredContacts = contacts.filter(contact => {
     const fullName = `${contact.first_name} ${contact.last_name}`.toLowerCase();
     return fullName.includes(searchQuery.toLowerCase());
@@ -374,7 +354,6 @@ const Messages = () => {
   );
 };
 
-// Simple message icon component
 const MessageIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
@@ -386,6 +365,7 @@ const MessageIcon = () => (
     strokeWidth="2"
     strokeLinecap="round"
     strokeLinejoin="round"
+    className="lucide"
   >
     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
   </svg>

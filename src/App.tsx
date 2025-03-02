@@ -16,6 +16,12 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import KycVerification from "./pages/KycVerification";
 import Messages from "./pages/Messages";
+import Maintenance from "./pages/Maintenance";
+import Payments from "./pages/Payments";
+import Leases from "./pages/Leases";
+import Communities from "./pages/Communities";
+import CommunityDetails from "./pages/CommunityDetails";
+import Vendors from "./pages/Vendors";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,6 +51,12 @@ const App = () => (
             <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
             <Route path="/messages" element={<AuthGuard><Messages /></AuthGuard>} />
             <Route path="/kyc" element={<AuthGuard><KycVerification /></AuthGuard>} />
+            <Route path="/maintenance" element={<AuthGuard><Maintenance /></AuthGuard>} />
+            <Route path="/communities" element={<AuthGuard><Communities /></AuthGuard>} />
+            <Route path="/community/:id" element={<AuthGuard><CommunityDetails /></AuthGuard>} />
+            <Route path="/payments" element={<AuthGuard><Payments /></AuthGuard>} />
+            <Route path="/leases" element={<AuthGuard><Leases /></AuthGuard>} />
+            <Route path="/vendors" element={<AuthGuard><Vendors /></AuthGuard>} />
             <Route path="/property-management" element={<AuthGuard><PropertyManagement /></AuthGuard>} />
             
             {/* Catch-all Route */}
