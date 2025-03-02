@@ -15,6 +15,9 @@ const AuthGuard = () => {
     }
   }, [loading]);
 
+  console.log("AuthGuard - current location:", location.pathname); // Debug current route
+  console.log("AuthGuard - authentication status:", { session, loading, isReady }); // Debug auth status
+
   // Show nothing while checking authentication
   if (!isReady) {
     return (
@@ -26,10 +29,12 @@ const AuthGuard = () => {
 
   // If user is not authenticated, redirect to home with the intended location
   if (!session) {
+    console.log("User not authenticated, redirecting to home"); // Debug redirect
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
   // If user is authenticated, render the protected route
+  console.log("User authenticated, rendering protected route"); // Debug auth success
   return <Outlet />;
 };
 

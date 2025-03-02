@@ -96,6 +96,8 @@ const PropertyManagerTab = ({ properties, maintenanceRequests }: PropertyManager
     })
     .sort((a, b) => new Date(a.leaseEnd).getTime() - new Date(b.leaseEnd).getTime());
 
+  console.log("Available properties in PropertyManagerTab:", properties); // Debug properties
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -164,9 +166,14 @@ const PropertyManagerTab = ({ properties, maintenanceRequests }: PropertyManager
                 <Button 
                   size="sm" 
                   onClick={() => {
-                    if (properties.length > 0) {
-                      navigate(`/property/${properties[0].id}/add-tenant`);
+                    console.log("Add tenant button clicked"); // Debug click event
+                    
+                    if (properties && properties.length > 0) {
+                      const targetUrl = `/property/${properties[0].id}/add-tenant`;
+                      console.log("Navigating to:", targetUrl); // Debug navigation
+                      navigate(targetUrl);
                     } else {
+                      console.log("No properties available, redirecting to property management"); // Debug fallback
                       navigate('/property-management');
                     }
                   }}

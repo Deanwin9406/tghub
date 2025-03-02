@@ -24,6 +24,8 @@ import NotFound from './pages/NotFound';
 import AddTenant from './pages/AddTenant';
 
 function App() {
+  console.log("App rendering - routes should be set up");  // Debug App rendering
+  
   return (
     <AuthProvider>
       <ComparisonProvider>
