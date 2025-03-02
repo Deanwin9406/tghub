@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import SearchBar from '@/components/SearchBar';
@@ -29,12 +28,12 @@ interface PropertyType {
   main_image_url: string | null;
   status: string;
   description: string;
-  // Add these properties to match your interface
-  square_footage: number;
-  year_built: number;
-  amenities: string[];
-  image_urls: string[];
-  availability_date: string;
+  square_footage?: number;
+  size_sqm?: number;
+  year_built?: number;
+  amenities?: string[];
+  image_urls?: string[];
+  availability_date?: string;
   latitude?: number;
   longitude?: number;
 }
@@ -104,32 +103,35 @@ const Search = () => {
           status: 'available',
           description: `A beautiful sample property ${index + 1}`,
           latitude: 6.1319 + (Math.random() - 0.5) * 0.1,
-          longitude: 1.2254 + (Math.random() - 0.5) * 0.1
+          longitude: 1.2254 + (Math.random() - 0.5) * 0.1,
+          square_footage: 100 + ((index % 3) + 1) * 50,
+          year_built: 2000 + ((index % 3) + 1) * 3,
+          amenities: ['wifi', 'parking', 'security'],
+          image_urls: ['https://placehold.co/600x400'],
+          availability_date: new Date().toISOString()
         }));
         
-        setProperties(sampleData.map(property => ({
-          ...property,
-          square_footage: 100 + (property.bedrooms || 1) * 50,
-          year_built: 2000 + (property.bedrooms || 1) * 3,
-          amenities: ['wifi', 'parking', 'security'],
-          image_urls: [property.main_image_url],
-          availability_date: new Date().toISOString(),
-        })) as PropertyType[]);
-        
+        setProperties(sampleData as PropertyType[]);
         console.log("Created sample data:", sampleData);
       } else {
-        const formattedProperties = data.map(property => ({
-          ...property,
-          square_footage: property.size_sqm || 0,
-          year_built: 2020,
-          amenities: property.amenities || ['wifi', 'parking', 'security'],
-          image_urls: property.image_urls || [property.main_image_url],
-          availability_date: property.availability_date || new Date().toISOString(),
-          // Add mock coordinates for demonstration purposes
-          // In a real application, these would come from the database
-          latitude: property.latitude || (6.1319 + (Math.random() - 0.5) * 0.1), // Random positions around Lomé, Togo
-          longitude: property.longitude || (1.2254 + (Math.random() - 0.5) * 0.1)
-        })) as PropertyType[];
+        const formattedProperties = data.map(property => {
+          // Create a formatted property with all the fields we need
+          const formattedProperty: PropertyType = {
+            ...property,
+            // Use size_sqm as square_footage if available
+            square_footage: property.size_sqm || 0,
+            // Set defaults for properties that might not exist in the database
+            year_built: property.year_built || 2020,
+            amenities: property.amenities || ['wifi', 'parking', 'security'],
+            image_urls: [property.main_image_url || 'https://placehold.co/600x400'],
+            availability_date: property.availability_date || new Date().toISOString(),
+            // Use the database values if available, or generate random ones for demo
+            latitude: property.latitude || (6.1319 + (Math.random() - 0.5) * 0.1),
+            longitude: property.longitude || (1.2254 + (Math.random() - 0.5) * 0.1)
+          };
+          
+          return formattedProperty;
+        });
 
         setProperties(formattedProperties);
         console.log("Formatted properties:", formattedProperties);
