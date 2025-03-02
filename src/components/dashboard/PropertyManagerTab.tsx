@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -30,7 +29,6 @@ const PropertyManagerTab = ({ properties, maintenanceRequests }: PropertyManager
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('tenants');
   
-  // Mock data for tenants
   const mockTenants: Tenant[] = [
     {
       id: '1',
@@ -163,11 +161,18 @@ const PropertyManagerTab = ({ properties, maintenanceRequests }: PropertyManager
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle>Gestion des Locataires</CardTitle>
-                {properties.length > 0 && (
-                  <Button size="sm" onClick={() => navigate(`/property/${properties[0].id}/add-tenant`)}>
-                    Ajouter un Locataire
-                  </Button>
-                )}
+                <Button 
+                  size="sm" 
+                  onClick={() => {
+                    if (properties.length > 0) {
+                      navigate(`/property/${properties[0].id}/add-tenant`);
+                    } else {
+                      navigate('/property-management');
+                    }
+                  }}
+                >
+                  Ajouter un Locataire
+                </Button>
               </div>
               <CardDescription>Gérez vos locataires et leurs informations</CardDescription>
             </CardHeader>
