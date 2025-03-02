@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useComparison } from '@/contexts/ComparisonContext';
+import { useFavorites } from '@/contexts/FavoritesContext';
 import { useToast } from '@/hooks/use-toast';
 
 export interface PropertyType {
@@ -42,6 +43,13 @@ const PropertyCard = ({ property, className }: PropertyCardProps) => {
     removeFromComparison,
     isInComparison 
   } = useComparison();
+  
+  const {
+    addToFavorites,
+    removeFromFavorites,
+    isInFavorites
+  } = useFavorites();
+  
   const { toast } = useToast();
 
   const {
@@ -78,8 +86,20 @@ const PropertyCard = ({ property, className }: PropertyCardProps) => {
       });
     }
   };
+  
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isInFavorites(id)) {
+      removeFromFavorites(id);
+    } else {
+      addToFavorites(property);
+    }
+  };
 
   const isCompared = isInComparison(id);
+  const isFavorite = isInFavorites(id);
 
   return (
     <div 
@@ -99,9 +119,21 @@ const PropertyCard = ({ property, className }: PropertyCardProps) => {
           <Button 
             variant="ghost" 
             size="icon" 
-            className="h-9 w-9 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white"
+            className={cn(
+              "h-9 w-9 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white",
+              isFavorite && "bg-primary/90 text-primary-foreground hover:bg-primary"
+            )}
+            onClick={handleFavoriteClick}
           >
-            <Heart size={18} className="text-muted-foreground hover:text-red-500 transition-colors" />
+            <Heart 
+              size={18} 
+              className={cn(
+                "transition-colors",
+                isFavorite 
+                  ? "text-white fill-current" 
+                  : "text-muted-foreground hover:text-red-500"
+              )} 
+            />
           </Button>
           
           <Button 

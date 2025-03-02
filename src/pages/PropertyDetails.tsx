@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PropertyType } from '@/components/PropertyCard';
 import { motion } from 'framer-motion';
+import { useFavorites } from '@/contexts/FavoritesContext';
 import FeaturedProperties from '@/components/FeaturedProperties';
 import mockProperties from '../data/mockProperties';
 
@@ -28,6 +29,7 @@ const PropertyDetails = () => {
   const [property, setProperty] = useState<PropertyType | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
+  const { isInFavorites, addToFavorites, removeFromFavorites } = useFavorites();
   
   useEffect(() => {
     // Simulate API call
@@ -86,6 +88,18 @@ const PropertyDetails = () => {
     "https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
   ];
   
+  const isFavorite = id ? isInFavorites(id) : false;
+  
+  const handleFavoriteClick = () => {
+    if (!property) return;
+    
+    if (isFavorite) {
+      removeFromFavorites(property.id);
+    } else {
+      addToFavorites(property);
+    }
+  };
+  
   return (
     <Layout>
       <div className="container mx-auto px-6 py-8">
@@ -132,9 +146,16 @@ const PropertyDetails = () => {
                   <Button 
                     variant="secondary" 
                     size="icon"
-                    className="rounded-full"
+                    className={cn(
+                      "rounded-full",
+                      isFavorite && "bg-primary text-primary-foreground hover:bg-primary/90"
+                    )}
+                    onClick={handleFavoriteClick}
                   >
-                    <Heart size={18} />
+                    <Heart 
+                      size={18} 
+                      className={isFavorite ? "fill-current" : ""} 
+                    />
                   </Button>
                   <Button 
                     variant="secondary" 
