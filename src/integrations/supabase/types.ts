@@ -564,6 +564,8 @@ export type Database = {
       properties: {
         Row: {
           address: string
+          amenities: string[] | null
+          availability_date: string | null
           bathrooms: number | null
           bedrooms: number | null
           city: string
@@ -572,6 +574,8 @@ export type Database = {
           description: string | null
           featured: boolean | null
           id: string
+          latitude: number | null
+          longitude: number | null
           main_image_url: string | null
           owner_id: string
           price: number
@@ -583,6 +587,8 @@ export type Database = {
         }
         Insert: {
           address: string
+          amenities?: string[] | null
+          availability_date?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
           city: string
@@ -591,6 +597,8 @@ export type Database = {
           description?: string | null
           featured?: boolean | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           main_image_url?: string | null
           owner_id: string
           price: number
@@ -602,6 +610,8 @@ export type Database = {
         }
         Update: {
           address?: string
+          amenities?: string[] | null
+          availability_date?: string | null
           bathrooms?: number | null
           bedrooms?: number | null
           city?: string
@@ -610,6 +620,8 @@ export type Database = {
           description?: string | null
           featured?: boolean | null
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           main_image_url?: string | null
           owner_id?: string
           price?: number

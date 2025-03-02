@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import SearchBar from '@/components/SearchBar';
@@ -16,6 +17,7 @@ import Map from '@/components/Map';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+// Update PropertyType to match both our frontend needs and database schema
 interface PropertyType {
   id: string;
   title: string;
@@ -28,14 +30,39 @@ interface PropertyType {
   main_image_url: string | null;
   status: string;
   description: string;
-  square_footage?: number;
-  size_sqm?: number;
-  year_built?: number;
-  amenities?: string[];
-  image_urls?: string[];
-  availability_date?: string;
-  latitude?: number;
-  longitude?: number;
+  square_footage: number; // Made required to match PropertyCard's expectations
+  size_sqm?: number | null;
+  year_built: number; // Made required to match expected usage
+  amenities: string[]; // Made required to match expected usage
+  image_urls: string[]; // Made required to match expected usage
+  availability_date: string; // Made required to match expected usage
+  latitude?: number | null;
+  longitude?: number | null;
+}
+
+// Define the shape of the raw database property type
+interface DatabasePropertyType {
+  id: string;
+  title: string;
+  address: string;
+  city: string;
+  price: number;
+  property_type: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  main_image_url: string | null;
+  status: string;
+  description: string | null;
+  size_sqm: number | null;
+  owner_id: string;
+  country: string;
+  created_at: string;
+  updated_at: string;
+  featured: boolean | null;
+  latitude: number | null;
+  longitude: number | null;
+  availability_date: string | null;
+  amenities: string[] | null;
 }
 
 const Search = () => {
@@ -114,14 +141,23 @@ const Search = () => {
         setProperties(sampleData as PropertyType[]);
         console.log("Created sample data:", sampleData);
       } else {
-        const formattedProperties = data.map(property => {
+        const formattedProperties = data.map((property: DatabasePropertyType) => {
           // Create a formatted property with all the fields we need
           const formattedProperty: PropertyType = {
-            ...property,
-            // Use size_sqm as square_footage if available
+            id: property.id,
+            title: property.title,
+            address: property.address,
+            city: property.city,
+            price: property.price,
+            property_type: property.property_type,
+            bedrooms: property.bedrooms,
+            bathrooms: property.bathrooms,
+            main_image_url: property.main_image_url,
+            status: property.status,
+            description: property.description || '',
+            // Ensure all required fields are present with defaults if needed
             square_footage: property.size_sqm || 0,
-            // Set defaults for properties that might not exist in the database
-            year_built: property.year_built || 2020,
+            year_built: 2020, // Default year if not available
             amenities: property.amenities || ['wifi', 'parking', 'security'],
             image_urls: [property.main_image_url || 'https://placehold.co/600x400'],
             availability_date: property.availability_date || new Date().toISOString(),
