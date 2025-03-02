@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -15,8 +16,9 @@ import {
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { Filter, SlidersHorizontal, MapPin, X, ChevronDown } from 'lucide-react';
+import { Filter, SlidersHorizontal, MapPin, X, ChevronDown, Grid, Map as MapIcon } from 'lucide-react';
 import mockProperties from "../data/mockProperties";
+import PropertyMap from '@/components/PropertyMap';
 
 const Search = () => {
   const [searchParams] = useSearchParams();
@@ -24,6 +26,7 @@ const Search = () => {
   const [filteredProperties, setFilteredProperties] = useState<PropertyType[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterOpen, setFilterOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   
   // Filter states
   const [priceRange, setPriceRange] = useState([0, 200000000]); // XOF
@@ -326,17 +329,67 @@ const Search = () => {
                 )}
               </div>
               
-              <Select defaultValue="recommended">
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Trier par" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="recommended">Recommandés</SelectItem>
-                  <SelectItem value="price_asc">Prix (croissant)</SelectItem>
-                  <SelectItem value="price_desc">Prix (décroissant)</SelectItem>
-                  <SelectItem value="newest">Plus récents</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="flex items-center gap-4">
+                <Select defaultValue="recommended">
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue placeholder="Trier par" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="recommended">Recommandés</SelectItem>
+                    <SelectItem value="price_asc">Prix (croissant)</SelectItem>
+                    <SelectItem value="price_desc">Prix (décroissant)</SelectItem>
+                    <SelectItem value="newest">Plus récents</SelectItem>
+                  </SelectContent>
+                </Select>
+                
+                <div className="bg-muted rounded-lg p-1 flex">
+                  <Button
+                    type="button"
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('grid')}
+                    className="rounded-md"
+                  >
+                    <Grid size={18} />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={viewMode === 'map' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setViewMode('map')}
+                    className="rounded-md"
+                  >
+                    <MapIcon size={18} />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            
+            {/* View mode toggle for mobile */}
+            <div className="flex md:hidden items-center justify-between mb-4">
+              <div className="text-sm">
+                {loading ? 'Chargement...' : `${filteredProperties.length} résultats`}
+              </div>
+              <div className="bg-muted rounded-lg p-1 flex">
+                <Button
+                  type="button"
+                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('grid')}
+                  className="rounded-md"
+                >
+                  <Grid size={16} />
+                </Button>
+                <Button
+                  type="button"
+                  variant={viewMode === 'map' ? 'default' : 'ghost'}
+                  size="sm"
+                  onClick={() => setViewMode('map')}
+                  className="rounded-md"
+                >
+                  <MapIcon size={16} />
+                </Button>
+              </div>
             </div>
             
             {/* Active filters */}
@@ -434,21 +487,29 @@ const Search = () => {
                 <Button onClick={clearFilters}>Effacer les filtres</Button>
               </div>
             ) : (
-              <motion.div 
-                className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4"
-                variants={container}
-                initial="hidden"
-                animate="show"
-              >
-                {filteredProperties.map((property) => (
-                  <motion.div key={property.id} variants={item}>
-                    <PropertyCard property={property} />
+              <>
+                {viewMode === 'grid' ? (
+                  <motion.div 
+                    className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4"
+                    variants={container}
+                    initial="hidden"
+                    animate="show"
+                  >
+                    {filteredProperties.map((property) => (
+                      <motion.div key={property.id} variants={item}>
+                        <PropertyCard property={property} />
+                      </motion.div>
+                    ))}
                   </motion.div>
-                ))}
-              </motion.div>
+                ) : (
+                  <div className="h-[700px] rounded-2xl overflow-hidden border border-border">
+                    <PropertyMap properties={filteredProperties} />
+                  </div>
+                )}
+              </>
             )}
             
-            {filteredProperties.length > 0 && (
+            {viewMode === 'grid' && filteredProperties.length > 0 && (
               <div className="mt-12 text-center">
                 <Button variant="outline" size="lg">
                   Charger plus de résultats

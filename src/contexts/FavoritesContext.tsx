@@ -1,206 +1,201 @@
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
+import React, { createContext, useState, useContext, useEffect } from 'react';
+import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import { PropertyType } from '@/components/PropertyCard';
 import { useToast } from '@/hooks/use-toast';
 
-type PropertyType = {
-  id: string;
-  title: string;
-  description: string;
-  price: number;
-  priceUnit: "XOF" | "USD" | "EUR";
-  type: "apartment" | "house" | "villa" | "office" | "land" | "other";
-  purpose: "rent" | "sale";
-  location: string;
-  beds: number;
-  baths: number;
-  area: number;
-  image: string;
-  features: string[];
-  created_at: string;
-};
-
-type FavoritesContextType = {
+// Define the shape of the context
+interface FavoritesContextType {
   favorites: PropertyType[];
+  loading: boolean;
+  isFavorite: (propertyId: string) => boolean;
   addFavorite: (property: PropertyType) => void;
   removeFavorite: (propertyId: string) => void;
-  isFavorite: (propertyId: string) => boolean;
-  isLoading: boolean;
-};
+}
 
-const FavoritesContext = createContext<FavoritesContextType | null>(null);
+// Create the context with default values
+const FavoritesContext = createContext<FavoritesContextType>({
+  favorites: [],
+  loading: true,
+  isFavorite: () => false,
+  addFavorite: () => {},
+  removeFavorite: () => {}
+});
 
-export const FavoritesProvider = ({ children }: { children: React.ReactNode }) => {
+// Create a provider component
+export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [favorites, setFavorites] = useState<PropertyType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
 
+  // Fetch favorites from local storage or database
   useEffect(() => {
     const fetchFavorites = async () => {
+      setLoading(true);
+      
       if (user) {
-        setIsLoading(true);
         try {
-          // Using user_favorites table instead of favorites
+          // Fetch user's favorite properties
           const { data, error } = await supabase
             .from('user_favorites')
-            .select('property_id');
-
+            .select('property_id')
+            .eq('user_id', user.id);
+            
           if (error) {
             throw error;
           }
-
+          
           if (data && data.length > 0) {
-            // Get the actual property data from the properties table
-            const propertyIds = data.map(item => item.property_id);
+            // Get property details for each favorite
+            const propertyIds = data.map(fav => fav.property_id);
             
-            const { data: propertiesData, error: propertiesError } = await supabase
-              .from('properties')
-              .select('*')
-              .in('id', propertyIds);
-              
-            if (propertiesError) {
-              throw propertiesError;
-            }
+            // In a real app, you would fetch from a properties table
+            // For now, we'll use mockProperties
+            const mockPropertiesModule = await import('@/data/mockProperties');
+            const mockProperties = mockPropertiesModule.default;
             
-            // Map database properties to our PropertyType format
-            const formattedProperties = propertiesData ? propertiesData.map(prop => ({
-              id: prop.id,
-              title: prop.title || '',
-              description: prop.description || '',
-              price: prop.price || 0,
-              priceUnit: "XOF" as const,
-              type: prop.property_type as "apartment" | "house" | "villa" | "office" | "land" | "other",
-              // Fixed purpose property to match expected type
-              purpose: prop.status === 'for_rent' ? 'rent' : 'sale',
-              location: `${prop.city}, ${prop.country}`,
-              beds: prop.bedrooms || 0,
-              baths: prop.bathrooms || 0,
-              area: prop.size_sqm || 0,
-              image: prop.main_image_url || '',
-              features: [],
-              created_at: prop.created_at
-            })) : [];
+            const favoriteProperties = mockProperties.filter(
+              property => propertyIds.includes(property.id)
+            );
             
-            setFavorites(formattedProperties);
-          } else {
-            setFavorites([]);
+            setFavorites(favoriteProperties);
           }
-        } catch (error: any) {
+        } catch (error) {
           console.error('Error fetching favorites:', error);
           toast({
-            title: 'Erreur lors du chargement des favoris',
-            description: error.message,
+            title: 'Erreur',
+            description: 'Impossible de charger vos favoris.',
             variant: 'destructive',
           });
-        } finally {
-          setIsLoading(false);
         }
       } else {
-        setFavorites([]);
-        setIsLoading(false);
+        // For non-authenticated users, use localStorage
+        const storedFavorites = localStorage.getItem('favorites');
+        if (storedFavorites) {
+          try {
+            const parsedFavorites = JSON.parse(storedFavorites);
+            setFavorites(parsedFavorites);
+          } catch (error) {
+            console.error('Error parsing favorites from localStorage:', error);
+            localStorage.removeItem('favorites');
+          }
+        }
       }
+      
+      setLoading(false);
     };
-
+    
     fetchFavorites();
   }, [user, toast]);
-
-  const addFavorite = async (property: PropertyType) => {
-    if (!user) {
-      toast({
-        title: 'Non authentifié',
-        description: 'Vous devez être connecté pour ajouter des favoris.',
-        variant: 'destructive',
-      });
-      return;
+  
+  // Save favorites to localStorage for non-authenticated users
+  useEffect(() => {
+    if (!user && !loading) {
+      localStorage.setItem('favorites', JSON.stringify(favorites));
     }
-
-    try {
-      // Use user_favorites table instead of favorites
-      const { error } = await supabase
-        .from('user_favorites')
-        .insert([{ user_id: user.id, property_id: property.id }]);
-
-      if (error) {
-        throw error;
-      }
-
-      setFavorites(prevFavorites => [...prevFavorites, property]);
-      toast({
-        title: 'Propriété ajoutée aux favoris',
-        description: `${property.title} a été ajoutée à vos favoris.`,
-      });
-    } catch (error: any) {
-      console.error('Error adding favorite:', error);
-      toast({
-        title: 'Erreur lors de l\'ajout aux favoris',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const removeFavorite = async (propertyId: string) => {
-    if (!user) {
-      toast({
-        title: 'Non authentifié',
-        description: 'Vous devez être connecté pour supprimer des favoris.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    try {
-      // Use user_favorites table instead of favorites
-      const { error } = await supabase
-        .from('user_favorites')
-        .delete()
-        .eq('user_id', user.id)
-        .eq('property_id', propertyId);
-
-      if (error) {
-        throw error;
-      }
-
-      setFavorites(prevFavorites => prevFavorites.filter(property => property.id !== propertyId));
-      toast({
-        title: 'Propriété retirée des favoris',
-        description: 'La propriété a été retirée de vos favoris.',
-      });
-    } catch (error: any) {
-      console.error('Error removing favorite:', error);
-      toast({
-        title: 'Erreur lors de la suppression du favori',
-        description: error.message,
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const isFavorite = (propertyId: string) => {
+  }, [favorites, user, loading]);
+  
+  // Check if a property is in favorites
+  const isFavorite = (propertyId: string): boolean => {
     return favorites.some(property => property.id === propertyId);
   };
-
-  const value: FavoritesContextType = {
-    favorites,
-    addFavorite,
-    removeFavorite,
-    isFavorite,
-    isLoading,
+  
+  // Add a property to favorites
+  const addFavorite = async (property: PropertyType) => {
+    if (isFavorite(property.id)) return;
+    
+    if (user) {
+      try {
+        // Add to database for authenticated users
+        const { error } = await supabase
+          .from('user_favorites')
+          .insert({
+            user_id: user.id,
+            property_id: property.id,
+            created_at: new Date().toISOString(),
+          });
+          
+        if (error) throw error;
+        
+        setFavorites([...favorites, property]);
+        
+        toast({
+          title: 'Ajouté aux favoris',
+          description: 'La propriété a été ajoutée à vos favoris.',
+        });
+      } catch (error) {
+        console.error('Error adding favorite:', error);
+        toast({
+          title: 'Erreur',
+          description: 'Impossible d\'ajouter aux favoris.',
+          variant: 'destructive',
+        });
+      }
+    } else {
+      // Add to localStorage for non-authenticated users
+      setFavorites([...favorites, property]);
+      
+      toast({
+        title: 'Ajouté aux favoris',
+        description: 'La propriété a été ajoutée à vos favoris.',
+      });
+    }
   };
-
+  
+  // Remove a property from favorites
+  const removeFavorite = async (propertyId: string) => {
+    if (!isFavorite(propertyId)) return;
+    
+    if (user) {
+      try {
+        // Remove from database for authenticated users
+        const { error } = await supabase
+          .from('user_favorites')
+          .delete()
+          .eq('user_id', user.id)
+          .eq('property_id', propertyId);
+          
+        if (error) throw error;
+        
+        setFavorites(favorites.filter(property => property.id !== propertyId));
+        
+        toast({
+          title: 'Retiré des favoris',
+          description: 'La propriété a été retirée de vos favoris.',
+        });
+      } catch (error) {
+        console.error('Error removing favorite:', error);
+        toast({
+          title: 'Erreur',
+          description: 'Impossible de retirer des favoris.',
+          variant: 'destructive',
+        });
+      }
+    } else {
+      // Remove from localStorage for non-authenticated users
+      setFavorites(favorites.filter(property => property.id !== propertyId));
+      
+      toast({
+        title: 'Retiré des favoris',
+        description: 'La propriété a été retirée de vos favoris.',
+      });
+    }
+  };
+  
   return (
-    <FavoritesContext.Provider value={value}>
+    <FavoritesContext.Provider value={{ 
+      favorites, 
+      loading, 
+      isFavorite, 
+      addFavorite, 
+      removeFavorite 
+    }}>
       {children}
     </FavoritesContext.Provider>
   );
 };
 
-export const useFavorites = () => {
-  const context = useContext(FavoritesContext);
-  if (!context) {
-    throw new Error('useFavorites must be used within a FavoritesProvider');
-  }
-  return context;
-};
+// Create a custom hook to use the context
+export const useFavorites = () => useContext(FavoritesContext);

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -87,17 +86,20 @@ const PropertyDetails = () => {
     "https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
   ];
   
-  // Fix the duplicate isFavorite variable - rename it to isPropertyFavorite
-  const isPropertyFavorite = id ? isFavorite(id) : false;
+  const propertyIsFavorite = id ? isFavorite(id) : false;
   
   const handleFavoriteClick = () => {
     if (!property) return;
     
-    if (isPropertyFavorite) {
+    if (propertyIsFavorite) {
       removeFavorite(property.id);
     } else {
       addFavorite(property);
     }
+  };
+  
+  const formatPrice = (price: number) => {
+    return `${price.toLocaleString()} XOF`;
   };
   
   return (
@@ -148,13 +150,13 @@ const PropertyDetails = () => {
                     size="icon"
                     className={cn(
                       "rounded-full",
-                      isPropertyFavorite && "bg-primary text-primary-foreground hover:bg-primary/90"
+                      propertyIsFavorite && "bg-primary text-primary-foreground hover:bg-primary/90"
                     )}
                     onClick={handleFavoriteClick}
                   >
                     <Heart 
                       size={18} 
-                      className={isPropertyFavorite ? "fill-current" : ""} 
+                      className={propertyIsFavorite ? "fill-current" : ""} 
                     />
                   </Button>
                   <Button 
@@ -169,308 +171,126 @@ const PropertyDetails = () => {
             </motion.div>
           </div>
           
-          <div className="grid grid-rows-2 gap-6 h-full">
-            {galleryImages.slice(1, 3).map((image, index) => (
-              <motion.div 
-                key={index}
-                initial={{ opacity: 0, scale: 0.95, x: 20 }}
-                animate={{ opacity: 1, scale: 1, x: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="relative overflow-hidden rounded-2xl cursor-pointer"
-                onClick={() => setActiveImage(index + 1)}
-              >
-                <img 
-                  src={image} 
-                  alt={`Property image ${index + 2}`}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-black/20 hover:bg-black/10 transition-colors"></div>
-              </motion.div>
-            ))}
+          <div className="md:col-span-1">
+            <div className="grid grid-cols-2 gap-2">
+              {galleryImages.map((image, index) => (
+                <motion.button
+                  key={index}
+                  className={`aspect-square overflow-hidden rounded-xl border-2 border-transparent hover:border-primary focus:border-primary ${activeImage === index ? 'border-primary' : ''}`}
+                  onClick={() => setActiveImage(index)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <img 
+                    src={image} 
+                    alt={`${property.title} - Image ${index + 1}`} 
+                    className="w-full h-full object-cover" 
+                  />
+                </motion.button>
+              ))}
+            </div>
           </div>
         </div>
         
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          <div className="lg:col-span-2">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-8"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
-                <div>
-                  <h1 className="text-3xl font-bold mb-2">{property.title}</h1>
-                  <div className="flex items-center text-muted-foreground">
-                    <MapPin size={16} className="mr-1" />
-                    <span>{property.location}</span>
-                  </div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold text-primary">
-                    {property.price.toLocaleString()} {property.priceUnit}
-                    {property.purpose === 'rent' && <span className="text-sm font-normal text-muted-foreground">/mois</span>}
-                  </div>
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-3 gap-6 my-8">
-                {property.beds !== undefined && (
-                  <div className="bg-muted/40 rounded-xl p-4 text-center">
-                    <Bed size={24} className="mx-auto mb-2 text-primary" />
-                    <div className="font-semibold">{property.beds}</div>
-                    <div className="text-sm text-muted-foreground">Chambres</div>
-                  </div>
-                )}
-                
-                {property.baths !== undefined && (
-                  <div className="bg-muted/40 rounded-xl p-4 text-center">
-                    <Bath size={24} className="mx-auto mb-2 text-primary" />
-                    <div className="font-semibold">{property.baths}</div>
-                    <div className="text-sm text-muted-foreground">Salles de bain</div>
-                  </div>
-                )}
-                
-                {property.area !== undefined && (
-                  <div className="bg-muted/40 rounded-xl p-4 text-center">
-                    <Square size={24} className="mx-auto mb-2 text-primary" />
-                    <div className="font-semibold">{property.area}</div>
-                    <div className="text-sm text-muted-foreground">m²</div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-            
-            <Tabs defaultValue="details">
-              <TabsList className="w-full grid grid-cols-3 mb-6">
-                <TabsTrigger value="details">Détails</TabsTrigger>
-                <TabsTrigger value="features">Caractéristiques</TabsTrigger>
-                <TabsTrigger value="location">Emplacement</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="details" className="space-y-6">
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="space-y-6"
-                >
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">Description</h3>
-                    <p className="text-muted-foreground">
-                      Magnifique {property.type === 'house' ? 'maison' : 
-                        property.type === 'apartment' ? 'appartement' : 
-                        property.type === 'land' ? 'terrain' : 'espace commercial'} 
-                      situé à {property.location}. Cette propriété offre un excellent emplacement 
-                      dans un quartier recherché et sécurisé de Lomé.
-                    </p>
-                    <p className="text-muted-foreground mt-4">
-                      Parfait pour une famille ou un investissement locatif, cette propriété ne restera 
-                      pas longtemps sur le marché. Contactez-nous dès aujourd'hui pour organiser une visite.
-                    </p>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">Détails de la propriété</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-y-4">
-                      <div>
-                        <span className="text-muted-foreground">Type:</span>{' '}
-                        <span className="font-medium">{
-                          property.type === 'house' ? 'Maison' : 
-                          property.type === 'apartment' ? 'Appartement' : 
-                          property.type === 'land' ? 'Terrain' : 'Commercial'
-                        }</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Statut:</span>{' '}
-                        <span className="font-medium">{property.purpose === 'sale' ? 'À vendre' : 'À louer'}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Année de construction:</span>{' '}
-                        <span className="font-medium">2020</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Surface du terrain:</span>{' '}
-                        <span className="font-medium">{property.area} m²</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Garage:</span>{' '}
-                        <span className="font-medium">Oui, 1 place</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">ID de propriété:</span>{' '}
-                        <span className="font-medium">TP-{property.id.padStart(5, '0')}</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </TabsContent>
-              
-              <TabsContent value="features">
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="space-y-6"
-                >
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">Caractéristiques</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="flex items-center">
-                        <Check size={18} className="text-primary mr-2" />
-                        <span>Climatisation</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Check size={18} className="text-primary mr-2" />
-                        <span>Balcon</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Check size={18} className="text-primary mr-2" />
-                        <span>Cuisine équipée</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Check size={18} className="text-primary mr-2" />
-                        <span>Eau chaude</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Check size={18} className="text-primary mr-2" />
-                        <span>Internet fibre</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Check size={18} className="text-primary mr-2" />
-                        <span>Parking sécurisé</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Check size={18} className="text-primary mr-2" />
-                        <span>Groupe électrogène</span>
-                      </div>
-                      <div className="flex items-center">
-                        <Check size={18} className="text-primary mr-2" />
-                        <span>Sécurité 24/7</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {property.type !== 'land' && (
-                    <div>
-                      <h3 className="text-xl font-semibold mb-4">Équipements</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="flex items-center">
-                          <Check size={18} className="text-primary mr-2" />
-                          <span>Réfrigérateur</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Check size={18} className="text-primary mr-2" />
-                          <span>Machine à laver</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Check size={18} className="text-primary mr-2" />
-                          <span>Cuisinière</span>
-                        </div>
-                        <div className="flex items-center">
-                          <Check size={18} className="text-primary mr-2" />
-                          <span>Four micro-ondes</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </motion.div>
-              </TabsContent>
-              
-              <TabsContent value="location">
-                <motion.div 
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="space-y-6"
-                >
-                  <div className="aspect-[16/9] bg-muted rounded-xl flex items-center justify-center">
-                    <div className="text-center p-8">
-                      <MapPin size={48} className="mx-auto mb-4 text-muted-foreground" />
-                      <h3 className="text-xl font-semibold mb-2">Carte interactive</h3>
-                      <p className="text-muted-foreground">
-                        La carte sera disponible prochainement.
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="text-xl font-semibold mb-4">À proximité</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <span className="text-muted-foreground">Écoles:</span>{' '}
-                        <span className="font-medium">2 km</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Hôpitaux:</span>{' '}
-                        <span className="font-medium">3.5 km</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Commerces:</span>{' '}
-                        <span className="font-medium">0.8 km</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">Restaurants:</span>{' '}
-                        <span className="font-medium">1.2 km</span>
-                      </div>
-                    </div>
-                  </div>
-                </motion.div>
-              </TabsContent>
-            </Tabs>
+        <div className="md:flex md:items-start md:justify-between">
+          <div>
+            <h1 className="text-2xl font-bold mb-2">{property.title}</h1>
+            <div className="flex items-center text-muted-foreground mb-4">
+              <MapPin size={16} className="mr-2" />
+              {property.location}
+            </div>
           </div>
           
-          <div className="lg:col-span-1">
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-2xl shadow-sm border border-border p-6 sticky top-32"
-            >
-              <div className="flex items-center space-x-4 mb-6">
-                <div className="w-16 h-16 rounded-full bg-muted overflow-hidden">
+          <div className="text-3xl font-bold text-primary mb-4 md:mb-0">
+            {formatPrice(property.price)}
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-between py-4 border-y border-border">
+          <div className="flex items-center">
+            <Bed size={20} className="mr-2 text-muted-foreground" />
+            <span>{property.beds || 0} Chambres</span>
+          </div>
+          <div className="flex items-center">
+            <Bath size={20} className="mr-2 text-muted-foreground" />
+            <span>{property.baths || 0} Salles de bain</span>
+          </div>
+          <div className="flex items-center">
+            <Square size={20} className="mr-2 text-muted-foreground" />
+            <span>{property.area || 0} m²</span>
+          </div>
+        </div>
+        
+        <Tabs defaultValue="description" className="mt-6">
+          <TabsList>
+            <TabsTrigger value="description">Description</TabsTrigger>
+            <TabsTrigger value="details">Détails</TabsTrigger>
+            <TabsTrigger value="contact">Contact</TabsTrigger>
+          </TabsList>
+          <TabsContent value="description" className="mt-4 space-y-2">
+            <p>{property.description}</p>
+            <h4 className="font-semibold mt-4">Commodités</h4>
+            <ul className="list-disc list-inside">
+              {property.features?.map((feature, index) => (
+                <li key={index}>{feature}</li>
+              ))}
+            </ul>
+          </TabsContent>
+          <TabsContent value="details" className="mt-4 space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <h4 className="font-semibold">Type de propriété</h4>
+                <p className="text-muted-foreground">{property.type}</p>
+              </div>
+              <div>
+                <h4 className="font-semibold">But</h4>
+                <p className="text-muted-foreground">{property.purpose === 'sale' ? 'Vente' : 'Location'}</p>
+              </div>
+              <div>
+                <h4 className="font-semibold">Date de publication</h4>
+                <p className="text-muted-foreground">
+                  {property.created_at ? formatDistanceToNow(new Date(property.created_at), {
+                    addSuffix: true,
+                    locale: fr
+                  }) : 'Inconnue'}
+                </p>
+              </div>
+            </div>
+          </TabsContent>
+          <TabsContent value="contact" className="mt-4 space-y-2">
+            <div className="bg-muted/30 rounded-md p-4">
+              <h4 className="font-semibold mb-2">Contactez l'agent</h4>
+              <div className="flex items-center space-x-3">
+                <div className="w-12 h-12 rounded-full overflow-hidden">
                   <img 
-                    src="https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80" 
-                    alt="Agent"
-                    className="w-full h-full object-cover"
+                    src={property.agent?.avatar || "https://via.placeholder.com/150"} 
+                    alt={property.agent?.name} 
+                    className="w-full h-full object-cover" 
                   />
                 </div>
                 <div>
-                  <h3 className="font-semibold">David Amegbor</h3>
-                  <p className="text-sm text-muted-foreground">Agent immobilier certifié</p>
+                  <p className="font-medium">{property.agent?.name}</p>
+                  <p className="text-muted-foreground text-sm">Agent immobilier</p>
                 </div>
               </div>
-              
-              <div className="space-y-4 mb-6">
-                <Button className="w-full" size="lg">
-                  <PhoneCall size={18} className="mr-2" />
+              <div className="mt-4 flex space-x-2">
+                <Button variant="outline" className="w-full">
+                  <PhoneCall size={16} className="mr-2" />
                   Appeler
                 </Button>
-                <Button variant="outline" className="w-full" size="lg">
-                  <MessageSquare size={18} className="mr-2" />
-                  Envoyer un message
+                <Button className="w-full">
+                  <MessageSquare size={16} className="mr-2" />
+                  Message
                 </Button>
               </div>
-              
-              <div className="border border-border rounded-xl p-4 bg-muted/30">
-                <div className="flex items-start">
-                  <Info size={18} className="text-primary mr-2 mt-0.5" />
-                  <div className="text-sm">
-                    <p className="font-medium">Besoin d'un financement ?</p>
-                    <p className="text-muted-foreground mt-1">
-                      Nos partenaires bancaires peuvent vous proposer des solutions adaptées à votre projet.
-                    </p>
-                    <Button variant="link" className="p-0 h-auto mt-2 text-primary">
-                      En savoir plus
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="mt-16 bg-muted/30 py-16">
-        <div className="container mx-auto px-6">
-          <h2 className="text-2xl font-bold mb-8">Propriétés similaires</h2>
-          <FeaturedProperties limit={3} viewAllLink="/search" title="" />
-        </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+        
+        <section className="mt-12">
+          <h2 className="text-xl font-semibold mb-6">Propriétés similaires</h2>
+          <FeaturedProperties />
+        </section>
       </div>
     </Layout>
   );
