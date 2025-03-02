@@ -1,4 +1,5 @@
-import { useState, useRef } from 'react';
+
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -183,7 +184,7 @@ const KycVerification = () => {
     }
   };
 
-  useState(() => {
+  useEffect(() => {
     checkKycStatus();
   }, [user]);
 
