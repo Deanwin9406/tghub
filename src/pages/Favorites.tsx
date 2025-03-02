@@ -9,7 +9,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
 const Favorites = () => {
-  const { favorites, loading } = useFavorites();
+  const { favorites, isLoading } = useFavorites();
 
   return (
     <Layout>
@@ -23,7 +23,7 @@ const Favorites = () => {
           </div>
         </div>
         
-        {loading ? (
+        {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <div key={i} className="animate-pulse">
@@ -51,7 +51,15 @@ const Favorites = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.1 }}
               >
-                <PropertyCard property={property} />
+                <PropertyCard 
+                  property={{
+                    ...property,
+                    // Ensure property type matches the PropertyCard's expected type
+                    type: property.type === 'villa' || property.type === 'office' || property.type === 'other' 
+                      ? 'house' 
+                      : property.type as 'house' | 'apartment' | 'land' | 'commercial',
+                  }} 
+                />
               </motion.div>
             ))}
           </div>

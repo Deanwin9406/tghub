@@ -14,7 +14,7 @@ export interface PropertyType {
   title: string;
   price: number;
   priceUnit: 'XOF' | 'USD' | 'EUR';
-  type: 'house' | 'apartment' | 'land' | 'commercial';
+  type: 'house' | 'apartment' | 'land' | 'commercial' | 'villa' | 'office' | 'other';
   purpose: 'sale' | 'rent';
   location: string;
   beds?: number;
@@ -45,9 +45,9 @@ const PropertyCard = ({ property, className }: PropertyCardProps) => {
   } = useComparison();
   
   const {
-    addToFavorites,
-    removeFromFavorites,
-    isInFavorites
+    addFavorite: addToFavorites,
+    removeFavorite: removeFromFavorites,
+    isFavorite: isInFavorites
   } = useFavorites();
   
   const { toast } = useToast();

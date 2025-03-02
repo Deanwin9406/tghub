@@ -23,22 +23,21 @@ import { motion } from 'framer-motion';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import FeaturedProperties from '@/components/FeaturedProperties';
 import mockProperties from '../data/mockProperties';
+import { cn } from '@/lib/utils';
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [property, setProperty] = useState<PropertyType | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
-  const { isInFavorites, addToFavorites, removeFromFavorites } = useFavorites();
+  const { isFavorite, addFavorite, removeFavorite } = useFavorites();
   
   useEffect(() => {
-    // Simulate API call
     const timer = setTimeout(() => {
       const foundProperty = mockProperties.find(p => p.id === id) || null;
       setProperty(foundProperty);
       setLoading(false);
       
-      // Scroll to top
       window.scrollTo(0, 0);
     }, 500);
     
@@ -79,7 +78,6 @@ const PropertyDetails = () => {
     );
   }
   
-  // Create a bigger gallery for demo
   const galleryImages = [
     property.image,
     "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2053&q=80",
@@ -88,15 +86,15 @@ const PropertyDetails = () => {
     "https://images.unsplash.com/photo-1554995207-c18c203602cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80"
   ];
   
-  const isFavorite = id ? isInFavorites(id) : false;
+  const isFavorite = id ? isFavorite(id) : false;
   
   const handleFavoriteClick = () => {
     if (!property) return;
     
     if (isFavorite) {
-      removeFromFavorites(property.id);
+      removeFavorite(property.id);
     } else {
-      addToFavorites(property);
+      addFavorite(property);
     }
   };
   

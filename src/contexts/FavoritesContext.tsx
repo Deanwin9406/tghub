@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,38 +42,54 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
       if (user) {
         setIsLoading(true);
         try {
+          // Using user_favorites table instead of favorites
           const { data, error } = await supabase
-            .from('favorites')
-            .select('property_id, properties(*)')
-            .eq('user_id', user.id);
+            .from('user_favorites')
+            .select('property_id');
 
           if (error) {
             throw error;
           }
 
-          if (data) {
-            const properties = data.map(item => (item.properties ? {
-              id: item.properties.id,
-              title: item.properties.title,
-              description: item.properties.description,
-              price: item.properties.price,
-              priceUnit: item.properties.price_unit,
-              type: item.properties.type,
-              purpose: item.properties.purpose,
-              location: item.properties.location,
-              beds: item.properties.beds,
-              baths: item.properties.baths,
-              area: item.properties.area,
-              image: item.properties.image,
-              features: item.properties.features,
-              created_at: item.properties.created_at,
-            } : null)).filter(property => property !== null) as PropertyType[];
-            setFavorites(properties);
+          if (data && data.length > 0) {
+            // Get the actual property data from the properties table
+            const propertyIds = data.map(item => item.property_id);
+            
+            const { data: propertiesData, error: propertiesError } = await supabase
+              .from('properties')
+              .select('*')
+              .in('id', propertyIds);
+              
+            if (propertiesError) {
+              throw propertiesError;
+            }
+            
+            // Map database properties to our PropertyType format
+            const formattedProperties = propertiesData ? propertiesData.map(prop => ({
+              id: prop.id,
+              title: prop.title || '',
+              description: prop.description || '',
+              price: prop.price || 0,
+              priceUnit: "XOF" as const,
+              type: prop.property_type as "apartment" | "house" | "villa" | "office" | "land" | "other",
+              purpose: prop.status === 'for_rent' ? 'rent' : 'sale',
+              location: `${prop.city}, ${prop.country}`,
+              beds: prop.bedrooms || 0,
+              baths: prop.bathrooms || 0,
+              area: prop.size_sqm || 0,
+              image: prop.main_image_url || '',
+              features: [],
+              created_at: prop.created_at
+            })) : [];
+            
+            setFavorites(formattedProperties);
+          } else {
+            setFavorites([]);
           }
         } catch (error: any) {
           console.error('Error fetching favorites:', error);
           toast({
-            title: 'Error fetching favorites',
+            title: 'Erreur lors du chargement des favoris',
             description: error.message,
             variant: 'destructive',
           });
@@ -91,16 +108,17 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
   const addFavorite = async (property: PropertyType) => {
     if (!user) {
       toast({
-        title: 'Not authenticated',
-        description: 'You must be logged in to add favorites.',
+        title: 'Non authentifié',
+        description: 'Vous devez être connecté pour ajouter des favoris.',
         variant: 'destructive',
       });
       return;
     }
 
     try {
+      // Use user_favorites table instead of favorites
       const { error } = await supabase
-        .from('favorites')
+        .from('user_favorites')
         .insert([{ user_id: user.id, property_id: property.id }]);
 
       if (error) {
@@ -109,13 +127,13 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
 
       setFavorites(prevFavorites => [...prevFavorites, property]);
       toast({
-        title: 'Property added to favorites',
-        description: `${property.title} has been added to your favorites.`,
+        title: 'Propriété ajoutée aux favoris',
+        description: `${property.title} a été ajoutée à vos favoris.`,
       });
     } catch (error: any) {
       console.error('Error adding favorite:', error);
       toast({
-        title: 'Error adding favorite',
+        title: 'Erreur lors de l\'ajout aux favoris',
         description: error.message,
         variant: 'destructive',
       });
@@ -125,16 +143,17 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
   const removeFavorite = async (propertyId: string) => {
     if (!user) {
       toast({
-        title: 'Not authenticated',
-        description: 'You must be logged in to remove favorites.',
+        title: 'Non authentifié',
+        description: 'Vous devez être connecté pour supprimer des favoris.',
         variant: 'destructive',
       });
       return;
     }
 
     try {
+      // Use user_favorites table instead of favorites
       const { error } = await supabase
-        .from('favorites')
+        .from('user_favorites')
         .delete()
         .eq('user_id', user.id)
         .eq('property_id', propertyId);
@@ -145,13 +164,13 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
 
       setFavorites(prevFavorites => prevFavorites.filter(property => property.id !== propertyId));
       toast({
-        title: 'Property removed from favorites',
-        description: 'The property has been removed from your favorites.',
+        title: 'Propriété retirée des favoris',
+        description: 'La propriété a été retirée de vos favoris.',
       });
     } catch (error: any) {
       console.error('Error removing favorite:', error);
       toast({
-        title: 'Error removing favorite',
+        title: 'Erreur lors de la suppression du favori',
         description: error.message,
         variant: 'destructive',
       });
