@@ -16,16 +16,22 @@ import { cn } from '@/lib/utils';
 interface SearchBarProps {
   className?: string;
   variant?: 'default' | 'minimal';
+  onSearch?: (term: string) => void;
 }
 
-const SearchBar = ({ className, variant = 'default' }: SearchBarProps) => {
+const SearchBar = ({ className, variant = 'default', onSearch }: SearchBarProps) => {
   const [searchType, setSearchType] = useState('buy');
   const [location, setLocation] = useState('');
   const navigate = useNavigate();
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(`/search?type=${searchType}&location=${encodeURIComponent(location)}`);
+    
+    if (onSearch && location.trim()) {
+      onSearch(location);
+    } else {
+      navigate(`/search?type=${searchType}&location=${encodeURIComponent(location)}`);
+    }
   };
   
   return (

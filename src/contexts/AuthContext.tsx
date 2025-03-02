@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
@@ -12,7 +13,7 @@ type Profile = {
   avatar_url?: string;
 };
 
-type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor';
+export type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor';
 
 type AuthContextType = {
   session: Session | null;
