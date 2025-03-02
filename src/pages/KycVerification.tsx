@@ -1,15 +1,14 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import KycRequirementCard from '@/components/kyc/KycRequirementCard';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload, Check } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const KycVerification = () => {
@@ -88,18 +87,16 @@ const KycVerification = () => {
       }
 
       // Save KYC verification request
-      const { data, error: dbError } = await supabase
+      const { error: dbError } = await supabase
         .from('kyc_verifications')
-        .insert([
-          {
-            user_id: user.id,
-            identity_file_path: identityFileName,
-            address_file_path: addressFileName,
-            status: 'pending',
-            submitted_at: new Date().toISOString(),
-          },
-        ])
-        .select();
+        .insert({
+          user_id: user.id,
+          id_type: 'passport', // Default value or add a selector in the UI
+          id_number: 'ID-' + Math.random().toString(36).substring(2, 10).toUpperCase(), // This should be user-provided
+          id_image_url: identityFileName,
+          address_proof_url: addressFileName,
+          status: 'pending',
+        });
 
       if (dbError) {
         throw new Error(`Erreur lors de la sauvegarde de la demande KYC: ${dbError.message}`);
@@ -148,8 +145,7 @@ const KycVerification = () => {
                 <KycRequirementCard
                   title="Pièce d'identité"
                   description="Veuillez télécharger une copie claire de votre pièce d'identité (carte d'identité, passeport, permis de conduire)."
-                  uploadButtonText="Télécharger la pièce d'identité"
-                  onChange={handleIdentityUpload}
+                  onUpload={handleIdentityUpload}
                   fileName={identityFile?.name}
                 />
               </TabsContent>
@@ -157,8 +153,7 @@ const KycVerification = () => {
                 <KycRequirementCard
                   title="Justificatif de domicile"
                   description="Veuillez télécharger une copie d'un justificatif de domicile récent (facture d'électricité, facture d'eau, relevé bancaire)."
-                  uploadButtonText="Télécharger le justificatif de domicile"
-                  onChange={handleAddressUpload}
+                  onUpload={handleAddressUpload}
                   fileName={proofOfAddressFile?.name}
                 />
               </TabsContent>

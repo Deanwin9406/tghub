@@ -1,68 +1,54 @@
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Check, AlertCircle } from 'lucide-react';
+import { Upload } from 'lucide-react';
 
 interface KycRequirementCardProps {
   title: string;
   description: string;
-  isRequired: boolean;
-  isCompleted: boolean;
-  onAction: () => void;
-  actionLabel: string;
+  onUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
+  fileName?: string;
 }
 
-const KycRequirementCard = ({
+const KycRequirementCard: React.FC<KycRequirementCardProps> = ({
   title,
   description,
-  isRequired,
-  isCompleted,
-  onAction,
-  actionLabel
-}: KycRequirementCardProps) => {
+  onUpload,
+  fileName,
+}) => {
   return (
-    <Card className={isCompleted ? "border-green-200 bg-green-50/30" : isRequired ? "border-amber-200" : ""}>
-      <CardHeader className="pb-3">
-        <div className="flex justify-between items-start">
-          <CardTitle className="text-lg font-semibold">{title}</CardTitle>
-          {isCompleted ? (
-            <span className="bg-green-100 text-green-800 flex items-center px-2 py-1 rounded text-xs font-medium">
-              <Check className="h-3 w-3 mr-1" /> Complété
-            </span>
-          ) : isRequired ? (
-            <span className="bg-amber-100 text-amber-800 flex items-center px-2 py-1 rounded text-xs font-medium">
-              <AlertCircle className="h-3 w-3 mr-1" /> Requis
-            </span>
-          ) : (
-            <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded text-xs font-medium">
-              Optionnel
-            </span>
+    <Card className="border-dashed border-2 p-4">
+      <CardContent className="p-0 space-y-4">
+        <div className="space-y-2">
+          <h3 className="font-semibold text-lg">{title}</h3>
+          <p className="text-sm text-muted-foreground">{description}</p>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center gap-2 p-4 bg-muted/50 rounded-md">
+          <label htmlFor={`file-upload-${title}`} className="w-full">
+            <div className="flex flex-col items-center justify-center gap-2 cursor-pointer">
+              <Upload className="h-8 w-8 text-muted-foreground" />
+              <span className="text-sm font-medium">
+                {fileName ? 'Changer de fichier' : 'Ajouter un document'}
+              </span>
+              <input
+                id={`file-upload-${title}`}
+                type="file"
+                accept="image/*,.pdf"
+                className="hidden"
+                onChange={onUpload}
+              />
+            </div>
+          </label>
+          
+          {fileName && (
+            <div className="w-full mt-2 p-2 bg-background rounded border text-sm">
+              <p className="truncate text-center">{fileName}</p>
+            </div>
           )}
         </div>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {isCompleted ? (
-          <div className="rounded-md bg-green-50 p-4 text-sm text-green-800">
-            Cette vérification a été complétée avec succès.
-          </div>
-        ) : (
-          <div className="rounded-md bg-amber-50 p-4 text-sm text-amber-800">
-            {isRequired ? "Cette vérification est requise pour activer votre compte." : "Cette vérification est optionnelle mais recommandée."}
-          </div>
-        )}
       </CardContent>
-      <CardFooter>
-        <Button 
-          variant={isCompleted ? "outline" : "default"} 
-          className="w-full" 
-          onClick={onAction}
-          disabled={isCompleted}
-        >
-          {isCompleted ? "Déjà complété" : actionLabel}
-        </Button>
-      </CardFooter>
     </Card>
   );
 };

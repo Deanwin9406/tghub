@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,9 +16,9 @@ interface AuthContextType {
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any | null }>;
   sendPasswordResetEmail: (email: string) => Promise<{ error: any | null }>;
   loading: boolean;
-  session: Session | null; // Added for components that need session access
-  isLoading: boolean; // Added for compatibility with components using isLoading instead of loading
-  resetPassword: (email: string) => Promise<{ error: any | null }>; // Added for compatibility
+  session: Session | null;
+  isLoading: boolean;
+  resetPassword: (email: string) => Promise<{ error: any | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -34,8 +35,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
   const [hasCompletedKyc, setHasCompletedKyc] = useState<boolean>(false);
 
-  const navigate = useNavigate();
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -43,10 +42,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       setLoading(false);
     });
 
-    supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
     });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -142,7 +143,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signOut = async (): Promise<void> => {
     try {
       await supabase.auth.signOut();
-      navigate('/auth');
     } catch (error) {
       console.error("Error signing out:", error);
     } finally {
@@ -231,24 +231,25 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const resetPassword = sendPasswordResetEmail;
 
+  // This key structure ensures that the navigate function is not required
+  const contextValue = {
+    user,
+    profile,
+    roles,
+    hasCompletedKyc,
+    signIn,
+    signOut,
+    signUp,
+    updateProfile,
+    sendPasswordResetEmail,
+    resetPassword,
+    loading,
+    isLoading: loading,
+    session,
+  };
+
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        profile,
-        roles,
-        hasCompletedKyc,
-        signIn,
-        signOut,
-        signUp,
-        updateProfile,
-        sendPasswordResetEmail,
-        resetPassword,
-        loading,
-        isLoading: loading,
-        session,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
