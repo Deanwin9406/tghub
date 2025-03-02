@@ -39,9 +39,9 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light" storageKey="togoprop-theme">
-        <FavoritesProvider>
+        <AuthProvider>
           <ComparisonProvider>
-            <AuthProvider>
+            <FavoritesProvider>
               <BrowserRouter>
                 <Routes>
                   <Route path="/" element={<Index />} />
@@ -72,9 +72,9 @@ function App() {
                 </Routes>
               </BrowserRouter>
               <Toaster />
-            </AuthProvider>
+            </FavoritesProvider>
           </ComparisonProvider>
-        </FavoritesProvider>
+        </AuthProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
