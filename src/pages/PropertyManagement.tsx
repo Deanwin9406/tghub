@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -47,6 +48,8 @@ interface DatabasePropertyType {
   created_at: string;
   updated_at: string;
   featured: boolean | null;
+  amenities: string[] | null;
+  availability_date: string | null;
 }
 
 type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor';
@@ -131,10 +134,10 @@ const PropertyManagement = () => {
         description: property.description || '',
         square_footage: property.size_sqm || 0,
         size_sqm: property.size_sqm,
-        year_built: 0,
-        amenities: [],
-        image_urls: [],
-        availability_date: new Date().toISOString()
+        year_built: new Date().getFullYear(), // Default to current year if not available
+        amenities: property.amenities || [],
+        image_urls: property.main_image_url ? [property.main_image_url] : [],
+        availability_date: property.availability_date || new Date().toISOString()
       }));
       
       setProperties(propertyData);
