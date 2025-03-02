@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -225,9 +226,9 @@ const Dashboard = () => {
     if (messageData) {
       // Create a safe version of messages with default values for missing properties
       const safeMessages = messageData.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        created_at: msg.created_at,
+        id: msg.id || 'unknown',
+        content: msg.content || 'No content',
+        created_at: msg.created_at || new Date().toISOString(),
         sender: {
           first_name: msg.sender?.first_name || 'Unknown',
           last_name: msg.sender?.last_name || 'User'
@@ -252,7 +253,7 @@ const Dashboard = () => {
               Importer
             </Button>
             <Button size="sm">
-              <Download className="mr-2 h-4 w-4" />
+              <FileText className="mr-2 h-4 w-4" />
               Exporter
             </Button>
           </div>

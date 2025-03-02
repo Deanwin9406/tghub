@@ -137,7 +137,12 @@ const KycVerification = () => {
         return;
       }
 
-      setVerificationStatus(data?.status || null);
+      let statusValue = data?.status || null;
+      if (statusValue === 'approved') {
+        statusValue = 'verified';
+      }
+      
+      setVerificationStatus(statusValue as 'pending' | 'verified' | 'rejected' | null);
       setNotes(data?.notes || '');
     } catch (error) {
       console.error("Error fetching KYC status:", error);
