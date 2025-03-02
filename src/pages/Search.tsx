@@ -30,12 +30,12 @@ interface PropertyType {
   main_image_url: string | null;
   status: string;
   description: string;
-  square_footage: number; // Made required to match PropertyCard's expectations
+  square_footage: number; 
   size_sqm?: number | null;
-  year_built: number; // Made required to match expected usage
-  amenities: string[]; // Made required to match expected usage
-  image_urls: string[]; // Made required to match expected usage
-  availability_date: string; // Made required to match expected usage
+  year_built: number;
+  amenities: string[];
+  image_urls: string[];
+  availability_date: string;
   latitude?: number | null;
   longitude?: number | null;
 }
@@ -162,8 +162,8 @@ const Search = () => {
             image_urls: [property.main_image_url || 'https://placehold.co/600x400'],
             availability_date: property.availability_date || new Date().toISOString(),
             // Use the database values if available, or generate random ones for demo
-            latitude: property.latitude || (6.1319 + (Math.random() - 0.5) * 0.1),
-            longitude: property.longitude || (1.2254 + (Math.random() - 0.5) * 0.1)
+            latitude: property.latitude,
+            longitude: property.longitude
           };
           
           return formattedProperty;
@@ -175,6 +175,32 @@ const Search = () => {
     } catch (error) {
       console.error('Error fetching properties:', error);
       setMapError("Failed to load properties data");
+      
+      // Create and set sample data as fallback
+      const sampleData = Array(5).fill(null).map((_, index) => ({
+        id: `sample-${index}`,
+        title: `Sample Property ${index + 1}`,
+        address: `123 Sample St ${index + 1}`,
+        city: 'Lomé',
+        price: 500000 + (index * 100000),
+        property_type: ['apartment', 'house', 'villa', 'office'][index % 4],
+        bedrooms: (index % 3) + 1,
+        bathrooms: (index % 2) + 1,
+        main_image_url: 'https://placehold.co/600x400',
+        status: 'available',
+        description: `A beautiful sample property ${index + 1}`,
+        latitude: 6.1319 + (Math.random() - 0.5) * 0.1,
+        longitude: 1.2254 + (Math.random() - 0.5) * 0.1,
+        square_footage: 100 + ((index % 3) + 1) * 50,
+        year_built: 2000 + ((index % 3) + 1) * 3,
+        amenities: ['wifi', 'parking', 'security'],
+        image_urls: ['https://placehold.co/600x400'],
+        availability_date: new Date().toISOString()
+      }));
+      
+      setProperties(sampleData as PropertyType[]);
+      console.log("Created sample data as fallback:", sampleData);
+      
       setConnectionError(`Error connecting to database: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
