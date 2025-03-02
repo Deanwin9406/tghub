@@ -1,3 +1,4 @@
+
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -25,6 +26,8 @@ import CommunityDetails from "./pages/CommunityDetails";
 import Vendors from "./pages/Vendors";
 import AgentDashboard from "./pages/AgentDashboard";
 import Comparison from "./pages/Comparison";
+import AddProperty from "./pages/AddProperty";
+import EditProperty from "./pages/EditProperty";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -63,6 +66,8 @@ const App = () => (
               <Route path="/leases" element={<AuthGuard><Leases /></AuthGuard>} />
               <Route path="/vendors" element={<AuthGuard><Vendors /></AuthGuard>} />
               <Route path="/property-management" element={<AuthGuard><PropertyManagement /></AuthGuard>} />
+              <Route path="/property/add" element={<AuthGuard><AddProperty /></AuthGuard>} />
+              <Route path="/property/edit/:id" element={<AuthGuard><EditProperty /></AuthGuard>} />
             
               {/* Agent Routes */}
               <Route path="/agent" element={<AuthGuard><AgentDashboard /></AuthGuard>} />
