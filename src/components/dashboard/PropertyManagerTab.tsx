@@ -163,9 +163,11 @@ const PropertyManagerTab = ({ properties, maintenanceRequests }: PropertyManager
             <CardHeader>
               <div className="flex justify-between items-center">
                 <CardTitle>Gestion des Locataires</CardTitle>
-                <Button size="sm" onClick={() => navigate('/tenants/add')}>
-                  Ajouter un Locataire
-                </Button>
+                {properties.length > 0 && (
+                  <Button size="sm" onClick={() => navigate(`/property/${properties[0].id}/add-tenant`)}>
+                    Ajouter un Locataire
+                  </Button>
+                )}
               </div>
               <CardDescription>Gérez vos locataires et leurs informations</CardDescription>
             </CardHeader>
