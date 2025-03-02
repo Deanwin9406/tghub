@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -11,9 +12,11 @@ import { Users, MapPin, Plus, Search } from 'lucide-react';
 import { getCommunities } from '@/services/community';
 
 const Communities = () => {
-  const [communities, setCommunities] = useState([]);
+  const [allCommunities, setAllCommunities] = useState([]);
+  const [filteredCommunities, setFilteredCommunities] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -21,7 +24,8 @@ const Communities = () => {
       setIsLoading(true);
       try {
         const data = await getCommunities();
-        setCommunities(data);
+        setAllCommunities(data);
+        setFilteredCommunities(data);
       } catch (error) {
         console.error('Error loading communities:', error);
         setError('Failed to load communities. Please try again later.');
@@ -32,6 +36,21 @@ const Communities = () => {
 
     loadCommunities();
   }, []);
+
+  const handleSearch = (e) => {
+    const term = e.target.value.toLowerCase();
+    setSearchTerm(term);
+    
+    if (term === '') {
+      setFilteredCommunities(allCommunities);
+    } else {
+      setFilteredCommunities(
+        allCommunities.filter(community => 
+          community.name.toLowerCase().includes(term)
+        )
+      );
+    }
+  };
 
   return (
     <Layout>
@@ -46,12 +65,8 @@ const Communities = () => {
         <Input 
           placeholder="Search communities..." 
           className="mb-4" 
-          onChange={(e) => {
-            const searchTerm = e.target.value.toLowerCase();
-            setCommunities(prev => prev.filter(community => 
-              community.name.toLowerCase().includes(searchTerm)
-            ));
-          }} 
+          value={searchTerm}
+          onChange={handleSearch}
         />
         {isLoading ? (
           <div>Loading...</div>
@@ -59,7 +74,7 @@ const Communities = () => {
           <div className="text-red-500">{error}</div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {communities.map(community => (
+            {filteredCommunities.map(community => (
               <Card key={community.id} onClick={() => navigate(`/communities/${community.id}`)}>
                 <CardHeader>
                   <CardTitle>{community.name}</CardTitle>
