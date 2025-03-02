@@ -21,11 +21,6 @@ import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import AuthDialog from '@/components/AuthDialog';
 
-const signOut = async () => {
-  const { error } = await supabase.auth.signOut();
-  if (error) console.error('Error signing out:', error);
-};
-
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { session, user } = useAuth();
   const navigate = useNavigate();
@@ -43,6 +38,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
 
   const openAuthDialog = () => {
     setAuthDialogOpen(true);
+  };
+
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) console.error('Error signing out:', error);
+    navigate('/');
   };
 
   const navItems = [
@@ -78,7 +79,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 </Link>
               </li>
             ))}
-            {session && (
+            {session ? (
               <>
                 <li>
                   <Link to="/property-management" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
@@ -96,7 +97,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                   </Link>
                 </li>
               </>
-            )}
+            ) : null}
           </ul>
         </div>
       </div>
@@ -194,7 +195,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                       Paramètres
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={signOut}>
+                    <DropdownMenuItem onClick={handleSignOut}>
                       <LogOut className="h-4 w-4 mr-2" />
                       Se déconnecter
                     </DropdownMenuItem>
