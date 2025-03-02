@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { getCommunityEvents } from '@/services/communityService';
+import { getCommunityEvents } from '@/services/community';
 import { CommunityEvent } from '@/types/community';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';

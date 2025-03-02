@@ -8,7 +8,7 @@ import {
   CardFooter, CardHeader, CardTitle 
 } from '@/components/ui/card';
 import { Users, MapPin, Plus, Search } from 'lucide-react';
-import { getCommunities } from '@/services/communityService';
+import { getCommunities } from '@/services/community';
 
 const Communities = () => {
   const [communities, setCommunities] = useState([]);

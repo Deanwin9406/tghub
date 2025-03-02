@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import CommunityTabs from '@/components/community/CommunityTabs';
-import { getCommunityDetails, joinCommunity, isUserCommunityMember } from '@/services/communityService';
+import { getCommunityDetails, joinCommunity, isUserCommunityMember } from '@/services/community';
 import { Community } from '@/types/community';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

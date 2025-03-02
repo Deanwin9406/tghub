@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { getMarketplaceItems } from '@/services/communityService';
+import { getMarketplaceItems } from '@/services/community';
 import { MarketplaceItem } from '@/types/community';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';

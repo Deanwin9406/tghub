@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect } from 'react';
-import { getCommunityPolls } from '@/services/communityService';
+import { getCommunityPolls } from '@/services/community';
 import { CommunityPoll } from '@/types/community';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
