@@ -30,6 +30,8 @@ import Comparison from "./pages/Comparison";
 import AddProperty from "./pages/AddProperty";
 import EditProperty from "./pages/EditProperty";
 import Favorites from "./pages/Favorites";
+import Agents from "./pages/Agents";
+import AgentProfile from "./pages/AgentProfile";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -57,6 +59,8 @@ const App = () => (
                 <Route path="/property/:id" element={<PropertyDetails />} />
                 <Route path="/compare" element={<Comparison />} />
                 <Route path="/favorites" element={<Favorites />} />
+                <Route path="/agents" element={<Agents />} />
+                <Route path="/agents/:id" element={<AgentProfile />} />
                 
                 {/* Protected Routes */}
                 <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />

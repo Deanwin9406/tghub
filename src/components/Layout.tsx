@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -21,6 +22,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const navigationItems = [
     { name: 'Accueil', href: '/' },
     { name: 'Recherche', href: '/search' },
+    { name: 'Agents', href: '/agents' },
     { name: 'Favoris', href: '/favorites' },
     { name: 'Tableau de bord', href: '/dashboard', protected: true },
     { name: 'Annonces', href: '/property-management', protected: true },
@@ -43,7 +45,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 {navigationItems.map((item) => (
                   <NavigationMenuItem key={item.name}>
                     <Link to={item.href} className={cn(
-                      "relative block py-2 rounded-md transition-colors hover:bg-secondary hover:text-secondary-foreground data-[active]:bg-secondary/50 data-[active]:text-secondary-foreground",
+                      "relative block py-2 rounded-md transition-colors hover:bg-secondary hover:text-secondary-foreground data-[active]:bg-secondary/50 data-[active]:text-secondary-foreground px-3",
                       location.pathname === item.href ? "bg-secondary/50 text-secondary-foreground" : "text-muted-foreground"
                     )}>
                       {item.name}
