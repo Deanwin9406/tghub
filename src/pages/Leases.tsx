@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format } from 'date-fns';
-import { FileText, Users, Calendar, DollarSign, CheckCircle2, Clock, ClipboardList, Building, MapPin } from 'lucide-react';
+import { FileText, Users, Calendar, DollarSign, CheckCircle2, Clock, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface Lease {
@@ -26,29 +26,13 @@ interface Lease {
     first_name?: string;
     last_name?: string;
     email?: string;
-    error?: string;
   } | null;
 }
 
 // Function to safely get tenant name
 const getTenantName = (lease: Lease): string => {
-  let tenantName = 'Tenant inconnu';
-  
-  if (lease.tenant) {
-    // Check if tenant is an error object
-    const isTenantError = typeof lease.tenant === 'object' && 'error' in lease.tenant;
-    
-    if (!isTenantError) {
-      const firstName = lease.tenant && typeof lease.tenant === 'object' && 'first_name' in lease.tenant ? 
-        lease.tenant.first_name || '' : '';
-      const lastName = lease.tenant && typeof lease.tenant === 'object' && 'last_name' in lease.tenant ? 
-        lease.tenant.last_name || '' : '';
-      
-      tenantName = `${firstName} ${lastName}`.trim() || 'Tenant inconnu';
-    }
-  }
-  
-  return tenantName;
+  if (!lease.tenant) return 'Tenant inconnu';
+  return `${lease.tenant?.first_name || ''} ${lease.tenant?.last_name || ''}`.trim() || 'Tenant inconnu';
 };
 
 const Leases = () => {
@@ -102,7 +86,7 @@ const Leases = () => {
         return [];
       }
 
-      return data as Lease[];
+      return (Array.isArray(data) ? data : []) as Lease[];
     },
     enabled: !!user,
   });

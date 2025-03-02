@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -63,7 +62,6 @@ export const useDashboardData = ({ user, roles }: UseDashboardDataProps) => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [recentMessages, setRecentMessages] = useState<Message[]>([]);
 
-  // Fetch properties data
   const { data: propertyData } = useQuery({
     queryKey: ['user-properties', user?.id],
     queryFn: async () => {
@@ -84,7 +82,6 @@ export const useDashboardData = ({ user, roles }: UseDashboardDataProps) => {
     enabled: !!user && roles.includes('landlord'),
   });
 
-  // Fetch maintenance requests data
   const { data: maintenanceData } = useQuery({
     queryKey: ['user-maintenance', user?.id],
     queryFn: async () => {
@@ -113,7 +110,6 @@ export const useDashboardData = ({ user, roles }: UseDashboardDataProps) => {
     enabled: !!user,
   });
 
-  // Fetch payments data
   const { data: paymentData } = useQuery({
     queryKey: ['user-payments', user?.id],
     queryFn: async () => {
@@ -134,7 +130,6 @@ export const useDashboardData = ({ user, roles }: UseDashboardDataProps) => {
     enabled: !!user && roles.includes('tenant'),
   });
 
-  // Fetch messages data
   const { data: messageData } = useQuery({
     queryKey: ['recent-messages', user?.id],
     queryFn: async () => {
@@ -157,7 +152,6 @@ export const useDashboardData = ({ user, roles }: UseDashboardDataProps) => {
     enabled: !!user,
   });
 
-  // Process property data
   useEffect(() => {
     if (propertyData) {
       if (Array.isArray(propertyData) && !('error' in propertyData[0] || {}) && propertyData.length > 0) {
@@ -166,14 +160,12 @@ export const useDashboardData = ({ user, roles }: UseDashboardDataProps) => {
     }
   }, [propertyData]);
 
-  // Process maintenance requests data
   useEffect(() => {
     if (maintenanceData) {
       setMaintenanceRequests(maintenanceData as MaintenanceRequest[]);
     }
   }, [maintenanceData]);
 
-  // Process payments data
   useEffect(() => {
     if (paymentData) {
       if (Array.isArray(paymentData) && paymentData.length > 0) {
@@ -182,24 +174,16 @@ export const useDashboardData = ({ user, roles }: UseDashboardDataProps) => {
     }
   }, [paymentData]);
 
-  // Process messages data with safe handling of null values
   useEffect(() => {
     if (messageData) {
       const safeMessages = messageData.map(msg => {
-        const sender = msg.sender || null;
-        const senderIsError = sender !== null && typeof sender === 'object' && 'error' in sender;
-        
         return {
           id: msg.id || 'unknown',
           content: msg.content || 'No content',
           created_at: msg.created_at || new Date().toISOString(),
           sender: {
-            first_name: senderIsError ? 'Unknown' : 
-              (sender && typeof sender === 'object' && 'first_name' in sender) ? 
-                (sender.first_name || 'Unknown') : 'Unknown',
-            last_name: senderIsError ? 'User' : 
-              (sender && typeof sender === 'object' && 'last_name' in sender) ? 
-                (sender.last_name || '') : ''
+            first_name: msg.sender?.first_name || 'Unknown',
+            last_name: msg.sender?.last_name || ''
           }
         };
       });
