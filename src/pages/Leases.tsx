@@ -63,8 +63,8 @@ const Leases = () => {
 
   // Function to render tenant information safely
   const renderTenantInfo = (tenant: any) => {
-    // Check if tenant data is an error object or missing
-    const isTenantError = tenant && 'error' in tenant;
+    // Check if tenant data is an error object by looking for an 'error' property
+    const isTenantError = tenant && typeof tenant === 'object' && 'error' in tenant;
     
     if (!tenant || isTenantError) {
       return <div className="flex items-center">

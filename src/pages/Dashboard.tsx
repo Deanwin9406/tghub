@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -214,7 +215,8 @@ const Dashboard = () => {
   useEffect(() => {
     if (messageData) {
       const safeMessages = messageData.map(msg => {
-        const senderIsError = msg.sender && 'error' in msg.sender;
+        // Check if sender is an error object by looking for an 'error' property
+        const senderIsError = msg.sender && typeof msg.sender === 'object' && 'error' in msg.sender;
         
         return {
           id: msg.id || 'unknown',
