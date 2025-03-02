@@ -38,34 +38,47 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
       if (user) {
         // Load from database for authenticated users
         try {
-          const { data, error } = await supabase
+          // First get the favorite property IDs
+          const { data: favoritesData, error: favoritesError } = await supabase
             .from('user_favorites')
-            .select('property_id, properties(*)') 
+            .select('property_id')
             .eq('user_id', user.id);
           
-          if (error) throw error;
+          if (favoritesError) throw favoritesError;
           
-          if (data && data.length > 0) {
-            // Transform the data to match PropertyType
-            const favoriteProperties = data.map(item => ({
-              ...item.properties,
-              id: item.property_id,
-              // Map the DB fields to match PropertyType
-              title: item.properties.title,
-              price: item.properties.price,
-              priceUnit: 'XOF', // Default currency
-              type: item.properties.property_type,
-              purpose: item.properties.status === 'available' ? 'sale' : 'rent',
-              location: `${item.properties.city}, ${item.properties.country}`,
-              beds: item.properties.bedrooms,
-              baths: item.properties.bathrooms,
-              area: item.properties.size_sqm,
-              image: item.properties.main_image_url,
-              featured: item.properties.featured,
-              new: false // Default value
-            }));
+          if (favoritesData && favoritesData.length > 0) {
+            // Get all property details in a separate query
+            const propertyIds = favoritesData.map(fav => fav.property_id);
             
-            setFavorites(favoriteProperties);
+            const { data: propertiesData, error: propertiesError } = await supabase
+              .from('properties')
+              .select('*')
+              .in('id', propertyIds);
+            
+            if (propertiesError) throw propertiesError;
+            
+            if (propertiesData) {
+              // Transform the data to match PropertyType
+              const favoriteProperties = propertiesData.map(property => ({
+                id: property.id,
+                title: property.title,
+                price: property.price,
+                priceUnit: 'XOF', // Default currency
+                type: property.property_type,
+                purpose: property.status === 'available' ? 'sale' : 'rent',
+                location: `${property.city}, ${property.country}`,
+                beds: property.bedrooms,
+                baths: property.bathrooms,
+                area: property.size_sqm,
+                image: property.main_image_url,
+                featured: property.featured,
+                new: false // Default value
+              }));
+              
+              setFavorites(favoriteProperties);
+            }
+          } else {
+            setFavorites([]);
           }
         } catch (error) {
           console.error('Error loading favorites:', error);
