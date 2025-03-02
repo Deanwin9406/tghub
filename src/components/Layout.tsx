@@ -1,7 +1,7 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,9 +24,15 @@ import AuthDialog from '@/components/AuthDialog';
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { session, user, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { comparisonList, clearComparison } = useComparison();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
+  
+  // Log current path for debugging
+  useEffect(() => {
+    console.log("Layout - current path:", location.pathname);
+  }, [location.pathname]);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -40,14 +46,21 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     setAuthDialogOpen(true);
   };
 
+  // Handle navigation
+  const handleNavigation = (path: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    console.log("Layout - navigating to:", path);
+    navigate(path);
+    closeMenu();
+  };
+
   // Updated to use signOut from AuthContext
   const handleSignOut = async () => {
     await signOut();
     navigate('/');
   };
 
-  // Directly use Link for navigation instead of custom function
-  // Fixed the navigation links to use actual paths
+  // Use regular links for navigation
   const navItems = [
     { name: 'Recherche', path: '/search' },
     { name: 'Agents', path: '/agents' },

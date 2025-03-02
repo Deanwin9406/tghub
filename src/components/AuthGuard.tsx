@@ -45,8 +45,8 @@ const AuthGuard = () => {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // User is authenticated, render the protected route WITHOUT any redirection
-  console.log("User authenticated, rendering protected route:", location.pathname);
+  // User is authenticated, allow navigation to the requested route without any redirection
+  console.log("User is authenticated, allowing access to:", location.pathname);
   return <Outlet />;
 };
 
