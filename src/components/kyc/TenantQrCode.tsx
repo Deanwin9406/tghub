@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Download, Copy } from 'lucide-react';
+import { Download, Copy, RefreshCw } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -30,6 +30,7 @@ const TenantQrCode: React.FC<TenantQrCodeProps> = ({ userId, firstName, lastName
       // Create a tenant data object with essential information
       const tenantData = {
         userId,
+        fullName: `${firstName} ${lastName}`.trim(),
         timestamp: new Date().toISOString(),
         type: 'tenant-verification'
       };
@@ -164,6 +165,14 @@ const TenantQrCode: React.FC<TenantQrCodeProps> = ({ userId, firstName, lastName
         >
           <Copy className="mr-2 h-4 w-4" />
           Copier
+        </Button>
+        <Button
+          variant="outline"
+          onClick={generateQrCode}
+          disabled={isGenerating}
+        >
+          <RefreshCw className="mr-2 h-4 w-4" />
+          Régénérer
         </Button>
       </CardFooter>
     </Card>
