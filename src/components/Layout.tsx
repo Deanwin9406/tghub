@@ -46,9 +46,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     navigate('/');
   };
 
+  // Modified navigation function to fix routing issues
   const handleNavigation = (path: string) => {
-    navigate(path);
-    closeMenu(); // Close mobile menu if open
+    console.log("Navigating to:", path);
+    closeMenu();
+    // Use setTimeout to ensure React's state updates complete before navigation
+    setTimeout(() => {
+      navigate(path);
+    }, 0);
   };
 
   const navItems = [
@@ -64,10 +69,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       <div className={`fixed inset-0 bg-background/80 backdrop-blur-sm z-50 lg:hidden ${isMenuOpen ? 'block' : 'hidden'}`}>
         <div className="fixed inset-y-0 left-0 w-64 bg-background border-r p-4">
           <div className="flex items-center justify-between mb-4">
-            <Link to="/" className="flex items-center" onClick={closeMenu}>
+            <button onClick={() => handleNavigation('/')} className="flex items-center">
               <ShoppingBag className="mr-2 h-6 w-6 text-primary" />
               <span className="text-xl font-bold">TogoPropConnect</span>
-            </Link>
+            </button>
             <Button variant="ghost" size="icon" onClick={closeMenu}>
               <X className="h-5 w-5" />
             </Button>
@@ -75,39 +80,43 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <ul className="space-y-2 font-medium">
             {navItems.map((item) => (
               <li key={item.name}>
-                <button
+                <Button
+                  variant="ghost"
                   onClick={() => handleNavigation(item.path)}
-                  className="flex w-full items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group text-left"
+                  className="flex w-full items-center p-2 text-left justify-start"
                 >
-                  <span className="ml-3">{item.name}</span>
-                </button>
+                  <span>{item.name}</span>
+                </Button>
               </li>
             ))}
             {session ? (
               <>
                 <li>
-                  <button 
+                  <Button
+                    variant="ghost"
                     onClick={() => handleNavigation('/property-management')}
-                    className="flex w-full items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group text-left"
+                    className="flex w-full items-center p-2 text-left justify-start"
                   >
-                    <span className="ml-3">Mes Propriétés</span>
-                  </button>
+                    <span>Mes Propriétés</span>
+                  </Button>
                 </li>
                 <li>
-                  <button 
+                  <Button
+                    variant="ghost"
                     onClick={() => handleNavigation('/dashboard')}
-                    className="flex w-full items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group text-left"
+                    className="flex w-full items-center p-2 text-left justify-start"
                   >
-                    <span className="ml-3">Tableau de bord</span>
-                  </button>
+                    <span>Tableau de bord</span>
+                  </Button>
                 </li>
                 <li>
-                  <button 
+                  <Button
+                    variant="ghost"
                     onClick={() => handleNavigation('/favorites')}
-                    className="flex w-full items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group text-left"
+                    className="flex w-full items-center p-2 text-left justify-start"
                   >
-                    <span className="ml-3">Favoris</span>
-                  </button>
+                    <span>Favoris</span>
+                  </Button>
                 </li>
               </>
             ) : null}
@@ -123,41 +132,45 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               <Button variant="ghost" size="icon" className="lg:hidden mr-2" onClick={toggleMenu}>
                 <Menu className="h-6 w-6" />
               </Button>
-              <button onClick={() => navigate('/')} className="flex items-center">
+              <Button variant="ghost" onClick={() => handleNavigation('/')} className="flex items-center">
                 <ShoppingBag className="mr-2 h-6 w-6 text-primary" />
                 <span className="text-xl font-bold">TogoPropConnect</span>
-              </button>
+              </Button>
               {/* Desktop Nav Items */}
               <nav className="hidden lg:flex ml-10 space-x-4">
                 {navItems.map((item) => (
-                  <button
+                  <Button
                     key={item.name}
-                    onClick={() => navigate(item.path)}
-                    className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                    variant="ghost"
+                    onClick={() => handleNavigation(item.path)}
+                    className="px-3 py-2 rounded-md text-sm font-medium"
                   >
                     {item.name}
-                  </button>
+                  </Button>
                 ))}
                 {session && (
                   <>
-                    <button
-                      onClick={() => navigate('/property-management')}
-                      className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleNavigation('/property-management')}
+                      className="px-3 py-2 rounded-md text-sm font-medium"
                     >
                       Mes Propriétés
-                    </button>
-                    <button
-                      onClick={() => navigate('/dashboard')}
-                      className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleNavigation('/dashboard')}
+                      className="px-3 py-2 rounded-md text-sm font-medium"
                     >
                       Tableau de bord
-                    </button>
-                    <button
-                      onClick={() => navigate('/favorites')}
-                      className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => handleNavigation('/favorites')}
+                      className="px-3 py-2 rounded-md text-sm font-medium"
                     >
                       Favoris
-                    </button>
+                    </Button>
                   </>
                 )}
               </nav>
@@ -175,7 +188,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     <DropdownMenuLabel>Liste de comparaison</DropdownMenuLabel>
                     <ScrollArea className="h-64">
                       {comparisonList.map((property) => (
-                        <DropdownMenuItem key={property.id} onClick={() => navigate(`/property/${property.id}`)}>
+                        <DropdownMenuItem key={property.id} onClick={() => handleNavigation(`/property/${property.id}`)}>
                           {property.title}
                         </DropdownMenuItem>
                       ))}
@@ -199,11 +212,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => navigate('/profile')}>
+                    <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
                       <User className="h-4 w-4 mr-2" />
                       Profil
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => navigate('/settings')}>
+                    <DropdownMenuItem onClick={() => handleNavigation('/settings')}>
                       <Settings className="h-4 w-4 mr-2" />
                       Paramètres
                     </DropdownMenuItem>
