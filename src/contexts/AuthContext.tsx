@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +18,7 @@ interface AuthContextType {
   session: Session | null;
   isLoading: boolean;
   resetPassword: (email: string) => Promise<{ error: any | null }>;
+  checkKycStatus: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -103,8 +103,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const checkKycStatus = async () => {
-    if (!user) return;
+  const checkKycStatus = async (): Promise<boolean> => {
+    if (!user) return false;
 
     try {
       const { data, error } = await supabase
@@ -116,13 +116,16 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       if (error) {
         console.error("Error fetching KYC status:", error);
         setHasCompletedKyc(false);
-        return;
+        return false;
       }
 
-      setHasCompletedKyc(data?.status === 'approved');
+      const isApproved = data?.status === 'approved';
+      setHasCompletedKyc(isApproved);
+      return isApproved;
     } catch (error) {
       console.error("Error checking KYC status:", error);
       setHasCompletedKyc(false);
+      return false;
     }
   };
 
@@ -231,7 +234,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const resetPassword = sendPasswordResetEmail;
 
-  // This key structure ensures that the navigate function is not required
   const contextValue = {
     user,
     profile,
@@ -246,6 +248,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     loading,
     isLoading: loading,
     session,
+    checkKycStatus,
   };
 
   return (

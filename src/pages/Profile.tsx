@@ -11,6 +11,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Camera, Check, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import TenantQrCode from '@/components/kyc/TenantQrCode';
 
 const Profile = () => {
   const { user, profile, updateProfile } = useAuth();
@@ -37,6 +38,10 @@ const Profile = () => {
         phone: profile.phone || '',
       });
       setAvatarUrl(profile.avatar_url);
+    }
+    
+    if (user) {
+      checkKycStatus();
     }
   }, [profile, user]);
 
@@ -99,7 +104,6 @@ const Profile = () => {
     try {
       let avatarPublicUrl = profile?.avatar_url;
       
-      // Upload new avatar if file is selected
       if (avatarFile) {
         const newAvatarUrl = await uploadAvatar();
         if (newAvatarUrl) {
@@ -144,6 +148,27 @@ const Profile = () => {
       return `${profile.first_name.charAt(0)}${profile.last_name.charAt(0)}`;
     }
     return user?.email?.charAt(0).toUpperCase() || '?';
+  };
+
+  const checkKycStatus = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('kyc_verifications')
+        .select('status')
+        .eq('user_id', user.id)
+        .single();
+        
+      if (error && error.code !== 'PGRST116') {
+        console.error("Error checking KYC status:", error);
+        return;
+      }
+      
+      setHasCompletedKyc(data?.status === 'approved');
+    } catch (error) {
+      console.error("Error checking KYC status:", error);
+    }
   };
 
   return (
@@ -227,6 +252,31 @@ const Profile = () => {
                 </Button>
               </CardFooter>
             </Card>
+            
+            {hasCompletedKyc && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle>Code QR Locataire</CardTitle>
+                  <CardDescription>
+                    À présenter à votre propriétaire ou gestionnaire pour être ajouté à une propriété
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex justify-center">
+                    <TenantQrCode 
+                      userId={user?.id || ''} 
+                      firstName={profile?.first_name || ''} 
+                      lastName={profile?.last_name || ''} 
+                    />
+                  </div>
+                </CardContent>
+                <CardFooter className="flex justify-center">
+                  <Button variant="outline" onClick={() => navigate('/kyc')}>
+                    Voir en plein écran
+                  </Button>
+                </CardFooter>
+              </Card>
+            )}
           </div>
           
           <div className="md:col-span-2">
