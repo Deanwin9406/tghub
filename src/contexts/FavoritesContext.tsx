@@ -1,201 +1,109 @@
-
-import React, { createContext, useState, useContext, useEffect } from 'react';
-import { useAuth } from '@/hooks/useAuth';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { PropertyType } from '@/components/PropertyCard';
-import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 
-// Define the shape of the context
-interface FavoritesContextType {
-  favorites: PropertyType[];
-  isLoading: boolean;
-  isFavorite: (propertyId: string) => boolean;
-  addFavorite: (property: PropertyType) => void;
+type FavoriteContextType = {
+  favorites: string[];
+  addFavorite: (propertyId: string) => void;
   removeFavorite: (propertyId: string) => void;
-}
+  isFavorite: (propertyId: string) => boolean;
+};
 
-// Create the context with default values
-const FavoritesContext = createContext<FavoritesContextType>({
-  favorites: [],
-  isLoading: true,
-  isFavorite: () => false,
-  addFavorite: () => {},
-  removeFavorite: () => {}
-});
+const FavoritesContext = createContext<FavoriteContextType | undefined>(undefined);
 
-// Create a provider component
-export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [favorites, setFavorites] = useState<PropertyType[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+export const FavoritesProvider = ({ children }: { children: React.ReactNode }) => {
+  const [favorites, setFavorites] = useState<string[]>([]);
   const { user } = useAuth();
-  const { toast } = useToast();
 
-  // Fetch favorites from local storage or database
   useEffect(() => {
     const fetchFavorites = async () => {
-      setIsLoading(true);
-      
       if (user) {
-        try {
-          // Fetch user's favorite properties
-          const { data, error } = await supabase
-            .from('user_favorites')
-            .select('property_id')
-            .eq('user_id', user.id);
-            
-          if (error) {
-            throw error;
-          }
-          
-          if (data && data.length > 0) {
-            // Get property details for each favorite
-            const propertyIds = data.map(fav => fav.property_id);
-            
-            // In a real app, you would fetch from a properties table
-            // For now, we'll use mockProperties
-            const mockPropertiesModule = await import('@/data/mockProperties');
-            const mockProperties = mockPropertiesModule.default;
-            
-            const favoriteProperties = mockProperties.filter(
-              property => propertyIds.includes(property.id)
-            );
-            
-            setFavorites(favoriteProperties);
-          }
-        } catch (error) {
+        const { data, error } = await supabase
+          .from('user_favorites')
+          .select('property_id')
+          .eq('user_id', user.id);
+
+        if (error) {
           console.error('Error fetching favorites:', error);
-          toast({
-            title: 'Erreur',
-            description: 'Impossible de charger vos favoris.',
-            variant: 'destructive',
-          });
+        } else {
+          const propertyIds = data.map(item => item.property_id);
+          setFavorites(propertyIds);
         }
       } else {
-        // For non-authenticated users, use localStorage
-        const storedFavorites = localStorage.getItem('favorites');
-        if (storedFavorites) {
-          try {
-            const parsedFavorites = JSON.parse(storedFavorites);
-            setFavorites(parsedFavorites);
-          } catch (error) {
-            console.error('Error parsing favorites from localStorage:', error);
-            localStorage.removeItem('favorites');
-          }
-        }
+        setFavorites([]);
       }
-      
-      setIsLoading(false);
     };
-    
+
     fetchFavorites();
-  }, [user, toast]);
-  
-  // Save favorites to localStorage for non-authenticated users
-  useEffect(() => {
-    if (!user && !isLoading) {
-      localStorage.setItem('favorites', JSON.stringify(favorites));
+  }, [user]);
+
+  const addFavorite = async (propertyId: string) => {
+    if (!user) {
+      console.error('User not authenticated');
+      return;
     }
-  }, [favorites, user, isLoading]);
-  
-  // Check if a property is in favorites
-  const isFavorite = (propertyId: string): boolean => {
-    return favorites.some(property => property.id === propertyId);
-  };
-  
-  // Add a property to favorites
-  const addFavorite = async (property: PropertyType) => {
-    if (isFavorite(property.id)) return;
-    
-    if (user) {
-      try {
-        // Add to database for authenticated users
-        const { error } = await supabase
-          .from('user_favorites')
-          .insert({
-            user_id: user.id,
-            property_id: property.id,
-            created_at: new Date().toISOString(),
-          });
-          
-        if (error) throw error;
-        
-        setFavorites([...favorites, property]);
-        
-        toast({
-          title: 'Ajouté aux favoris',
-          description: 'La propriété a été ajoutée à vos favoris.',
-        });
-      } catch (error) {
-        console.error('Error adding favorite:', error);
-        toast({
-          title: 'Erreur',
-          description: 'Impossible d\'ajouter aux favoris.',
-          variant: 'destructive',
-        });
+
+    setFavorites(prevFavorites => {
+      if (prevFavorites.includes(propertyId)) {
+        return prevFavorites;
       }
-    } else {
-      // Add to localStorage for non-authenticated users
-      setFavorites([...favorites, property]);
-      
-      toast({
-        title: 'Ajouté aux favoris',
-        description: 'La propriété a été ajoutée à vos favoris.',
-      });
+      return [...prevFavorites, propertyId];
+    });
+
+    const { error } = await supabase
+      .from('user_favorites')
+      .insert([{ user_id: user.id, property_id: propertyId }]);
+
+    if (error) {
+      console.error('Error adding favorite:', error);
+      // Optimistically remove the favorite if the insertion fails
+      setFavorites(prevFavorites => prevFavorites.filter(id => id !== propertyId));
     }
   };
-  
-  // Remove a property from favorites
+
   const removeFavorite = async (propertyId: string) => {
-    if (!isFavorite(propertyId)) return;
-    
-    if (user) {
-      try {
-        // Remove from database for authenticated users
-        const { error } = await supabase
-          .from('user_favorites')
-          .delete()
-          .eq('user_id', user.id)
-          .eq('property_id', propertyId);
-          
-        if (error) throw error;
-        
-        setFavorites(favorites.filter(property => property.id !== propertyId));
-        
-        toast({
-          title: 'Retiré des favoris',
-          description: 'La propriété a été retirée de vos favoris.',
-        });
-      } catch (error) {
-        console.error('Error removing favorite:', error);
-        toast({
-          title: 'Erreur',
-          description: 'Impossible de retirer des favoris.',
-          variant: 'destructive',
-        });
-      }
-    } else {
-      // Remove from localStorage for non-authenticated users
-      setFavorites(favorites.filter(property => property.id !== propertyId));
-      
-      toast({
-        title: 'Retiré des favoris',
-        description: 'La propriété a été retirée de vos favoris.',
-      });
+    if (!user) {
+      console.error('User not authenticated');
+      return;
+    }
+
+    setFavorites(prevFavorites => prevFavorites.filter(id => id !== propertyId));
+
+    const { error } = await supabase
+      .from('user_favorites')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('property_id', propertyId);
+
+    if (error) {
+      console.error('Error removing favorite:', error);
+      // Optimistically add the favorite back if deletion fails
+      setFavorites(prevFavorites => [...prevFavorites, propertyId]);
     }
   };
-  
+
+  const isFavorite = (propertyId: string) => {
+    return favorites.includes(propertyId);
+  };
+
+  const value: FavoriteContextType = {
+    favorites,
+    addFavorite,
+    removeFavorite,
+    isFavorite,
+  };
+
   return (
-    <FavoritesContext.Provider value={{ 
-      favorites, 
-      isLoading, 
-      isFavorite, 
-      addFavorite, 
-      removeFavorite 
-    }}>
+    <FavoritesContext.Provider value={value}>
       {children}
     </FavoritesContext.Provider>
   );
 };
 
-// Create a custom hook to use the context
-export const useFavorites = () => useContext(FavoritesContext);
+export const useFavorites = () => {
+  const context = useContext(FavoritesContext);
+  if (!context) {
+    throw new Error('useFavorites must be used within a FavoritesProvider');
+  }
+  return context;
+};

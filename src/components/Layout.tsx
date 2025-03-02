@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { ToggleTheme } from '@/components/ToggleTheme';
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from "@/components/ui/navigation-menu"
-import { Menu } from 'lucide-react';
+import { Menu, Home, Search, Building, Wrench, CreditCard, MessageSquare, User, Heart, Users, LogOut, UserPlus, Key } from 'lucide-react';
 import AuthDialog from '@/components/AuthDialog';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { user, profile, signOut } = useAuth();
+  const { user, profile, signOut, roles } = useAuth();
   const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -20,25 +20,67 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     setIsMenuOpen(false);
   }, [location]);
 
-  // Define navigation items, some will be conditionally shown
+  const isLandlord = roles.includes('landlord');
+  const isTenant = roles.includes('tenant');
+  const isManager = roles.includes('manager');
+  const isAgent = roles.includes('agent');
+
+  // Define navigation items based on roles
   const publicNavigationItems = [
-    { name: 'Accueil', href: '/' },
-    { name: 'Recherche', href: '/search' },
-    { name: 'Agents', href: '/agents' },
-    { name: 'Favoris', href: '/favorites' },
+    { name: 'Accueil', href: '/', icon: Home },
+    { name: 'Recherche', href: '/search', icon: Search },
+    { name: 'Agents', href: '/agents', icon: Users },
+    { name: 'Favoris', href: '/favorites', icon: Heart },
   ];
   
-  const protectedNavigationItems = [
-    { name: 'Tableau de bord', href: '/dashboard' },
-    { name: 'Annonces', href: '/property-management' },
-    { name: 'Communautés', href: '/communities' },
+  const getTenantItems = () => [
+    { name: 'Tableau de bord', href: '/dashboard', icon: Building },
+    { name: 'Maintenance', href: '/maintenance', icon: Wrench },
+    { name: 'Paiements', href: '/payments', icon: CreditCard },
+    { name: 'Messages', href: '/messages', icon: MessageSquare },
+  ];
+  
+  const getLandlordItems = () => [
+    { name: 'Tableau de bord', href: '/dashboard', icon: Building },
+    { name: 'Mes propriétés', href: '/property-management', icon: Building },
+    { name: 'Locataires', href: '/leases', icon: Users },
+    { name: 'Maintenance', href: '/maintenance', icon: Wrench },
+    { name: 'Paiements', href: '/payments', icon: CreditCard },
+    { name: 'Messages', href: '/messages', icon: MessageSquare },
+  ];
+  
+  const getAgentItems = () => [
+    { name: 'Tableau de bord', href: '/agent-dashboard', icon: Building },
+    { name: 'Propriétés', href: '/property-management', icon: Building },
+    { name: 'Clients', href: '/clients', icon: Users },
+    { name: 'Messages', href: '/messages', icon: MessageSquare },
+    { name: 'Communautés', href: '/communities', icon: Users },
+  ];
+  
+  const getManagerItems = () => [
+    { name: 'Tableau de bord', href: '/dashboard', icon: Building },
+    { name: 'Propriétés', href: '/property-management', icon: Building },
+    { name: 'Locataires', href: '/leases', icon: Users },
+    { name: 'Maintenance', href: '/maintenance', icon: Wrench },
+    { name: 'Paiements', href: '/payments', icon: CreditCard },
+    { name: 'Prestataires', href: '/vendors', icon: Users },
+    { name: 'Messages', href: '/messages', icon: MessageSquare },
   ];
 
-  // Combine navigation items based on authentication status
-  const navigationItems = [
-    ...publicNavigationItems,
-    ...(user ? protectedNavigationItems : [])
-  ];
+  // Combine navigation items based on authentication status and role
+  let navigationItems = [...publicNavigationItems];
+  
+  if (user) {
+    if (isTenant) {
+      navigationItems = [...navigationItems, ...getTenantItems()];
+    } else if (isLandlord) {
+      navigationItems = [...navigationItems, ...getLandlordItems()];
+    } else if (isAgent) {
+      navigationItems = [...navigationItems, ...getAgentItems()];
+    } else if (isManager) {
+      navigationItems = [...navigationItems, ...getManagerItems()];
+    }
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -51,7 +93,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <div className="ml-auto flex items-center space-x-4">
             <NavigationMenu className="hidden md:flex">
               <NavigationMenuList>
-                {navigationItems.map((item) => (
+                {navigationItems.slice(0, 6).map((item) => (
                   <NavigationMenuItem key={item.name}>
                     <Link to={item.href} className={cn(
                       "relative block py-2 rounded-md transition-colors hover:bg-secondary hover:text-secondary-foreground data-[active]:bg-secondary/50 data-[active]:text-secondary-foreground px-3",
@@ -79,9 +121,20 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 </Button>
               </div>
             ) : (
-              <AuthDialog>
-                <Button size="sm">Se connecter</Button>
-              </AuthDialog>
+              <div className="flex space-x-2">
+                <Link to="/auth-page">
+                  <Button size="sm" variant="outline">
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    S'inscrire
+                  </Button>
+                </Link>
+                <Link to="/auth-page">
+                  <Button size="sm">
+                    <Key className="mr-2 h-4 w-4" />
+                    Se connecter
+                  </Button>
+                </Link>
+              </div>
             )}
             
             <Sheet>
@@ -100,25 +153,53 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     <Link
                       key={item.name}
                       to={item.href}
-                      className="flex items-center space-x-2 py-2 hover:bg-secondary rounded-md px-3 w-full"
+                      className={cn(
+                        "flex items-center space-x-2 py-2 hover:bg-secondary rounded-md px-3 w-full",
+                        location.pathname === item.href ? "bg-secondary/50 text-secondary-foreground" : ""
+                      )}
                     >
+                      {item.icon && <item.icon className="h-4 w-4" />}
                       <span>{item.name}</span>
                     </Link>
                   ))}
                   
                   {user ? (
                     <div className="mt-4 space-y-2">
-                      <Link to="/profile" className="flex items-center space-x-2 py-2 hover:bg-secondary rounded-md px-3 w-full">
+                      <Link 
+                        to="/profile" 
+                        className={cn(
+                          "flex items-center space-x-2 py-2 hover:bg-secondary rounded-md px-3 w-full",
+                          location.pathname === '/profile' ? "bg-secondary/50 text-secondary-foreground" : ""
+                        )}
+                      >
+                        <User className="h-4 w-4" />
                         <span>Profil</span>
                       </Link>
-                      <Button variant="outline" size="sm" className="w-full" onClick={signOut}>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full flex items-center" 
+                        onClick={signOut}
+                      >
+                        <LogOut className="h-4 w-4 mr-2" />
                         Se déconnecter
                       </Button>
                     </div>
                   ) : (
-                    <AuthDialog>
-                      <Button size="sm" className="w-full mt-4">Se connecter</Button>
-                    </AuthDialog>
+                    <div className="mt-4 space-y-2">
+                      <Link to="/auth-page">
+                        <Button className="w-full" variant="outline">
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          S'inscrire
+                        </Button>
+                      </Link>
+                      <Link to="/auth-page">
+                        <Button className="w-full">
+                          <Key className="mr-2 h-4 w-4" />
+                          Se connecter
+                        </Button>
+                      </Link>
+                    </div>
                   )}
                 </div>
               </SheetContent>

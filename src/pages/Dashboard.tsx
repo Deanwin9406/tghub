@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Building, Wrench, CreditCard, MessageSquare } from 'lucide-react';
 import { useDashboardData } from '@/hooks/useDashboardData';
 import PropertiesTab from '@/components/dashboard/PropertiesTab';
 import MaintenanceTab from '@/components/dashboard/MaintenanceTab';
@@ -64,27 +64,27 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           <StatCard 
             title="Propriétés" 
-            value={properties.length.toString()} 
+            value={properties.length} 
             description="Total de propriétés"
-            icon="Building"
+            icon={Building}
           />
           <StatCard 
             title="Demandes" 
-            value={maintenanceRequests.length.toString()} 
+            value={maintenanceRequests.length} 
             description="Demandes de maintenance"
-            icon="Wrench"
+            icon={Wrench}
           />
           <StatCard 
             title="Paiements" 
-            value={payments.length.toString()} 
+            value={payments.length} 
             description="Transactions récentes"
-            icon="CreditCard"
+            icon={CreditCard}
           />
           <StatCard 
             title="Messages" 
-            value={recentMessages.length.toString()} 
+            value={recentMessages.length} 
             description="Messages non lus"
-            icon="MessageSquare"
+            icon={MessageSquare}
           />
         </div>
 

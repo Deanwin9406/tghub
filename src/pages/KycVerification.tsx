@@ -1,515 +1,486 @@
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/hooks/useAuth';
 import Layout from '@/components/Layout';
+import { useAuth } from '@/contexts/AuthContext';
+import KycRequirementCard from '@/components/kyc/KycRequirementCard';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
-import { Upload, Check, AlertTriangle, FileText, Clock, HomeIcon, UserIcon, Briefcase, Building } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
+import { Loader2, Upload, CheckCircle, AlertTriangle } from 'lucide-react';
 
 const KycVerification = () => {
-  const { user, roles, hasCompletedKyc } = useAuth();
+  const { user, profile, roles, hasCompletedKyc } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState('identity');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [kycData, setKycData] = useState({
+    idType: 'national_id',
+    idNumber: '',
+    idImage: null as File | null,
+    addressProofImage: null as File | null,
+    businessLicenseImage: null as File | null,
+    professionalCertificateImage: null as File | null
+  });
 
-  const [idType, setIdType] = useState('');
-  const [idNumber, setIdNumber] = useState('');
-  const [idImage, setIdImage] = useState<File | null>(null);
-  const [addressProof, setAddressProof] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [verificationStatus, setVerificationStatus] = useState<'pending' | 'verified' | 'rejected' | null>(null);
-  const [notes, setNotes] = useState('');
-  
-  // Additional fields for specific roles
-  const [businessName, setBusinessName] = useState('');
-  const [businessRegistrationNumber, setBusinessRegistrationNumber] = useState('');
-  const [licenseNumber, setLicenseNumber] = useState('');
-  const [licenseImage, setLicenseImage] = useState<File | null>(null);
-  const [professionalExperience, setProfessionalExperience] = useState('');
-  
-  const idImageInputRef = useRef<HTMLInputElement>(null);
-  const addressProofInputRef = useRef<HTMLInputElement>(null);
-  const licenseImageInputRef = useRef<HTMLInputElement>(null);
-
-  const handleIdImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setIdImage(e.target.files[0]);
+  useEffect(() => {
+    if (!user) {
+      navigate('/auth');
     }
-  };
 
-  const handleAddressProofChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setAddressProof(e.target.files[0]);
-    }
-  };
-  
-  const handleLicenseImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setLicenseImage(e.target.files[0]);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Basic validation for all roles
-    if (!idType || !idNumber || !idImage || !addressProof) {
+    if (hasCompletedKyc) {
       toast({
-        title: "Information manquante",
-        description: "Veuillez remplir tous les champs obligatoires et télécharger les documents requis.",
-        variant: "destructive",
+        title: 'Vérification KYC déjà complétée',
+        description: 'Vous allez être redirigé vers votre tableau de bord',
       });
-      return;
+      setTimeout(() => navigate('/dashboard'), 2000);
+    }
+  }, [user, hasCompletedKyc, navigate, toast]);
+
+  const isLandlord = roles.includes('landlord');
+  const isTenant = roles.includes('tenant');
+  const isManager = roles.includes('manager');
+  const isAgent = roles.includes('agent');
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, field: string) => {
+    if (event.target.files && event.target.files[0]) {
+      setKycData({
+        ...kycData,
+        [field]: event.target.files[0],
+      });
+    }
+  };
+
+  const uploadFile = async (file: File, path: string): Promise<string> => {
+    if (!file) return '';
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
+    const filePath = `${path}/${fileName}`;
+    
+    const { error } = await supabase.storage
+      .from('kyc-documents')
+      .upload(filePath, file);
+    
+    if (error) {
+      throw new Error(`Error uploading file: ${error.message}`);
     }
     
-    // Role-specific validation
-    if (roles.includes('agent') || roles.includes('manager')) {
-      if (!licenseNumber || !licenseImage) {
-        toast({
-          title: "Information professionnelle manquante",
-          description: "Les agents et gestionnaires doivent fournir les informations de licence professionnelle.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
+    const { data } = supabase.storage
+      .from('kyc-documents')
+      .getPublicUrl(filePath);
     
-    if (roles.includes('landlord')) {
-      if (!businessName) {
-        toast({
-          title: "Information propriétaire manquante",
-          description: "Les propriétaires doivent fournir le nom de leur entreprise ou activité.",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
+    return data.publicUrl;
+  };
 
-    setUploading(true);
-
+  const submitKyc = async () => {
+    if (!user) return;
+    
     try {
+      setIsSubmitting(true);
+      
+      if (!kycData.idNumber || !kycData.idImage) {
+        toast({
+          title: 'Informations incomplètes',
+          description: 'Veuillez fournir toutes les informations d\'identité requises',
+          variant: 'destructive',
+        });
+        return;
+      }
+      
       // Upload ID image
-      const idImagePath = `kyc/${user?.id}/id_${Date.now()}.${idImage.name.split('.').pop()}`;
-      const { error: idImageError } = await supabase.storage
-        .from('avatars')
-        .upload(idImagePath, idImage, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (idImageError) {
-        throw new Error(`ID Image Upload Error: ${idImageError.message}`);
-      }
-
-      const idImageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${idImagePath}`;
-
-      // Upload address proof
-      const addressProofPath = `kyc/${user?.id}/address_${Date.now()}.${addressProof.name.split('.').pop()}`;
-      const { error: addressProofError } = await supabase.storage
-        .from('avatars')
-        .upload(addressProofPath, addressProof, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (addressProofError) {
-        throw new Error(`Address Proof Upload Error: ${addressProofError.message}`);
-      }
-
-      const addressProofUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${addressProofPath}`;
+      const idImageUrl = await uploadFile(kycData.idImage, 'identity-documents');
       
-      // Upload license if applicable
-      let licenseImageUrl = '';
-      if (licenseImage) {
-        const licenseImagePath = `kyc/${user?.id}/license_${Date.now()}.${licenseImage.name.split('.').pop()}`;
-        const { error: licenseImageError } = await supabase.storage
-          .from('avatars')
-          .upload(licenseImagePath, licenseImage, {
-            cacheControl: '3600',
-            upsert: false
-          });
-
-        if (licenseImageError) {
-          throw new Error(`License Image Upload Error: ${licenseImageError.message}`);
-        }
-
-        licenseImageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${licenseImagePath}`;
-      }
-
-      // Prepare metadata based on role
-      const metadata: Record<string, any> = {
-        user_role: roles[0] || 'tenant'
-      };
-      
-      if (roles.includes('agent') || roles.includes('manager')) {
-        metadata.license_number = licenseNumber;
-        metadata.license_image_url = licenseImageUrl;
-        metadata.professional_experience = professionalExperience;
+      // Upload address proof if provided
+      let addressProofUrl = '';
+      if (kycData.addressProofImage) {
+        addressProofUrl = await uploadFile(kycData.addressProofImage, 'address-documents');
       }
       
-      if (roles.includes('landlord')) {
-        metadata.business_name = businessName;
-        metadata.business_registration_number = businessRegistrationNumber;
+      // Upload business license if provided (for landlords and managers)
+      let businessLicenseUrl = '';
+      if (kycData.businessLicenseImage) {
+        businessLicenseUrl = await uploadFile(kycData.businessLicenseImage, 'business-documents');
       }
-
-      // Insert KYC verification record
-      const { error: dbError } = await supabase
+      
+      // Upload professional certificate if provided (for agents)
+      let professionalCertificateUrl = '';
+      if (kycData.professionalCertificateImage) {
+        professionalCertificateUrl = await uploadFile(kycData.professionalCertificateImage, 'certificates');
+      }
+      
+      // Store KYC data in database
+      const { error } = await supabase
         .from('kyc_verifications')
         .insert({
           user_id: user.id,
-          id_type: idType,
-          id_number: idNumber,
+          id_type: kycData.idType,
+          id_number: kycData.idNumber,
           id_image_url: idImageUrl,
           address_proof_url: addressProofUrl,
           status: 'pending',
-          notes: JSON.stringify(metadata),
+          notes: JSON.stringify({
+            business_license_url: businessLicenseUrl || null,
+            professional_certificate_url: professionalCertificateUrl || null,
+            role: roles[0] || 'tenant',
+          }),
         });
-
-      if (dbError) {
-        throw new Error(`Database Error: ${dbError.message}`);
+      
+      if (error) {
+        throw new Error(`Error storing KYC data: ${error.message}`);
       }
-
+      
       toast({
-        title: "Vérification soumise",
-        description: "Votre demande de vérification KYC a été soumise et est en attente d'examen.",
+        title: 'Vérification KYC soumise',
+        description: 'Votre demande de vérification a été soumise avec succès et est en cours d\'examen.',
       });
-
-      setVerificationStatus('pending');
+      
+      setTimeout(() => navigate('/dashboard'), 2000);
     } catch (error: any) {
-      console.error("KYC Submission Error:", error);
       toast({
-        title: "Erreur de soumission",
-        description: error.message || "Échec de la soumission de vérification KYC. Veuillez réessayer.",
-        variant: "destructive",
+        title: 'Erreur lors de la soumission',
+        description: error.message || 'Une erreur est survenue lors de la soumission de votre vérification KYC',
+        variant: 'destructive',
       });
     } finally {
-      setUploading(false);
+      setIsSubmitting(false);
     }
   };
 
-  const fetchVerificationStatus = async () => {
-    if (!user) return;
-
-    try {
-      const { data, error } = await supabase
-        .from('kyc_verifications')
-        .select('status, notes')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error) {
-        console.error("Error fetching KYC status:", error);
-        return;
-      }
-
-      const statusValue = data?.status === 'approved' ? 'verified' : data?.status;
-      setVerificationStatus(statusValue as 'pending' | 'verified' | 'rejected' | null);
-      setNotes(data?.notes || '');
-    } catch (error) {
-      console.error("Error fetching KYC status:", error);
-    }
-  };
-
-  useEffect(() => {
-    fetchVerificationStatus();
-  }, [user]);
-
-  const renderStatusBadge = (status: string) => {
-    switch (status) {
-      case 'verified':
-        return <Badge variant="secondary" className="bg-green-500 text-white">Vérifié</Badge>;
-      case 'pending':
-        return <Badge variant="default" className="bg-yellow-500 text-white">En attente</Badge>;
-      case 'rejected':
-        return <Badge variant="destructive">Rejeté</Badge>;
-      default:
-        return <Badge variant="outline">Inconnu</Badge>;
-    }
-  };
-  
-  // Get current role
-  const currentRole = roles[0] || 'tenant';
-  
-  // Set role icon and title
-  const getRoleDetails = () => {
-    switch (currentRole) {
-      case 'landlord':
-        return { 
-          icon: <HomeIcon className="h-8 w-8 mb-2 text-primary" />, 
-          title: "Vérification KYC Propriétaire",
-          description: "Vérifiez votre identité en tant que propriétaire immobilier pour accéder à toutes les fonctionnalités."
-        };
-      case 'agent':
-        return { 
-          icon: <Briefcase className="h-8 w-8 mb-2 text-primary" />, 
-          title: "Vérification KYC Agent Immobilier",
-          description: "Confirmez vos qualifications professionnelles pour représenter des propriétés sur notre plateforme."
-        };
-      case 'manager':
-        return { 
-          icon: <Building className="h-8 w-8 mb-2 text-primary" />, 
-          title: "Vérification KYC Gestionnaire",
-          description: "Validez votre identité en tant que gestionnaire immobilier pour gérer les propriétés et les relations locatives."
-        };
-      default:
-        return { 
-          icon: <UserIcon className="h-8 w-8 mb-2 text-primary" />, 
-          title: "Vérification KYC Locataire",
-          description: "Vérifiez votre identité pour accéder à toutes les fonctionnalités locatives de notre plateforme."
-        };
-    }
-  };
-  
-  const { icon, title, description } = getRoleDetails();
+  if (!user || !profile) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-12 flex items-center justify-center min-h-[70vh]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
-      <div className="container mx-auto py-8">
-        <Card>
-          <CardHeader className="text-center">
-            <div className="flex justify-center">
-              {icon}
-            </div>
-            <CardTitle className="text-2xl">{title}</CardTitle>
-            <CardDescription>{description}</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-4">
-            {verificationStatus ? (
-              <div className="space-y-4">
-                <div className="flex items-center space-x-2 justify-center">
-                  <h3 className="text-lg font-semibold">Statut de vérification:</h3>
-                  {renderStatusBadge(verificationStatus)}
-                </div>
-                {notes && (
-                  <div className="space-y-2">
-                    <h4 className="text-md font-semibold">Notes:</h4>
-                    <p className="text-muted-foreground">{notes}</p>
-                  </div>
+      <div className="container mx-auto py-8 px-4 md:px-6">
+        <div className="max-w-3xl mx-auto">
+          <div className="mb-8 text-center">
+            <h1 className="text-3xl font-bold mb-2">Vérification KYC</h1>
+            <p className="text-muted-foreground">
+              Complétez la vérification de votre identité pour accéder à toutes les fonctionnalités
+            </p>
+          </div>
+
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Bienvenue, {profile.first_name} {profile.last_name}</CardTitle>
+              <CardDescription>
+                En tant que {roles.includes('landlord') ? 'propriétaire' : 
+                             roles.includes('tenant') ? 'locataire' : 
+                             roles.includes('agent') ? 'agent immobilier' : 
+                             'gestionnaire immobilier'}, 
+                nous devons vérifier certaines informations pour activer votre compte.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <KycRequirementCard 
+                  title="Vérification d'identité" 
+                  description="Fournissez une pièce d'identité officielle pour confirmer votre identité"
+                  isRequired={true}
+                  isCompleted={false}
+                  onAction={() => setActiveTab('identity')}
+                  actionLabel="Fournir une pièce d'identité"
+                />
+                
+                <KycRequirementCard 
+                  title="Preuve d'adresse" 
+                  description="Confirmez votre adresse de résidence actuelle"
+                  isRequired={isTenant || isLandlord}
+                  isCompleted={false}
+                  onAction={() => setActiveTab('address')}
+                  actionLabel="Fournir une preuve d'adresse"
+                />
+                
+                {(isLandlord || isManager) && (
+                  <KycRequirementCard 
+                    title="Licence commerciale" 
+                    description="Document attestant de votre statut commercial"
+                    isRequired={isManager}
+                    isCompleted={false}
+                    onAction={() => setActiveTab('business')}
+                    actionLabel="Soumettre votre licence"
+                  />
                 )}
-                {verificationStatus === 'rejected' && (
-                  <Button onClick={() => {
-                    setVerificationStatus(null);
-                    setIdType('');
-                    setIdNumber('');
-                    setIdImage(null);
-                    setAddressProof(null);
-                    setNotes('');
-                    setLicenseNumber('');
-                    setLicenseImage(null);
-                    setBusinessName('');
-                    setBusinessRegistrationNumber('');
-                    setProfessionalExperience('');
-                  }}>
-                    Soumettre à nouveau la vérification
-                  </Button>
+                
+                {isAgent && (
+                  <KycRequirementCard 
+                    title="Certification professionnelle" 
+                    description="Certification d'agent immobilier"
+                    isRequired={true}
+                    isCompleted={false}
+                    onAction={() => setActiveTab('professional')}
+                    actionLabel="Soumettre votre certification"
+                  />
                 )}
               </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="grid gap-4">
-                <Tabs defaultValue="identity" className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="identity">Information d'identité</TabsTrigger>
-                    <TabsTrigger value="role-specific">Information spécifique</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="identity" className="space-y-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="idType">Type de pièce d'identité</Label>
-                      <RadioGroup defaultValue={idType} onValueChange={setIdType}>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="passport" id="passport" />
-                          <Label htmlFor="passport" className="cursor-pointer">Passeport</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="drivers_license" id="drivers_license" />
-                          <Label htmlFor="drivers_license" className="cursor-pointer">Permis de conduire</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="national_id" id="national_id" />
-                          <Label htmlFor="national_id" className="cursor-pointer">Carte d'identité nationale</Label>
-                        </div>
-                      </RadioGroup>
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="idNumber">Numéro d'identification</Label>
-                      <Input
-                        type="text"
-                        id="idNumber"
-                        value={idNumber}
-                        onChange={(e) => setIdNumber(e.target.value)}
-                      />
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="idImage">Image de la pièce d'identité</Label>
-                      <Input
-                        type="file"
-                        id="idImage"
-                        accept="image/*"
-                        onChange={handleIdImageChange}
-                        className="hidden"
-                        ref={idImageInputRef}
-                      />
-                      <Button variant="outline" onClick={() => idImageInputRef.current?.click()}>
-                        {idImage ? (
-                          <div className="flex items-center">
-                            <Check className="mr-2 h-4 w-4" />
-                            <span>{idImage.name}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center">
-                            <Upload className="mr-2 h-4 w-4" />
-                            <span>Télécharger l'image de la pièce d'identité</span>
-                          </div>
-                        )}
-                      </Button>
-                      {idImage && (
-                        <aside className="flex items-center space-x-2 mt-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">{idImage.name} - {(idImage.size / 1024).toFixed(2)} KB</span>
-                        </aside>
-                      )}
-                    </div>
-                    
-                    <div className="grid gap-2">
-                      <Label htmlFor="addressProof">Justificatif de domicile</Label>
-                      <Input
-                        type="file"
-                        id="addressProof"
-                        accept="image/*, application/pdf"
-                        onChange={handleAddressProofChange}
-                        className="hidden"
-                        ref={addressProofInputRef}
-                      />
-                      <Button variant="outline" onClick={() => addressProofInputRef.current?.click()}>
-                        {addressProof ? (
-                          <div className="flex items-center">
-                            <Check className="mr-2 h-4 w-4" />
-                            <span>{addressProof.name}</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center">
-                            <Upload className="mr-2 h-4 w-4" />
-                            <span>Télécharger un justificatif de domicile</span>
-                          </div>
-                        )}
-                      </Button>
-                      {addressProof && (
-                        <aside className="flex items-center space-x-2 mt-2">
-                          <FileText className="h-4 w-4 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">{addressProof.name} - {(addressProof.size / 1024).toFixed(2)} KB</span>
-                        </aside>
-                      )}
-                    </div>
-                  </TabsContent>
-                  
-                  <TabsContent value="role-specific" className="space-y-4">
-                    {roles.includes('landlord') && (
-                      <>
-                        <div className="grid gap-2">
-                          <Label htmlFor="businessName">Nom de l'entreprise ou du propriétaire</Label>
-                          <Input
-                            type="text"
-                            id="businessName"
-                            value={businessName}
-                            onChange={(e) => setBusinessName(e.target.value)}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="businessRegistrationNumber">Numéro d'enregistrement (optionnel)</Label>
-                          <Input
-                            type="text"
-                            id="businessRegistrationNumber"
-                            value={businessRegistrationNumber}
-                            onChange={(e) => setBusinessRegistrationNumber(e.target.value)}
-                          />
-                        </div>
-                      </>
-                    )}
-                    
-                    {(roles.includes('agent') || roles.includes('manager')) && (
-                      <>
-                        <div className="grid gap-2">
-                          <Label htmlFor="licenseNumber">Numéro de licence professionnelle</Label>
-                          <Input
-                            type="text"
-                            id="licenseNumber"
-                            value={licenseNumber}
-                            onChange={(e) => setLicenseNumber(e.target.value)}
-                          />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="licenseImage">Image de la licence professionnelle</Label>
-                          <Input
-                            type="file"
-                            id="licenseImage"
-                            accept="image/*, application/pdf"
-                            onChange={handleLicenseImageChange}
-                            className="hidden"
-                            ref={licenseImageInputRef}
-                          />
-                          <Button variant="outline" onClick={() => licenseImageInputRef.current?.click()}>
-                            {licenseImage ? (
-                              <div className="flex items-center">
-                                <Check className="mr-2 h-4 w-4" />
-                                <span>{licenseImage.name}</span>
-                              </div>
-                            ) : (
-                              <div className="flex items-center">
-                                <Upload className="mr-2 h-4 w-4" />
-                                <span>Télécharger l'image de la licence</span>
-                              </div>
-                            )}
-                          </Button>
-                          {licenseImage && (
-                            <aside className="flex items-center space-x-2 mt-2">
-                              <FileText className="h-4 w-4 text-muted-foreground" />
-                              <span className="text-sm text-muted-foreground">{licenseImage.name} - {(licenseImage.size / 1024).toFixed(2)} KB</span>
-                            </aside>
-                          )}
-                        </div>
-                        <div className="grid gap-2">
-                          <Label htmlFor="professionalExperience">Expérience professionnelle</Label>
-                          <Textarea
-                            id="professionalExperience"
-                            value={professionalExperience}
-                            onChange={(e) => setProfessionalExperience(e.target.value)}
-                            placeholder="Décrivez votre expérience dans le secteur immobilier"
-                            rows={4}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </TabsContent>
-                </Tabs>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Documents de vérification</CardTitle>
+              <CardDescription>
+                Soumettez les documents requis pour vérifier votre identité
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="grid grid-cols-2 md:grid-cols-4 mb-6">
+                  <TabsTrigger value="identity">Identité</TabsTrigger>
+                  <TabsTrigger value="address">Adresse</TabsTrigger>
+                  {(isLandlord || isManager) && (
+                    <TabsTrigger value="business">Licence</TabsTrigger>
+                  )}
+                  {isAgent && (
+                    <TabsTrigger value="professional">Certification</TabsTrigger>
+                  )}
+                </TabsList>
                 
-                <CardFooter className="flex justify-center pt-4">
-                  <Button type="submit" disabled={uploading}>
-                    {uploading ? (
-                      <div className="flex items-center">
-                        <Clock className="mr-2 h-4 w-4 animate-spin" />
-                        <span>Soumission en cours...</span>
+                <TabsContent value="identity" className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="idType">Type de pièce d'identité</Label>
+                    <Select 
+                      value={kycData.idType} 
+                      onValueChange={(value) => setKycData({...kycData, idType: value})}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionnez un type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="national_id">Carte d'identité nationale</SelectItem>
+                        <SelectItem value="passport">Passeport</SelectItem>
+                        <SelectItem value="drivers_license">Permis de conduire</SelectItem>
+                        <SelectItem value="voters_card">Carte d'électeur</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="idNumber">Numéro de la pièce d'identité</Label>
+                    <Input 
+                      id="idNumber" 
+                      value={kycData.idNumber}
+                      onChange={(e) => setKycData({...kycData, idNumber: e.target.value})}
+                      placeholder="Entrez le numéro de votre pièce d'identité" 
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="idImage">Téléchargez une image de votre pièce d'identité</Label>
+                    <div className="border-2 border-dashed rounded-md p-6 text-center hover:bg-muted/50 cursor-pointer">
+                      <input 
+                        type="file" 
+                        id="idImage" 
+                        accept="image/*" 
+                        className="hidden" 
+                        onChange={(e) => handleFileUpload(e, 'idImage')}
+                      />
+                      <label htmlFor="idImage" className="cursor-pointer flex flex-col items-center justify-center">
+                        {kycData.idImage ? (
+                          <div className="flex flex-col items-center">
+                            <CheckCircle className="h-10 w-10 text-green-500 mb-2" />
+                            <span className="text-sm text-green-600 font-medium">
+                              {kycData.idImage.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground mt-1">
+                              Cliquez pour changer
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+                            <span className="text-sm font-medium">Cliquez pour télécharger</span>
+                            <span className="text-xs text-muted-foreground mt-1">
+                              PNG, JPG ou PDF (max 5MB)
+                            </span>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="address" className="space-y-4">
+                  <div className="rounded-md bg-amber-50 p-4 text-sm flex items-start mb-4">
+                    <AlertTriangle className="h-5 w-5 text-amber-500 mr-2 mt-0.5" />
+                    <div className="text-amber-800">
+                      <p className="font-medium">Documents acceptés comme preuve d'adresse:</p>
+                      <ul className="list-disc pl-5 mt-1">
+                        <li>Facture d'électricité (moins de 3 mois)</li>
+                        <li>Facture d'eau (moins de 3 mois)</li>
+                        <li>Relevé bancaire (moins de 3 mois)</li>
+                        <li>Contrat de bail</li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="addressProofImage">Téléchargez une preuve d'adresse</Label>
+                    <div className="border-2 border-dashed rounded-md p-6 text-center hover:bg-muted/50 cursor-pointer">
+                      <input 
+                        type="file" 
+                        id="addressProofImage" 
+                        accept="image/*, application/pdf" 
+                        className="hidden" 
+                        onChange={(e) => handleFileUpload(e, 'addressProofImage')}
+                      />
+                      <label htmlFor="addressProofImage" className="cursor-pointer flex flex-col items-center justify-center">
+                        {kycData.addressProofImage ? (
+                          <div className="flex flex-col items-center">
+                            <CheckCircle className="h-10 w-10 text-green-500 mb-2" />
+                            <span className="text-sm text-green-600 font-medium">
+                              {kycData.addressProofImage.name}
+                            </span>
+                            <span className="text-xs text-muted-foreground mt-1">
+                              Cliquez pour changer
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center">
+                            <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+                            <span className="text-sm font-medium">Cliquez pour télécharger</span>
+                            <span className="text-xs text-muted-foreground mt-1">
+                              PNG, JPG ou PDF (max 5MB)
+                            </span>
+                          </div>
+                        )}
+                      </label>
+                    </div>
+                  </div>
+                </TabsContent>
+                
+                {(isLandlord || isManager) && (
+                  <TabsContent value="business" className="space-y-4">
+                    <div className="rounded-md bg-amber-50 p-4 text-sm flex items-start mb-4">
+                      <AlertTriangle className="h-5 w-5 text-amber-500 mr-2 mt-0.5" />
+                      <div className="text-amber-800">
+                        <p className="font-medium">Documents acceptés comme licence commerciale:</p>
+                        <ul className="list-disc pl-5 mt-1">
+                          <li>Registre du commerce</li>
+                          <li>Licence commerciale</li>
+                          <li>Autorisation municipale</li>
+                          <li>Certificat d'enregistrement fiscal</li>
+                        </ul>
                       </div>
-                    ) : (
-                      "Soumettre la vérification"
-                    )}
-                  </Button>
-                </CardFooter>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="businessLicenseImage">Téléchargez votre licence commerciale</Label>
+                      <div className="border-2 border-dashed rounded-md p-6 text-center hover:bg-muted/50 cursor-pointer">
+                        <input 
+                          type="file" 
+                          id="businessLicenseImage" 
+                          accept="image/*, application/pdf" 
+                          className="hidden" 
+                          onChange={(e) => handleFileUpload(e, 'businessLicenseImage')}
+                        />
+                        <label htmlFor="businessLicenseImage" className="cursor-pointer flex flex-col items-center justify-center">
+                          {kycData.businessLicenseImage ? (
+                            <div className="flex flex-col items-center">
+                              <CheckCircle className="h-10 w-10 text-green-500 mb-2" />
+                              <span className="text-sm text-green-600 font-medium">
+                                {kycData.businessLicenseImage.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground mt-1">
+                                Cliquez pour changer
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center">
+                              <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+                              <span className="text-sm font-medium">Cliquez pour télécharger</span>
+                              <span className="text-xs text-muted-foreground mt-1">
+                                PNG, JPG ou PDF (max 5MB)
+                              </span>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                  </TabsContent>
+                )}
+                
+                {isAgent && (
+                  <TabsContent value="professional" className="space-y-4">
+                    <div className="rounded-md bg-amber-50 p-4 text-sm flex items-start mb-4">
+                      <AlertTriangle className="h-5 w-5 text-amber-500 mr-2 mt-0.5" />
+                      <div className="text-amber-800">
+                        <p className="font-medium">Documents acceptés comme certification professionnelle:</p>
+                        <ul className="list-disc pl-5 mt-1">
+                          <li>Licence d'agent immobilier</li>
+                          <li>Certificat de formation immobilière</li>
+                          <li>Inscription à l'ordre des agents immobiliers</li>
+                          <li>Certification professionnelle immobilière</li>
+                        </ul>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="professionalCertificateImage">Téléchargez votre certification</Label>
+                      <div className="border-2 border-dashed rounded-md p-6 text-center hover:bg-muted/50 cursor-pointer">
+                        <input 
+                          type="file" 
+                          id="professionalCertificateImage" 
+                          accept="image/*, application/pdf" 
+                          className="hidden" 
+                          onChange={(e) => handleFileUpload(e, 'professionalCertificateImage')}
+                        />
+                        <label htmlFor="professionalCertificateImage" className="cursor-pointer flex flex-col items-center justify-center">
+                          {kycData.professionalCertificateImage ? (
+                            <div className="flex flex-col items-center">
+                              <CheckCircle className="h-10 w-10 text-green-500 mb-2" />
+                              <span className="text-sm text-green-600 font-medium">
+                                {kycData.professionalCertificateImage.name}
+                              </span>
+                              <span className="text-xs text-muted-foreground mt-1">
+                                Cliquez pour changer
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center">
+                              <Upload className="h-10 w-10 text-muted-foreground mb-2" />
+                              <span className="text-sm font-medium">Cliquez pour télécharger</span>
+                              <span className="text-xs text-muted-foreground mt-1">
+                                PNG, JPG ou PDF (max 5MB)
+                              </span>
+                            </div>
+                          )}
+                        </label>
+                      </div>
+                    </div>
+                  </TabsContent>
+                )}
+              </Tabs>
+
+              <div className="mt-8 flex justify-end">
+                <Button onClick={submitKyc} disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Traitement en cours...
+                    </>
+                  ) : (
+                    'Soumettre la vérification'
+                  )}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </Layout>
   );
