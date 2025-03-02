@@ -13,9 +13,10 @@ import { formatDistanceToNow } from 'date-fns';
 
 interface CommunityFeedProps {
   communityId: string;
+  isMember?: boolean;
 }
 
-const CommunityFeed = ({ communityId }: CommunityFeedProps) => {
+const CommunityFeed = ({ communityId, isMember = false }: CommunityFeedProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
@@ -96,7 +97,7 @@ const CommunityFeed = ({ communityId }: CommunityFeedProps) => {
 
   return (
     <div className="space-y-6">
-      {user && (
+      {user && isMember && (
         <Card>
           <CardContent className="pt-6">
             <div className="flex gap-3">
@@ -131,6 +132,17 @@ const CommunityFeed = ({ communityId }: CommunityFeedProps) => {
         </Card>
       )}
 
+      {!isMember && user && (
+        <Card className="bg-muted/50 border-dashed">
+          <CardContent className="py-6 text-center">
+            <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+            <p className="text-muted-foreground">
+              Join this community to share posts and interact with members
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {posts.length === 0 ? (
         <div className="text-center py-12">
           <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -138,9 +150,13 @@ const CommunityFeed = ({ communityId }: CommunityFeedProps) => {
           <p className="text-muted-foreground mb-4">
             Be the first to start a conversation in this community!
           </p>
-          {user ? (
+          {user && isMember ? (
             <p className="text-sm text-muted-foreground">
               Share news, updates, or questions above.
+            </p>
+          ) : user ? (
+            <p className="text-sm text-muted-foreground">
+              Join this community to share posts.
             </p>
           ) : (
             <Button variant="outline">Sign In to Post</Button>

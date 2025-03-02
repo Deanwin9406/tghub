@@ -25,7 +25,7 @@ const CommunityTabs = ({ community, isMember = false }: CommunityTabsProps) => {
       </TabsList>
       
       <TabsContent value="feed">
-        <CommunityFeed communityId={community.id} />
+        <CommunityFeed communityId={community.id} isMember={isMember} />
       </TabsContent>
       
       <TabsContent value="events">
