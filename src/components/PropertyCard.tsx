@@ -1,10 +1,12 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Bed, Bath, Square, Heart } from 'lucide-react';
+import { MapPin, Bed, Bath, Square, Heart, Shuffle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { useComparison } from '@/contexts/ComparisonContext';
+import { useToast } from '@/hooks/use-toast';
 
 export interface PropertyType {
   id: string;
@@ -35,6 +37,13 @@ const formatPrice = (price: number, currency: string) => {
 };
 
 const PropertyCard = ({ property, className }: PropertyCardProps) => {
+  const { 
+    addToComparison, 
+    removeFromComparison,
+    isInComparison 
+  } = useComparison();
+  const { toast } = useToast();
+
   const {
     id,
     title,
@@ -50,6 +59,27 @@ const PropertyCard = ({ property, className }: PropertyCardProps) => {
     featured,
     new: isNew
   } = property;
+
+  const handleCompareClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (isInComparison(id)) {
+      removeFromComparison(id);
+      toast({
+        title: "Retiré de la comparaison",
+        description: `${title} a été retiré de la comparaison.`,
+      });
+    } else {
+      addToComparison(property);
+      toast({
+        title: "Ajouté à la comparaison",
+        description: `${title} a été ajouté à la comparaison.`,
+      });
+    }
+  };
+
+  const isCompared = isInComparison(id);
 
   return (
     <div 
@@ -72,6 +102,21 @@ const PropertyCard = ({ property, className }: PropertyCardProps) => {
             className="h-9 w-9 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white"
           >
             <Heart size={18} className="text-muted-foreground hover:text-red-500 transition-colors" />
+          </Button>
+          
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className={cn(
+              "h-9 w-9 rounded-full bg-white/90 backdrop-blur-sm hover:bg-white",
+              isCompared && "bg-primary/90 text-primary-foreground hover:bg-primary"
+            )}
+            onClick={handleCompareClick}
+          >
+            <Shuffle size={18} className={cn(
+              "transition-colors",
+              isCompared ? "text-white" : "text-muted-foreground hover:text-primary"
+            )} />
           </Button>
         </div>
         

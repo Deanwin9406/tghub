@@ -49,7 +49,7 @@ interface Message {
   sender: {
     first_name: string;
     last_name: string;
-  };
+  } | null;
 }
 
 interface UseDashboardDataProps {
@@ -178,8 +178,8 @@ export const useDashboardData = ({ user, roles }: UseDashboardDataProps) => {
   useEffect(() => {
     if (messageData) {
       const safeMessages = messageData.map(msg => {
-        // Handle case where sender might be an error object
-        const senderData = (msg.sender && typeof msg.sender === 'object' && !('error' in msg.sender)) 
+        // Check if sender exists and is a valid object (not an error)
+        const senderData = (msg.sender && typeof msg.sender === 'object' && !('error' in (msg.sender as any))) 
           ? msg.sender 
           : { first_name: 'Unknown', last_name: '' };
         
