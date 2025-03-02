@@ -12,6 +12,7 @@ import { DialogContent, DialogDescription, DialogHeader, DialogTitle, Dialog } f
 import { DialogTrigger } from '@radix-ui/react-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { useToast } from '@/hooks/use-toast';
 
 interface PropertyType {
   id: string;
@@ -44,28 +45,43 @@ const Search = () => {
   });
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const { toast } = useToast();
+  
+  console.log("Search page loaded");
 
   useEffect(() => {
+    console.log("Fetching properties");
     fetchProperties();
   }, []);
 
   const fetchProperties = async () => {
     setLoading(true);
     try {
+      console.log("Fetching from Supabase");
       const { data, error } = await supabase
         .from('properties')
         .select('*')
         .eq('status', 'available');
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching properties:', error);
+        toast({
+          title: "Erreur de chargement",
+          description: "Impossible de charger les propriétés. Veuillez réessayer.",
+          variant: "destructive"
+        });
+        throw error;
+      }
 
-      const formattedProperties = data.map(property => ({
+      console.log("Properties fetched:", data?.length);
+      
+      const formattedProperties = (data || []).map(property => ({
         ...property,
-        square_footage: property.size_sqm || 0,
-        year_built: 0,
-        amenities: [],
-        image_urls: [],
-        availability_date: new Date().toISOString()
+        square_footage: property.square_footage || property.size_sqm || 0,
+        year_built: property.year_built || 0,
+        amenities: property.amenities || [],
+        image_urls: property.image_urls || [],
+        availability_date: property.availability_date || new Date().toISOString()
       })) as PropertyType[];
 
       setProperties(formattedProperties);

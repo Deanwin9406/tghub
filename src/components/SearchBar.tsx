@@ -26,6 +26,7 @@ const SearchBar = ({ className, variant = 'default', onSearch }: SearchBarProps)
   
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Search submitted:", location);
     
     if (onSearch && location.trim()) {
       onSearch(location);
@@ -38,7 +39,7 @@ const SearchBar = ({ className, variant = 'default', onSearch }: SearchBarProps)
     <form 
       onSubmit={handleSearch} 
       className={cn(
-        "bg-white rounded-2xl shadow-lg transition-all",
+        "bg-white dark:bg-slate-800 rounded-2xl shadow-lg transition-all",
         variant === 'default' ? 'p-6' : 'p-3',
         className
       )}
@@ -101,7 +102,7 @@ const SearchBar = ({ className, variant = 'default', onSearch }: SearchBarProps)
         <Button 
           type="submit" 
           className={cn(
-            "py-6 px-8 rounded-xl btn-effect",
+            "py-6 px-8 rounded-xl",
             variant === 'minimal' ? 'w-full md:w-auto' : 'flex-1 md:flex-none'
           )}
           size={variant === 'minimal' ? 'default' : 'lg'}
