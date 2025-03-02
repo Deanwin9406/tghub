@@ -802,6 +802,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_completed_kyc: {
+        Args: {
+          user_id: string
+        }
+        Returns: boolean
+      }
       has_role: {
         Args: {
           user_id: string

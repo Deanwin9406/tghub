@@ -1,3 +1,4 @@
+
 export interface Community {
   id: string;
   name: string;
@@ -85,6 +86,20 @@ export interface MarketplaceItem {
   created_at: string;
   updated_at: string;
   category: string | null;
+}
+
+export interface Profile {
+  id: string;
+  email: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+  phone: string | null;
+  address: string | null;
+  city: string | null;
+  country: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AuthContextType {

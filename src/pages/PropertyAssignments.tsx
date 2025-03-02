@@ -1,25 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '@/components/Layout';
-import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { Layout } from '@/components/Layout';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { 
-  Tabs, TabsContent, TabsList, TabsTrigger 
-} from '@/components/ui/tabs';
-import { 
-  Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle 
-} from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
-} from '@/components/ui/select';
-import { 
-  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, 
-  DialogHeader, DialogTitle, DialogTrigger 
-} from '@/components/ui/dialog';
-import { Textarea } from '@/components/ui/textarea';
-import { Loader2, AlertTriangle, Check, X, MessageSquare, Clock, Wrench } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+type PropertyManagerRole = 'agent' | 'manager';
 
 const PropertyAssignments = () => {
   const { user } = useAuth();
@@ -27,7 +14,7 @@ const PropertyAssignments = () => {
   const [activeTab, setActiveTab] = useState('pending');
   const [loading, setLoading] = useState(true);
   const [requestsData, setRequestsData] = useState<any[]>([]);
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [userRole, setUserRole] = useState<PropertyManagerRole | null>(null);
   const [replyMessage, setReplyMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -44,7 +31,7 @@ const PropertyAssignments = () => {
         
         if (error) throw error;
         
-        setUserRole(data.role as UserRole);
+        setUserRole(data.role as PropertyManagerRole);
       } catch (error) {
         console.error('Error checking user role:', error);
       }
@@ -65,8 +52,8 @@ const PropertyAssignments = () => {
     try {
       let query;
       
-      if (userRole === 'vendor') {
-        // Vendors see requests assigned to them or pending approval for them
+      if (userRole === 'agent') {
+        // Agents see requests assigned to them or pending approval for them
         query = supabase
           .from('maintenance_requests')
           .select(`
@@ -76,8 +63,8 @@ const PropertyAssignments = () => {
           `)
           .or(`assigned_to.eq.${user?.id},and(needs_approval.eq.true,assigned_to.is.null)`)
           .order('created_at', { ascending: false });
-      } else if (userRole === 'landlord' || userRole === 'manager') {
-        // Landlords and managers see requests for properties they own or manage
+      } else if (userRole === 'manager') {
+        // Managers see requests for properties they own or manage
         query = supabase
           .from('maintenance_requests')
           .select(`
@@ -297,7 +284,7 @@ const PropertyAssignments = () => {
     <Layout>
       <div className="container mx-auto py-8">
         <h1 className="text-3xl font-bold mb-6">
-          {userRole === 'vendor' ? 'Mes Missions de Réparation' : 'Demandes de Maintenance'}
+          {userRole === 'agent' ? 'Mes Missions de Réparation' : 'Demandes de Maintenance'}
         </h1>
         
         <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
@@ -365,7 +352,7 @@ const PropertyAssignments = () => {
                         </div>
                       </div>
                       
-                      {request.needs_approval && userRole !== 'vendor' && (
+                      {request.needs_approval && userRole !== 'agent' && (
                         <div className="mt-4 p-2 bg-yellow-50 border border-yellow-200 rounded-md text-sm">
                           <p className="flex items-center text-yellow-800">
                             <AlertTriangle className="h-4 w-4 mr-2" />
@@ -377,7 +364,7 @@ const PropertyAssignments = () => {
                     
                     <CardFooter className="flex flex-col gap-2 pt-0">
                       {/* Action buttons based on role and request status */}
-                      {userRole === 'landlord' || userRole === 'manager' ? (
+                      {userRole === 'manager' ? (
                         <>
                           {request.needs_approval && (
                             <div className="flex gap-2 w-full">
@@ -474,7 +461,7 @@ const PropertyAssignments = () => {
                             </Dialog>
                           )}
                         </>
-                      ) : userRole === 'vendor' ? (
+                      ) : userRole === 'agent' ? (
                         <>
                           {request.status === 'pending' && request.assigned_to === user?.id && (
                             <div className="flex gap-2 w-full">

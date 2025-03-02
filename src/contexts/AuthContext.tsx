@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -15,6 +16,9 @@ interface AuthContextType {
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any | null }>;
   sendPasswordResetEmail: (email: string) => Promise<{ error: any | null }>;
   loading: boolean;
+  session: Session | null; // Added for components that need session access
+  isLoading: boolean; // Added for compatibility with components using isLoading instead of loading
+  resetPassword: (email: string) => Promise<{ error: any | null }>; // Added for compatibility
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -231,6 +235,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  // Alias for sendPasswordResetEmail for components that expect resetPassword
+  const resetPassword = sendPasswordResetEmail;
+
   return (
     <AuthContext.Provider
       value={{
@@ -243,7 +250,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         signUp,
         updateProfile,
         sendPasswordResetEmail,
+        resetPassword,
         loading,
+        isLoading: loading, // Alias for components using isLoading instead of loading
+        session,
       }}
     >
       {children}
