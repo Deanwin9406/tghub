@@ -6,22 +6,24 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, Wrench } from 'lucide-react';
 
+interface MaintenanceProperty {
+  title: string;
+}
+
 interface MaintenanceRequest {
   id: string;
   title: string;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   priority: string;
   created_at: string;
-  property: {
-    title: string;
-  };
+  property: MaintenanceProperty;
 }
 
 interface MaintenanceTabProps {
   maintenanceRequests: MaintenanceRequest[];
 }
 
-const MaintenanceTab = ({ maintenanceRequests }: MaintenanceTabProps) => {
+const MaintenanceTab = ({ maintenanceRequests = [] }: MaintenanceTabProps) => {
   const navigate = useNavigate();
   
   return (
@@ -36,7 +38,7 @@ const MaintenanceTab = ({ maintenanceRequests }: MaintenanceTabProps) => {
         <CardDescription>Dernières demandes de maintenance</CardDescription>
       </CardHeader>
       <CardContent>
-        {maintenanceRequests.length === 0 ? (
+        {!maintenanceRequests || maintenanceRequests.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
             <Wrench className="h-8 w-8 mb-2" />
             <p>Aucune demande de maintenance.</p>

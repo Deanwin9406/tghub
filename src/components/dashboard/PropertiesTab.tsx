@@ -24,7 +24,7 @@ interface PropertiesTabProps {
   properties: Property[];
 }
 
-const PropertiesTab = ({ properties }: PropertiesTabProps) => {
+const PropertiesTab = ({ properties = [] }: PropertiesTabProps) => {
   const navigate = useNavigate();
   
   return (
@@ -39,7 +39,7 @@ const PropertiesTab = ({ properties }: PropertiesTabProps) => {
         <CardDescription>Dernières propriétés ajoutées</CardDescription>
       </CardHeader>
       <CardContent>
-        {properties.length === 0 ? (
+        {!properties || properties.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
             <Building className="h-8 w-8 mb-2" />
             <p>Aucune propriété ajoutée.</p>

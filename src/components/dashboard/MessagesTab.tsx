@@ -5,21 +5,23 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { ArrowRight, MessageCircle } from 'lucide-react';
 
+interface MessageSender {
+  first_name: string;
+  last_name: string;
+}
+
 interface Message {
   id: string;
   content: string;
   created_at: string;
-  sender: {
-    first_name: string;
-    last_name: string;
-  };
+  sender: MessageSender;
 }
 
 interface MessagesTabProps {
   messages: Message[];
 }
 
-const MessagesTab = ({ messages }: MessagesTabProps) => {
+const MessagesTab = ({ messages = [] }: MessagesTabProps) => {
   const navigate = useNavigate();
   
   return (
@@ -34,7 +36,7 @@ const MessagesTab = ({ messages }: MessagesTabProps) => {
         <CardDescription>Vos dernières conversations</CardDescription>
       </CardHeader>
       <CardContent>
-        {messages.length === 0 ? (
+        {!messages || messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
             <MessageCircle className="h-8 w-8 mb-2" />
             <p>Aucun message récent.</p>

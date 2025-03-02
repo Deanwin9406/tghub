@@ -6,24 +6,26 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowRight, CreditCard } from 'lucide-react';
 
+interface PaymentLease {
+  property: {
+    title: string;
+  };
+}
+
 interface Payment {
   id: string;
   amount: number;
   status: string;
   due_date: string;
   payment_date: string | null;
-  lease: {
-    property: {
-      title: string;
-    };
-  };
+  lease: PaymentLease;
 }
 
 interface PaymentsTabProps {
   payments: Payment[];
 }
 
-const PaymentsTab = ({ payments }: PaymentsTabProps) => {
+const PaymentsTab = ({ payments = [] }: PaymentsTabProps) => {
   const navigate = useNavigate();
   
   return (
@@ -38,7 +40,7 @@ const PaymentsTab = ({ payments }: PaymentsTabProps) => {
         <CardDescription>Derniers paiements effectués</CardDescription>
       </CardHeader>
       <CardContent>
-        {payments.length === 0 ? (
+        {!payments || payments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
             <CreditCard className="h-8 w-8 mb-2" />
             <p>Aucun paiement récent.</p>
