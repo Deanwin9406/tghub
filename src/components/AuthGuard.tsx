@@ -31,7 +31,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }: AuthGuardProps) => {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // User is authenticated, render children or Outlet
+  // User is authenticated, render children or Outlet without redirecting
   return <>{children || <Outlet />}</>;
 };
 

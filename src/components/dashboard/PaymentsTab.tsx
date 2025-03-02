@@ -57,7 +57,7 @@ const PaymentsTab = ({ payments = [] }: PaymentsTabProps) => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Badge variant="outline">{payment.status}</Badge>
-                  <Button variant="ghost" size="icon">
+                  <Button variant="ghost" size="icon" onClick={() => navigate('/payments')}>
                     <ArrowRight className="h-4 w-4" />
                   </Button>
                 </div>

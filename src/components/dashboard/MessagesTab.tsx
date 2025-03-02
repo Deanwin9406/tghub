@@ -51,7 +51,7 @@ const MessagesTab = ({ messages = [] }: MessagesTabProps) => {
                     De: {message.sender.first_name} {message.sender.last_name}
                   </p>
                 </div>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" onClick={() => navigate('/messages')}>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
