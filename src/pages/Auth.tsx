@@ -82,7 +82,12 @@ const Auth = () => {
         return;
       }
       
-      const { error } = await signUp(email, password, firstName, lastName);
+      const userData = {
+        first_name: firstName,
+        last_name: lastName
+      };
+      
+      const { error } = await signUp(email, password, userData);
       
       if (error) {
         toast({

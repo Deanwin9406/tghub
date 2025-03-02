@@ -103,7 +103,13 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
         return;
       }
       
-      const { error } = await signUp(email, password, firstName, lastName, userRole);
+      const userData = {
+        first_name: firstName,
+        last_name: lastName,
+        role: userRole
+      };
+      
+      const { error } = await signUp(email, password, userData);
       
       if (error) {
         toast({
