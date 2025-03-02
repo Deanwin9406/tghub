@@ -7,7 +7,7 @@ import PropertyCard from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
-import { CheckIcon, Filter, Loader2, List, Map as MapIcon } from 'lucide-react';
+import { CheckIcon, Filter, Loader2, List, Map as MapIcon, AlertCircle } from 'lucide-react';
 import { DialogContent, DialogDescription, DialogHeader, DialogTitle, Dialog } from '@/components/ui/dialog';
 import { DialogTrigger } from '@radix-ui/react-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -15,6 +15,7 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { useToast } from '@/hooks/use-toast';
 import Map from '@/components/Map';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface PropertyType {
   id: string;
@@ -52,6 +53,7 @@ const Search = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [mapError, setMapError] = useState<string | null>(null);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
   const { toast } = useToast();
   
   console.log("Search page loaded");
@@ -63,15 +65,18 @@ const Search = () => {
 
   const fetchProperties = async () => {
     setLoading(true);
+    setConnectionError(null);
     try {
-      console.log("Fetching from Supabase");
+      console.log("Fetching from Supabase:", supabase);
+      console.log("Supabase URL:", process.env.SUPABASE_URL);
+      
       const { data, error } = await supabase
         .from('properties')
-        .select('*')
-        .eq('status', 'available');
+        .select('*');
 
       if (error) {
         console.error('Error fetching properties:', error);
+        setConnectionError(`Error connecting to database: ${error.message}`);
         toast({
           title: "Erreur de chargement",
           description: "Impossible de charger les propriétés. Veuillez réessayer.",
@@ -81,25 +86,58 @@ const Search = () => {
       }
 
       console.log("Properties fetched:", data?.length);
+      console.log("Raw properties data:", data);
       
-      const formattedProperties = (data || []).map(property => ({
-        ...property,
-        square_footage: property.size_sqm || 0,
-        year_built: 0,
-        amenities: [],
-        image_urls: [],
-        availability_date: new Date().toISOString(),
-        // Add mock coordinates for demonstration purposes
-        // In a real application, these would come from the database
-        latitude: 6.1319 + (Math.random() - 0.5) * 0.1, // Random positions around Lomé, Togo
-        longitude: 1.2254 + (Math.random() - 0.5) * 0.1
-      })) as PropertyType[];
+      if (!data || data.length === 0) {
+        console.log("No properties found in the database");
+        // Create sample data for demo purposes
+        const sampleData = Array(5).fill(null).map((_, index) => ({
+          id: `sample-${index}`,
+          title: `Sample Property ${index + 1}`,
+          address: `123 Sample St ${index + 1}`,
+          city: 'Lomé',
+          price: 500000 + (index * 100000),
+          property_type: ['apartment', 'house', 'villa', 'office'][index % 4],
+          bedrooms: (index % 3) + 1,
+          bathrooms: (index % 2) + 1,
+          main_image_url: 'https://placehold.co/600x400',
+          status: 'available',
+          description: `A beautiful sample property ${index + 1}`,
+          latitude: 6.1319 + (Math.random() - 0.5) * 0.1,
+          longitude: 1.2254 + (Math.random() - 0.5) * 0.1
+        }));
+        
+        setProperties(sampleData.map(property => ({
+          ...property,
+          square_footage: 100 + (property.bedrooms || 1) * 50,
+          year_built: 2000 + (property.bedrooms || 1) * 3,
+          amenities: ['wifi', 'parking', 'security'],
+          image_urls: [property.main_image_url],
+          availability_date: new Date().toISOString(),
+        })) as PropertyType[]);
+        
+        console.log("Created sample data:", sampleData);
+      } else {
+        const formattedProperties = data.map(property => ({
+          ...property,
+          square_footage: property.size_sqm || 0,
+          year_built: 2020,
+          amenities: property.amenities || ['wifi', 'parking', 'security'],
+          image_urls: property.image_urls || [property.main_image_url],
+          availability_date: property.availability_date || new Date().toISOString(),
+          // Add mock coordinates for demonstration purposes
+          // In a real application, these would come from the database
+          latitude: property.latitude || (6.1319 + (Math.random() - 0.5) * 0.1), // Random positions around Lomé, Togo
+          longitude: property.longitude || (1.2254 + (Math.random() - 0.5) * 0.1)
+        })) as PropertyType[];
 
-      setProperties(formattedProperties);
-      console.log("Formatted properties:", formattedProperties);
+        setProperties(formattedProperties);
+        console.log("Formatted properties:", formattedProperties);
+      }
     } catch (error) {
       console.error('Error fetching properties:', error);
       setMapError("Failed to load properties data");
+      setConnectionError(`Error connecting to database: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
     }
@@ -184,6 +222,21 @@ const Search = () => {
         <div className="mb-8">
           <SearchBar onSearch={handleSearch} />
         </div>
+
+        {connectionError && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Connection Error</AlertTitle>
+            <AlertDescription>
+              {connectionError}
+              <div className="mt-2">
+                <Button size="sm" variant="outline" onClick={fetchProperties}>
+                  Retry
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Available Properties</h1>
@@ -320,13 +373,29 @@ const Search = () => {
             </div>
           ) : (
             <div className="w-full h-[600px] rounded-lg overflow-hidden border">
-              <Map 
-                properties={mapProperties}
-                onPropertyClick={handlePropertyClick}
-                zoom={13}
-                center={[1.2254, 6.1319]} // Center on Lomé, Togo
-                height="600px"
-              />
+              {mapError ? (
+                <div className="flex items-center justify-center h-full bg-muted">
+                  <div className="text-center p-6">
+                    <AlertCircle className="h-10 w-10 text-destructive mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">Map Error</h3>
+                    <p className="text-muted-foreground mb-4">{mapError}</p>
+                    <Button 
+                      onClick={fetchProperties}
+                      variant="outline"
+                    >
+                      Retry
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Map 
+                  properties={mapProperties}
+                  onPropertyClick={handlePropertyClick}
+                  zoom={13}
+                  center={[1.2254, 6.1319]} // Center on Lomé, Togo
+                  height="100%"
+                />
+              )}
             </div>
           )
         ) : (

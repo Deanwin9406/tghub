@@ -3,9 +3,9 @@ import React, { useEffect, useRef, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import 'mapbox-gl/dist/mapbox-gl.css';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 
-// Set Mapbox token
+// Set Mapbox token - Make sure this is a valid token
 mapboxgl.accessToken = 'pk.eyJ1IjoiamFocHJvdCIsImEiOiJjbTdxZ2hwZWcwdXQxMmtyNjY5eWl6MGFjIn0.HRD7uwiBzXBAgWVbdD-2cw';
 
 interface MapProps {
@@ -41,22 +41,33 @@ const Map = ({
   const map = useRef<mapboxgl.Map | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initializing, setInitializing] = useState(true);
 
+  console.log("Map component rendered");
   console.log("Map properties received:", properties);
   console.log("Map center:", center, "zoom:", zoom);
 
+  // Initialize map
   useEffect(() => {
-    if (!mapContainer.current) return;
+    if (!mapContainer.current) {
+      console.log("Map container not ready");
+      return;
+    }
 
     try {
-      console.log("Initializing map");
+      console.log("Initializing map with token:", mapboxgl.accessToken);
+      if (!mapboxgl.accessToken || mapboxgl.accessToken.includes('your-mapbox-token')) {
+        throw new Error("Invalid Mapbox token. Please provide a valid token.");
+      }
+
       // Initialize map
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/streets-v11',
         center: center,
         zoom: zoom,
-        interactive: interactive
+        interactive: interactive,
+        attributionControl: true,
       });
 
       // Add navigation controls if interactive
@@ -70,8 +81,15 @@ const Map = ({
       }
 
       map.current.on('load', () => {
-        console.log("Map loaded");
+        console.log("Map loaded successfully");
         setMapLoaded(true);
+        setInitializing(false);
+      });
+
+      map.current.on('error', (e) => {
+        console.error("Mapbox error:", e);
+        setError(`Mapbox error: ${e.error?.message || 'Unknown error'}`);
+        setInitializing(false);
       });
 
       return () => {
@@ -82,7 +100,8 @@ const Map = ({
       };
     } catch (err) {
       console.error('Error initializing map:', err);
-      setError('Failed to load map');
+      setError(`Failed to load map: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      setInitializing(false);
     }
   }, []);
 
@@ -173,6 +192,7 @@ const Map = ({
         style={{ height, width }}
       >
         <div className="text-center p-6">
+          <AlertCircle className="h-10 w-10 text-destructive mx-auto mb-4" />
           <p className="text-red-500 mb-4">{error}</p>
           <Button 
             onClick={() => window.location.reload()}
@@ -185,13 +205,16 @@ const Map = ({
     );
   }
 
-  if (!mapLoaded) {
+  if (initializing || !mapLoaded) {
     return (
       <div 
         className={`flex items-center justify-center bg-muted rounded-lg ${className}`}
         style={{ height, width }}
       >
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading map...</p>
+        </div>
       </div>
     );
   }
