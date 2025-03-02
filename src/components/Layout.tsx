@@ -14,11 +14,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from '@/components/ui/button';
 import { ModeToggle } from '@/components/ModeToggle';
 import { useComparison } from '@/contexts/ComparisonContext';
-import { ShoppingBag, Home, User, Settings, Plus, LogOut, LayoutDashboard, ChevronsUpDown, Scale, X, Menu } from 'lucide-react';
+import { ShoppingBag, Menu, X, LogOut, User, Settings } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { supabase } from '@/integrations/supabase/client';
 
 const signOut = async () => {
@@ -40,9 +39,16 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     setIsMenuOpen(false);
   };
 
+  const navItems = [
+    { name: 'Search', path: '/search' },
+    { name: 'Agents', path: '/agents' },
+    { name: 'Communities', path: '/communities' },
+    { name: 'Vendors', path: '/vendors' },
+  ];
+
   return (
     <div className="min-h-screen bg-background antialiased">
-      {/* Mobile Menu */}
+      {/* Mobile Menu Overlay */}
       <div className={`fixed inset-0 bg-background/80 backdrop-blur-sm z-50 lg:hidden ${isMenuOpen ? 'block' : 'hidden'}`}>
         <div className="fixed inset-y-0 left-0 w-64 bg-background border-r p-4">
           <div className="flex items-center justify-between mb-4">
@@ -55,185 +61,151 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             </Button>
           </div>
           <ul className="space-y-2 font-medium">
-            <li>
-              <Link to="/" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
-                <Home className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                <span className="ml-3">Dashboard</span>
-              </Link>
-            </li>
+            {navItems.map((item) => (
+              <li key={item.name}>
+                <Link
+                  to={item.path}
+                  className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group"
+                  onClick={closeMenu}
+                >
+                  <span className="ml-3">{item.name}</span>
+                </Link>
+              </li>
+            ))}
             {session && (
               <>
                 <li>
-                  <Link to="/property-assignments" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
-                    <LayoutDashboard className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                    <span className="ml-3">Assignments</span>
+                  <Link to="/property-management" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
+                    <span className="ml-3">My Properties</span>
                   </Link>
                 </li>
                 <li>
-                  <Link to="/leases" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
-                    <ChevronsUpDown className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                    <span className="ml-3">Leases</span>
+                  <Link to="/dashboard" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
+                    <span className="ml-3">Dashboard</span>
                   </Link>
                 </li>
                 <li>
-                  <Link to="/profile" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
-                    <User className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                    <span className="ml-3">Profile</span>
+                  <Link to="/favorites" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
+                    <span className="ml-3">Favorites</span>
                   </Link>
                 </li>
-                <li>
-                  <Link to="/settings" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
-                    <Settings className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                    <span className="ml-3">Settings</span>
-                  </Link>
-                </li>
-                {user?.user_metadata?.role === 'admin' && (
-                  <li>
-                    <Link to="/admin" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
-                      <Settings className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                      <span className="ml-3">Admin</span>
-                    </Link>
-                  </li>
-                )}
               </>
             )}
           </ul>
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row">
-        {/* Sidebar */}
-        <aside className="w-64 border-r flex-shrink-0 hidden md:block h-screen sticky top-0">
-          <div className="h-full px-3 py-4 overflow-y-auto bg-background">
-            <Link to="/" className="flex items-center pl-2 mb-5">
-              <ShoppingBag className="mr-2 h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">TogoPropConnect</span>
-            </Link>
-            <ul className="space-y-2 font-medium">
-              <li>
-                <Link to="/" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                  <Home className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                  <span className="ml-3">Dashboard</span>
-                </Link>
-              </li>
-              {session && (
-                <>
-                  <li>
-                    <Link to="/property-assignments" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                      <LayoutDashboard className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                      <span className="ml-3">Assignments</span>
+      {/* Header/Navbar */}
+      <header className="z-30 py-4 bg-background border-b sticky top-0">
+        <div className="container mx-auto px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <Button variant="ghost" size="icon" className="lg:hidden mr-2" onClick={toggleMenu}>
+                <Menu className="h-6 w-6" />
+              </Button>
+              <Link to="/" className="flex items-center">
+                <ShoppingBag className="mr-2 h-6 w-6 text-primary" />
+                <span className="text-xl font-bold">TogoPropConnect</span>
+              </Link>
+              {/* Desktop Nav Items */}
+              <nav className="hidden lg:flex ml-10 space-x-4">
+                {navItems.map((item) => (
+                  <Link
+                    key={item.name}
+                    to={item.path}
+                    className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                  >
+                    {item.name}
+                  </Link>
+                ))}
+                {session && (
+                  <>
+                    <Link
+                      to="/property-management"
+                      className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                    >
+                      My Properties
                     </Link>
-                  </li>
-                  <li>
-                    <Link to="/leases" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                      <ChevronsUpDown className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                      <span className="ml-3">Leases</span>
+                    <Link
+                      to="/dashboard"
+                      className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                    >
+                      Dashboard
                     </Link>
-                  </li>
-                  <li>
-                    <Link to="/profile" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                      <User className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                      <span className="ml-3">Profile</span>
+                    <Link
+                      to="/favorites"
+                      className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
+                    >
+                      Favorites
                     </Link>
-                  </li>
-                  <li>
-                    <Link to="/settings" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                      <Settings className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                      <span className="ml-3">Settings</span>
-                    </Link>
-                  </li>
-                  {user?.user_metadata?.role === 'admin' && (
-                    <li>
-                      <Link to="/admin" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                        <Settings className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
-                        <span className="ml-3">Admin</span>
-                      </Link>
-                    </li>
-                  )}
-                </>
-              )}
-            </ul>
-          </div>
-        </aside>
-
-        <div className="flex flex-col flex-1">
-          {/* Header */}
-          <header className="z-30 py-4 bg-background border-b sticky top-0">
-            <div className="container mx-auto px-6 lg:px-8 flex items-center justify-between">
-              <div className="flex items-center">
-                <Button variant="ghost" size="icon" className="md:hidden mr-2" onClick={toggleMenu}>
-                  <Menu className="h-6 w-6" />
-                </Button>
-                <Link to="/" className="md:hidden flex items-center">
-                  <ShoppingBag className="mr-2 h-6 w-6 text-primary" />
-                  <span className="text-xl font-bold">TogoPropConnect</span>
-                </Link>
-              </div>
-              <div className="flex items-center gap-4">
-                <ModeToggle />
-                {comparisonList.length > 0 && (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline">
-                        Compare <Badge className="ml-2">{comparisonList.length}</Badge>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-72" align="end">
-                      <DropdownMenuLabel>Comparison List</DropdownMenuLabel>
-                      <ScrollArea className="h-64">
-                        {comparisonList.map((property) => (
-                          <DropdownMenuItem key={property.id} onClick={() => navigate(`/property/${property.id}`)}>
-                            {property.title}
-                          </DropdownMenuItem>
-                        ))}
-                      </ScrollArea>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={clearComparison}>
-                        Clear Comparison
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  </>
                 )}
-                {session ? (
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" className="h-8 w-8 p-0">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={user?.user_metadata?.avatar_url as string} alt={user?.user_metadata?.full_name as string} />
-                          <AvatarFallback>{getInitials(user?.user_metadata?.full_name as string)}</AvatarFallback>
-                        </Avatar>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-56" align="end" forceMount>
-                      <DropdownMenuLabel>My Account</DropdownMenuLabel>
-                      <DropdownMenuItem onClick={() => navigate('/profile')}>
-                        <User className="h-4 w-4 mr-2" />
-                        Profile
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate('/settings')}>
-                        <Settings className="h-4 w-4 mr-2" />
-                        Settings
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem onClick={signOut}>
-                        <LogOut className="h-4 w-4 mr-2" />
-                        Log out
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                ) : (
-                  <Button onClick={() => navigate('/auth')}>Sign In</Button>
-                )}
-              </div>
+              </nav>
             </div>
-          </header>
-
-          {/* Main Content */}
-          <main className="flex-1">
-            {children}
-          </main>
+            <div className="flex items-center gap-4">
+              <ModeToggle />
+              {comparisonList.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      Compare <Badge className="ml-2">{comparisonList.length}</Badge>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-72" align="end">
+                    <DropdownMenuLabel>Comparison List</DropdownMenuLabel>
+                    <ScrollArea className="h-64">
+                      {comparisonList.map((property) => (
+                        <DropdownMenuItem key={property.id} onClick={() => navigate(`/property/${property.id}`)}>
+                          {property.title}
+                        </DropdownMenuItem>
+                      ))}
+                    </ScrollArea>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={clearComparison}>
+                      Clear Comparison
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              {session ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" className="h-8 w-8 p-0">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user?.user_metadata?.avatar_url as string} alt={user?.user_metadata?.full_name as string} />
+                        <AvatarFallback>{getInitials(user?.user_metadata?.full_name as string)}</AvatarFallback>
+                      </Avatar>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-56" align="end" forceMount>
+                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => navigate('/profile')}>
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => navigate('/settings')}>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Settings
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={signOut}>
+                      <LogOut className="h-4 w-4 mr-2" />
+                      Log out
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : (
+                <Button onClick={() => navigate('/auth')}>Sign In</Button>
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      </header>
+
+      {/* Main Content */}
+      <main>
+        {children}
+      </main>
     </div>
   );
 };
