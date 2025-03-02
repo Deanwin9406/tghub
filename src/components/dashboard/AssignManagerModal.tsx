@@ -29,25 +29,31 @@ const AssignManagerModal = ({ isOpen, onClose, propertyId }: AssignManagerModalP
   const { data: managers = [], isLoading } = useQuery({
     queryKey: ['property-managers'],
     queryFn: async () => {
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'manager');
+      // Safely get managers by first checking if the table exists
+      try {
+        const { data: userRoles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('user_id')
+          .eq('role', 'manager');
 
-      if (rolesError) throw rolesError;
+        if (rolesError) throw rolesError;
 
-      if (!userRoles.length) return [];
+        if (!userRoles?.length) return [];
 
-      const managerIds = userRoles.map(role => role.user_id);
-      
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email')
-        .in('id', managerIds);
+        const managerIds = userRoles.map(role => role.user_id);
+        
+        const { data: profiles, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .in('id', managerIds);
 
-      if (profilesError) throw profilesError;
-      
-      return profiles as ManagerProfile[];
+        if (profilesError) throw profilesError;
+        
+        return profiles as ManagerProfile[];
+      } catch (error) {
+        console.error("Error fetching managers:", error);
+        return [];
+      }
     },
     enabled: isOpen
   });
@@ -57,37 +63,44 @@ const AssignManagerModal = ({ isOpen, onClose, propertyId }: AssignManagerModalP
     mutationFn: async () => {
       if (!selectedManager || !propertyId) return;
 
-      // Check if there's an existing assignment
-      const { data: existingAssignment } = await supabase
-        .from('property_managers')
-        .select('id')
-        .eq('property_id', propertyId)
-        .single();
-
-      // Update or insert based on whether there's an existing assignment
-      if (existingAssignment) {
-        const { error } = await supabase
-          .from('property_managers')
-          .update({ manager_id: selectedManager, updated_at: new Date().toISOString() })
-          .eq('id', existingAssignment.id);
-          
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('property_managers')
-          .insert({ 
-            property_id: propertyId, 
-            manager_id: selectedManager,
-            assigned_at: new Date().toISOString()
+      try {
+        // Check if the property_managers table exists and the row exists
+        const { data: existingManager } = await supabase
+          .rpc('check_property_manager', { 
+            p_property_id: propertyId 
           });
-          
-        if (error) throw error;
+
+        if (existingManager) {
+          // Update the existing manager assignment
+          const { error } = await supabase
+            .rpc('update_property_manager', { 
+              p_property_id: propertyId,
+              p_manager_id: selectedManager,
+              p_updated_at: new Date().toISOString()
+            });
+            
+          if (error) throw error;
+        } else {
+          // Insert a new manager assignment
+          const { error } = await supabase
+            .rpc('insert_property_manager', { 
+              p_property_id: propertyId,
+              p_manager_id: selectedManager,
+              p_assigned_at: new Date().toISOString()
+            });
+            
+          if (error) throw error;
+        }
+      } catch (error) {
+        console.error("Error in assignManager mutation:", error);
+        throw error;
       }
     },
     onSuccess: () => {
       toast.success("Property manager assigned successfully!");
       queryClient.invalidateQueries({ queryKey: ['property-details', propertyId] });
       queryClient.invalidateQueries({ queryKey: ['property-manager', propertyId] });
+      queryClient.invalidateQueries({ queryKey: ['property-ownership', propertyId] });
       onClose();
     },
     onError: (error) => {
@@ -106,15 +119,19 @@ const AssignManagerModal = ({ isOpen, onClose, propertyId }: AssignManagerModalP
   useEffect(() => {
     if (isOpen && propertyId) {
       const fetchCurrentManager = async () => {
-        const { data, error } = await supabase
-          .from('property_managers')
-          .select('manager_id')
-          .eq('property_id', propertyId)
-          .single();
-          
-        if (data && !error) {
-          setSelectedManager(data.manager_id);
-        } else {
+        try {
+          const { data, error } = await supabase
+            .rpc('get_property_manager', { 
+              p_property_id: propertyId 
+            });
+            
+          if (data && !error) {
+            setSelectedManager(data.manager_id);
+          } else {
+            setSelectedManager('');
+          }
+        } catch (error) {
+          console.error("Error fetching current manager:", error);
           setSelectedManager('');
         }
       };

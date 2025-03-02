@@ -606,6 +606,38 @@ export type Database = {
           },
         ]
       }
+      property_managers: {
+        Row: {
+          assigned_at: string
+          id: string
+          manager_id: string
+          property_id: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_at?: string
+          id?: string
+          manager_id: string
+          property_id: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_at?: string
+          id?: string
+          manager_id?: string
+          property_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_managers_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: true
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_favorites: {
         Row: {
           created_at: string

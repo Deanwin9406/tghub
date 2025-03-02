@@ -34,24 +34,32 @@ const PropertyOwnershipInfo = ({ propertyId }: PropertyOwnershipInfoProps) => {
       if (ownerError) throw ownerError;
       
       // Get property manager if assigned
-      const { data: propertyManager, error: managerError } = await supabase
+      // Note: We check if the property_managers table exists first to handle potential errors
+      const { data: tableCheck, error: tableCheckError } = await supabase
         .from('property_managers')
-        .select('manager_id')
-        .eq('property_id', propertyId)
-        .maybeSingle();
-        
-      // Even if there's no manager, we don't consider it an error
+        .select('id')
+        .limit(1);
       
       let managerProfile = null;
-      if (propertyManager && propertyManager.manager_id) {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('first_name, last_name, email, phone')
-          .eq('id', propertyManager.manager_id)
-          .single();
+      if (tableCheck) {
+        const { data: propertyManager, error: managerError } = await supabase
+          .from('property_managers')
+          .select('manager_id')
+          .eq('property_id', propertyId)
+          .maybeSingle();
           
-        if (!profileError) {
-          managerProfile = profile;
+        // Even if there's no manager, we don't consider it an error
+        
+        if (propertyManager && propertyManager.manager_id) {
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('first_name, last_name, email, phone')
+            .eq('id', propertyManager.manager_id)
+            .single();
+            
+          if (!profileError) {
+            managerProfile = profile;
+          }
         }
       }
       

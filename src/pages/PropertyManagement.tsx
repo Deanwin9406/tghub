@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, PlusCircle, Edit, Trash2, Eye } from 'lucide-react';
+import { Loader2, PlusCircle, Edit, Trash2, Eye, UserCog } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import AssignManagerModal from '@/components/dashboard/AssignManagerModal';
 
 interface Property {
   id: string;
@@ -21,6 +22,7 @@ interface Property {
   bedrooms: number | null;
   bathrooms: number | null;
   main_image_url: string | null;
+  has_manager: boolean;
 }
 
 const PropertyManagement = () => {
@@ -29,6 +31,8 @@ const PropertyManagement = () => {
   const { toast } = useToast();
   const [properties, setProperties] = useState<Property[]>([]);
   const [loading, setLoading] = useState(true);
+  const [managerModalOpen, setManagerModalOpen] = useState(false);
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -39,11 +43,31 @@ const PropertyManagement = () => {
   const fetchProperties = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .eq('owner_id', user?.id)
-        .order('created_at', { ascending: false });
+      // First check if the property_managers table exists
+      const { data: tableCheck, error: tableCheckError } = await supabase
+        .from('property_managers')
+        .select('id')
+        .limit(1);
+      
+      let data;
+      let error;
+      
+      if (tableCheck) {
+        // If the table exists, use a query that includes manager info
+        const result = await supabase
+          .rpc('get_properties_with_manager_info', { owner_id_param: user?.id });
+        data = result.data;
+        error = result.error;
+      } else {
+        // Fallback to basic query
+        const result = await supabase
+          .from('properties')
+          .select('*')
+          .eq('owner_id', user?.id)
+          .order('created_at', { ascending: false });
+        data = result.data;
+        error = result.error;
+      }
 
       if (error) throw error;
       setProperties(data || []);
@@ -85,6 +109,11 @@ const PropertyManagement = () => {
         description: 'Failed to delete property. Please try again.',
       });
     }
+  };
+  
+  const openManagerModal = (propertyId: string) => {
+    setSelectedPropertyId(propertyId);
+    setManagerModalOpen(true);
   };
 
   const getStatusBadgeVariant = (status: string) => {
@@ -140,6 +169,7 @@ const PropertyManagement = () => {
                       <th className="px-4 py-3 text-right">Price</th>
                       <th className="px-4 py-3 text-center">Type</th>
                       <th className="px-4 py-3 text-center">Status</th>
+                      <th className="px-4 py-3 text-center">Manager</th>
                       <th className="px-4 py-3 text-center">Actions</th>
                     </tr>
                   </thead>
@@ -174,6 +204,17 @@ const PropertyManagement = () => {
                             {property.status.replace('_', ' ')}
                           </Badge>
                         </td>
+                        <td className="px-4 py-4 text-center">
+                          {property.has_manager ? (
+                            <Badge variant="secondary">
+                              Assigned
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline">
+                              Not Assigned
+                            </Badge>
+                          )}
+                        </td>
                         <td className="px-4 py-4">
                           <div className="flex justify-center space-x-2">
                             <Button 
@@ -195,6 +236,14 @@ const PropertyManagement = () => {
                             <Button 
                               variant="ghost" 
                               size="icon"
+                              onClick={() => openManagerModal(property.id)}
+                              title="Assign Manager"
+                            >
+                              <UserCog className="h-4 w-4 text-blue-600" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
                               onClick={() => handleDeleteProperty(property.id)}
                               title="Delete Property"
                             >
@@ -211,6 +260,17 @@ const PropertyManagement = () => {
           </CardContent>
         </Card>
       </div>
+      
+      {selectedPropertyId && (
+        <AssignManagerModal 
+          isOpen={managerModalOpen}
+          onClose={() => {
+            setManagerModalOpen(false);
+            fetchProperties(); // Refresh the properties list with updated manager info
+          }}
+          propertyId={selectedPropertyId}
+        />
+      )}
     </Layout>
   );
 };

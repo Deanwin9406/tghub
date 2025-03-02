@@ -1,93 +1,60 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useFavorites } from '@/contexts/FavoritesContext';
-import PropertyCard from '@/components/PropertyCard';
-import { Heart } from 'lucide-react';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { Trash2, Building, MapPin, Bed, Bath, CreditCard, SquareFootage } from 'lucide-react';
+import PropertyCard, { PropertyType } from '@/components/PropertyCard';
 
 const Favorites = () => {
-  const { favorites, isLoading } = useFavorites();
-
+  const { favorites, removeFavorite } = useFavorites();
+  const navigate = useNavigate();
+  
+  if (!favorites || favorites.length === 0) {
+    return (
+      <Layout>
+        <div className="container mx-auto py-16">
+          <Card className="mx-auto max-w-2xl">
+            <CardHeader>
+              <CardTitle className="text-center">Aucune propriété en favoris</CardTitle>
+            </CardHeader>
+            <CardContent className="text-center space-y-4">
+              <p className="text-muted-foreground">
+                Vous n'avez pas encore ajouté de propriétés à vos favoris.
+                Parcourez notre catalogue pour trouver des propriétés qui correspondent à vos besoins.
+              </p>
+              <Button onClick={() => navigate('/search')}>
+                Parcourir les propriétés
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </Layout>
+    );
+  }
+  
   return (
     <Layout>
-      <div className="container mx-auto px-6 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Mes propriétés favorites</h1>
-            <p className="text-muted-foreground mt-1">
-              Retrouvez ici toutes les propriétés que vous avez ajoutées à vos favoris
-            </p>
-          </div>
-        </div>
+      <div className="container mx-auto py-12">
+        <h1 className="text-3xl font-bold mb-8">Vos Propriétés Favorites</h1>
         
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse">
-                <div className="bg-muted rounded-2xl overflow-hidden">
-                  <div className="aspect-[4/3] bg-muted"></div>
-                  <div className="p-5 space-y-3">
-                    <div className="h-4 bg-muted-foreground/20 rounded w-3/4"></div>
-                    <div className="h-4 bg-muted-foreground/20 rounded w-1/2"></div>
-                    <div className="pt-4 flex space-x-4">
-                      <div className="h-3 bg-muted-foreground/20 rounded w-1/4"></div>
-                      <div className="h-3 bg-muted-foreground/20 rounded w-1/4"></div>
-                      <div className="h-3 bg-muted-foreground/20 rounded w-1/4"></div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : favorites.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {favorites.map((property, index) => (
-              <motion.div
-                key={property.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {favorites.map((property: PropertyType) => (
+            <div key={property.id} className="relative">
+              <PropertyCard property={property} />
+              <Button
+                variant="destructive"
+                size="icon"
+                className="absolute top-2 right-2 z-10 rounded-full"
+                onClick={() => removeFavorite(property.id)}
               >
-                <PropertyCard 
-                  property={{
-                    id: property.id,
-                    title: property.title,
-                    price: property.price,
-                    priceUnit: property.priceUnit,
-                    // Convert to type expected by PropertyCard
-                    type: property.type === 'villa' || property.type === 'office' || property.type === 'other' 
-                      ? 'house' 
-                      : property.type as 'house' | 'apartment' | 'land' | 'commercial',
-                    purpose: property.purpose,
-                    location: property.location,
-                    beds: property.beds,
-                    baths: property.baths,
-                    area: property.area,
-                    image: property.image,
-                  }} 
-                />
-              </motion.div>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16">
-            <div className="mx-auto w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-              <Heart className="h-8 w-8 text-muted-foreground" />
-            </div>
-            <h2 className="text-xl font-semibold mb-2">Aucune propriété en favoris</h2>
-            <p className="text-muted-foreground mb-6">
-              Vous n'avez pas encore ajouté de propriétés à vos favoris
-            </p>
-            <Link to="/search">
-              <Button>
-                Découvrir des propriétés
+                <Trash2 className="h-4 w-4" />
               </Button>
-            </Link>
-          </div>
-        )}
+            </div>
+          ))}
+        </div>
       </div>
     </Layout>
   );
