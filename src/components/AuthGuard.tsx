@@ -37,6 +37,7 @@ const AuthGuard = () => {
   }
 
   // If user is authenticated, render the protected route
+  // No redirection to dashboard here - just render the requested route
   console.log("User authenticated, rendering protected route:", location.pathname);
   return <Outlet />;
 };
