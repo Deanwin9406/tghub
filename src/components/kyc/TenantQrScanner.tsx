@@ -3,192 +3,180 @@ import React, { useState } from 'react';
 import { QrReader } from 'react-qr-reader';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, UserCheck, UserX } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
 
 interface TenantQrScannerProps {
-  propertyId: string;
-  onTenantFound: (userId: string) => void;
+  onTenantFound: (tenant: { userId: string; firstName: string; lastName: string; }) => void;
+  propertyId?: string;
 }
 
-const TenantQrScanner: React.FC<TenantQrScannerProps> = ({ propertyId, onTenantFound }) => {
-  const [scanning, setScanning] = useState(false);
-  const [tenantData, setTenantData] = useState<any>(null);
-  const [isVerifying, setIsVerifying] = useState(false);
+interface QRData {
+  userId: string;
+  timestamp: string;
+  type: string;
+}
+
+const TenantQrScanner: React.FC<TenantQrScannerProps> = ({ onTenantFound, propertyId }) => {
+  const [scanning, setScanning] = useState<boolean>(true);
+  const [processing, setProcessing] = useState<boolean>(false);
   const { toast } = useToast();
 
   const handleScan = async (result: any) => {
-    if (!result || !result.text) return;
+    if (!result || processing) return;
+    
+    setProcessing(true);
+    setScanning(false);
     
     try {
-      // Parse the QR code data
-      const scannedData = JSON.parse(result.text);
+      // Parse QR code data
+      const data = JSON.parse(result.text) as QRData;
       
-      // Verify it's a tenant verification QR code
-      if (scannedData.type !== 'tenant-verification') {
-        toast({
-          title: "Code QR invalide",
-          description: "Ce n'est pas un code QR de vérification de locataire valide.",
-          variant: "destructive"
-        });
-        return;
+      // Validate QR data
+      if (!data.userId || data.type !== 'tenant-verification') {
+        throw new Error('QR code invalide');
       }
       
-      setScanning(false);
-      setTenantData(scannedData);
+      // Get tenant profile info
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', data.userId)
+        .single();
       
-    } catch (error) {
-      console.error('Error parsing QR code:', error);
+      if (profileError || !profile) {
+        throw new Error('Impossible de trouver les informations du locataire');
+      }
+      
+      // Check KYC verification status
+      const { data: kycData, error: kycError } = await supabase
+        .from('kyc_verifications')
+        .select('status')
+        .eq('user_id', data.userId)
+        .single();
+      
+      if (kycError || !kycData) {
+        throw new Error('Locataire sans vérification KYC');
+      }
+      
+      if (kycData.status !== 'approved') {
+        throw new Error('La vérification KYC du locataire n\'est pas approuvée');
+      }
+      
+      // If propertyId is provided, associate tenant with property
+      if (propertyId) {
+        // Check if tenant is already associated with this property
+        const { data: existingLease, error: leaseCheckError } = await supabase
+          .from('leases')
+          .select('id')
+          .eq('tenant_id', data.userId)
+          .eq('property_id', propertyId)
+          .eq('status', 'active')
+          .maybeSingle();
+        
+        if (existingLease) {
+          throw new Error('Ce locataire est déjà associé à cette propriété');
+        }
+        
+        // Create a new lease record (or relationship)
+        const { error: leaseError } = await supabase
+          .from('leases')
+          .insert({
+            tenant_id: data.userId,
+            property_id: propertyId,
+            start_date: new Date().toISOString().split('T')[0],
+            status: 'active',
+            // Set default values for required fields
+            end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+            monthly_rent: 0,
+            deposit_amount: 0
+          });
+        
+        if (leaseError) {
+          console.error('Error creating lease:', leaseError);
+          throw new Error('Impossible d\'associer le locataire à la propriété');
+        }
+      }
+      
+      // Notify success
       toast({
-        title: "Erreur",
-        description: "Impossible de lire le code QR. Veuillez réessayer.",
+        title: "Locataire vérifié",
+        description: `${profile.first_name} ${profile.last_name} a été identifié avec succès.`,
+      });
+      
+      // Call the callback function with tenant info
+      onTenantFound({
+        userId: data.userId,
+        firstName: profile.first_name,
+        lastName: profile.last_name
+      });
+      
+    } catch (error: any) {
+      console.error('QR scan error:', error);
+      toast({
+        title: "Erreur de scanning",
+        description: error.message || "Une erreur s'est produite lors du scanning du code QR",
         variant: "destructive"
       });
+      setScanning(true);
+    } finally {
+      setProcessing(false);
     }
   };
 
   const handleError = (error: any) => {
     console.error('QR scanner error:', error);
     toast({
-      title: "Erreur de numérisation",
-      description: "Une erreur s'est produite lors de la numérisation. Veuillez vérifier les autorisations de la caméra.",
+      title: "Erreur de caméra",
+      description: "Impossible d'accéder à la caméra. Veuillez vérifier les permissions.",
       variant: "destructive"
     });
   };
 
-  const verifyAndAssignTenant = async () => {
-    if (!tenantData || !tenantData.userId || !propertyId) return;
-    
-    setIsVerifying(true);
-    try {
-      // Check if the user exists and has completed KYC
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', tenantData.userId)
-        .single();
-        
-      if (profileError || !profile) {
-        toast({
-          title: "Utilisateur non trouvé",
-          description: "Impossible de trouver l'utilisateur associé à ce code QR.",
-          variant: "destructive"
-        });
-        setIsVerifying(false);
-        return;
-      }
-      
-      // Check KYC status
-      const { data: kycData, error: kycError } = await supabase
-        .from('kyc_verifications')
-        .select('status')
-        .eq('user_id', tenantData.userId)
-        .single();
-        
-      if (kycError || !kycData || kycData.status !== 'approved') {
-        toast({
-          title: "KYC non vérifié",
-          description: "Cet utilisateur n'a pas complété la vérification KYC.",
-          variant: "destructive"
-        });
-        setIsVerifying(false);
-        return;
-      }
-      
-      // Proceed with tenant assignment
-      onTenantFound(tenantData.userId);
-      
-      toast({
-        title: "Locataire vérifié",
-        description: "Le locataire a été vérifié avec succès et peut maintenant être assigné à la propriété.",
-      });
-      
-    } catch (error) {
-      console.error('Error verifying tenant:', error);
-      toast({
-        title: "Erreur de vérification",
-        description: "Une erreur s'est produite lors de la vérification du locataire.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsVerifying(false);
-    }
-  };
-
-  const resetScanner = () => {
-    setTenantData(null);
-    setScanning(false);
+  const restartScan = () => {
+    setScanning(true);
+    setProcessing(false);
   };
 
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Scanner le Code QR du Locataire</CardTitle>
+        <CardTitle>Scanner un Code QR Locataire</CardTitle>
         <CardDescription>
-          Scannez le code QR du locataire pour l'ajouter à cette propriété.
+          Scannez le code QR d'un locataire pour vérifier son identité et l'ajouter à une propriété.
         </CardDescription>
       </CardHeader>
       <CardContent>
         {scanning ? (
-          <div className="h-[300px] overflow-hidden rounded-lg">
+          <div className="relative rounded-lg overflow-hidden">
             <QrReader
               constraints={{ facingMode: 'environment' }}
               onResult={handleScan}
-              onError={handleError}
-              containerStyle={{ height: '100%' }}
-              videoStyle={{ height: '100%', objectFit: 'cover' }}
+              containerStyle={{ height: '300px' }}
+              videoStyle={{ height: '300px', objectFit: 'cover' }}
+              scanDelay={500}
             />
           </div>
-        ) : tenantData ? (
-          <div className="p-4 border rounded-lg space-y-4">
-            <div className="flex items-center gap-3 text-green-600">
-              <UserCheck size={24} />
-              <span className="font-medium">Code QR de locataire détecté</span>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              ID Utilisateur: {tenantData.userId}
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Timestamp: {new Date(tenantData.timestamp).toLocaleString()}
-            </p>
-          </div>
         ) : (
-          <div className="h-[300px] bg-muted/30 rounded-lg flex flex-col items-center justify-center">
-            <UserX size={48} className="text-muted-foreground mb-4" />
-            <p className="text-muted-foreground">Cliquez sur "Scanner" pour commencer</p>
+          <div className="h-[300px] bg-muted/20 rounded-lg flex items-center justify-center">
+            {processing ? (
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2" />
+                <p>Vérification en cours...</p>
+              </div>
+            ) : (
+              <p>Scanner terminé</p>
+            )}
           </div>
         )}
       </CardContent>
-      <CardFooter className="flex justify-center gap-4">
-        {!scanning && !tenantData ? (
-          <Button onClick={() => setScanning(true)}>
-            Scanner un code QR
+      <CardFooter className="flex justify-center">
+        {!scanning && (
+          <Button onClick={restartScan} disabled={processing}>
+            Scanner à nouveau
           </Button>
-        ) : scanning ? (
-          <Button variant="outline" onClick={() => setScanning(false)}>
-            Annuler le scan
-          </Button>
-        ) : tenantData ? (
-          <>
-            <Button variant="outline" onClick={resetScanner}>
-              Scanner un autre code
-            </Button>
-            <Button 
-              onClick={verifyAndAssignTenant}
-              disabled={isVerifying}
-            >
-              {isVerifying ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Vérification...
-                </>
-              ) : (
-                "Vérifier et assigner"
-              )}
-            </Button>
-          </>
-        ) : null}
+        )}
       </CardFooter>
     </Card>
   );
