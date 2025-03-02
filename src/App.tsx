@@ -21,6 +21,7 @@ import AddProperty from './pages/AddProperty';
 import PropertyManagement from './pages/PropertyManagement';
 import EditProperty from './pages/EditProperty';
 import NotFound from './pages/NotFound';
+import AddTenant from './pages/AddTenant';
 
 function App() {
   return (
@@ -47,6 +48,7 @@ function App() {
               <Route path="/add-property" element={<AddProperty />} />
               <Route path="/property-management" element={<PropertyManagement />} />
               <Route path="/property/edit/:id" element={<EditProperty />} />
+              <Route path="/property/:propertyId/add-tenant" element={<AddTenant />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />
