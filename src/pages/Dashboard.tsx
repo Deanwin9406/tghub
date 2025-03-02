@@ -222,8 +222,12 @@ const Dashboard = () => {
           content: msg.content || 'No content',
           created_at: msg.created_at || new Date().toISOString(),
           sender: {
-            first_name: senderIsError ? 'Unknown' : (sender && typeof sender === 'object' && 'first_name' in sender ? sender.first_name || 'Unknown' : 'Unknown'),
-            last_name: senderIsError ? 'User' : (sender && typeof sender === 'object' && 'last_name' in sender ? sender.last_name || '' : '')
+            first_name: senderIsError ? 'Unknown' : 
+              (sender && typeof sender === 'object' && 'first_name' in sender) ? 
+                (sender?.first_name ?? 'Unknown') : 'Unknown',
+            last_name: senderIsError ? 'User' : 
+              (sender && typeof sender === 'object' && 'last_name' in sender) ? 
+                (sender?.last_name ?? '') : ''
           }
         };
       });

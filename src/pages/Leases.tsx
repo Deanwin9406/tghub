@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -56,9 +55,12 @@ const Leases = () => {
     if (lease.tenant) {
       // Check if tenant is an error object (has 'error' property)
       const isTenantError = typeof lease.tenant === 'object' && 'error' in lease.tenant;
-      if (!isTenantError) {
-        const firstName = typeof lease.tenant === 'object' && 'first_name' in lease.tenant ? lease.tenant.first_name || '' : '';
-        const lastName = typeof lease.tenant === 'object' && 'last_name' in lease.tenant ? lease.tenant.last_name || '' : '';
+      if (!isTenantError && lease.tenant !== null) {
+        // Use proper null checking with optional chaining to prevent errors
+        const firstName = typeof lease.tenant === 'object' && 'first_name' in lease.tenant ? 
+          lease.tenant?.first_name ?? '' : '';
+        const lastName = typeof lease.tenant === 'object' && 'last_name' in lease.tenant ? 
+          lease.tenant?.last_name ?? '' : '';
         tenantName = `${firstName} ${lastName}`.trim();
       }
     }
