@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -24,6 +25,8 @@ import { useFavorites } from '@/contexts/FavoritesContext';
 import FeaturedProperties from '@/components/FeaturedProperties';
 import mockProperties from '../data/mockProperties';
 import { cn } from '@/lib/utils';
+import { formatDistanceToNow } from 'date-fns';
+import { fr } from 'date-fns/locale';
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();

@@ -8,7 +8,7 @@ import { useToast } from '@/hooks/use-toast';
 // Define the shape of the context
 interface FavoritesContextType {
   favorites: PropertyType[];
-  loading: boolean;
+  isLoading: boolean;
   isFavorite: (propertyId: string) => boolean;
   addFavorite: (property: PropertyType) => void;
   removeFavorite: (propertyId: string) => void;
@@ -17,7 +17,7 @@ interface FavoritesContextType {
 // Create the context with default values
 const FavoritesContext = createContext<FavoritesContextType>({
   favorites: [],
-  loading: true,
+  isLoading: true,
   isFavorite: () => false,
   addFavorite: () => {},
   removeFavorite: () => {}
@@ -26,14 +26,14 @@ const FavoritesContext = createContext<FavoritesContextType>({
 // Create a provider component
 export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [favorites, setFavorites] = useState<PropertyType[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const { user } = useAuth();
   const { toast } = useToast();
 
   // Fetch favorites from local storage or database
   useEffect(() => {
     const fetchFavorites = async () => {
-      setLoading(true);
+      setIsLoading(true);
       
       if (user) {
         try {
@@ -84,7 +84,7 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
         }
       }
       
-      setLoading(false);
+      setIsLoading(false);
     };
     
     fetchFavorites();
@@ -92,10 +92,10 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   
   // Save favorites to localStorage for non-authenticated users
   useEffect(() => {
-    if (!user && !loading) {
+    if (!user && !isLoading) {
       localStorage.setItem('favorites', JSON.stringify(favorites));
     }
-  }, [favorites, user, loading]);
+  }, [favorites, user, isLoading]);
   
   // Check if a property is in favorites
   const isFavorite = (propertyId: string): boolean => {
@@ -187,7 +187,7 @@ export const FavoritesProvider: React.FC<{ children: React.ReactNode }> = ({ chi
   return (
     <FavoritesContext.Provider value={{ 
       favorites, 
-      loading, 
+      isLoading, 
       isFavorite, 
       addFavorite, 
       removeFavorite 
