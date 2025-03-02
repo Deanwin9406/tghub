@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User } from '@supabase/supabase-js';
@@ -141,6 +140,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
+      
+      // After successful login, we'll fetch the user's roles
+      if (!error) {
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user) {
+          const { data: userRoles } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', userData.user.id);
+          
+          if (userRoles && userRoles.length > 0) {
+            const roles = userRoles.map(r => r.role);
+            
+            // Set the right redirect URL based on user role
+            let redirectUrl = '/dashboard';
+            
+            if (roles.includes('vendor')) {
+              redirectUrl = '/vendor-dashboard';
+            } else if (roles.includes('agent')) {
+              redirectUrl = '/agent-dashboard';
+            } else if (roles.includes('manager')) {
+              redirectUrl = '/property-management';
+            }
+            
+            // Store redirect URL in local storage to be used after auth state change
+            localStorage.setItem('authRedirectUrl', redirectUrl);
+          }
+        }
+      }
+      
       return { error };
     } catch (error) {
       return { error };

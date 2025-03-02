@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import Layout from '@/components/Layout';
-import { useFavorites } from '@/contexts/FavoritesContext';
+import { useFavorites, PropertyType } from '@/contexts/FavoritesContext';
 import PropertyCard from '@/components/PropertyCard';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
@@ -17,26 +17,6 @@ import {
 } from "@/components/ui/select";
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-
-// Define a complete PropertyType
-interface PropertyType {
-  id: string;
-  title: string;
-  address: string;
-  city: string;
-  price: number;
-  property_type: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  main_image_url: string | null;
-  status: string;
-  description: string;
-  square_footage: number;
-  year_built: number;
-  amenities: string[];
-  image_urls: string[];
-  availability_date: string;
-}
 
 const Favorites = () => {
   const { session } = useAuth();
@@ -94,21 +74,21 @@ const Favorites = () => {
           <div>
             <h1 className="text-3xl font-bold flex items-center">
               <Heart className="h-7 w-7 mr-2 text-primary" />
-              My Favorites
+              Mes Favoris
             </h1>
             <p className="text-muted-foreground mt-1">
-              You have {favorites.length} saved properties
+              Vous avez {favorites.length} propriétés enregistrées
             </p>
           </div>
           <div className="flex space-x-2 mt-4 md:mt-0">
             <Button variant="outline" onClick={toggleFilter}>
               <Filter className="h-4 w-4 mr-2" />
-              Filters
+              Filtres
             </Button>
             {favorites.length > 0 && (
               <Button variant="outline" onClick={clearFavorites}>
                 <X className="h-4 w-4 mr-2" />
-                Clear All
+                Effacer Tout
               </Button>
             )}
           </div>
@@ -123,36 +103,36 @@ const Favorites = () => {
           >
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <Label htmlFor="sort">Sort By</Label>
+                <Label htmlFor="sort">Trier Par</Label>
                 <Select value={sortOrder} onValueChange={setSortOrder}>
                   <SelectTrigger id="sort">
-                    <SelectValue placeholder="Sort Order" />
+                    <SelectValue placeholder="Ordre de tri" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="default">Default</SelectItem>
-                    <SelectItem value="price-asc">Price: Low to High</SelectItem>
-                    <SelectItem value="price-desc">Price: High to Low</SelectItem>
+                    <SelectItem value="default">Par défaut</SelectItem>
+                    <SelectItem value="price-asc">Prix: Croissant</SelectItem>
+                    <SelectItem value="price-desc">Prix: Décroissant</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="property-type">Property Type</Label>
+                <Label htmlFor="property-type">Type de Propriété</Label>
                 <Select value={propertyTypeFilter} onValueChange={setPropertyTypeFilter}>
                   <SelectTrigger id="property-type">
-                    <SelectValue placeholder="Property Type" />
+                    <SelectValue placeholder="Type de propriété" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Types</SelectItem>
-                    <SelectItem value="Apartment">Apartment</SelectItem>
-                    <SelectItem value="House">House</SelectItem>
-                    <SelectItem value="Villa">Villa</SelectItem>
-                    <SelectItem value="Land">Land</SelectItem>
-                    <SelectItem value="Commercial">Commercial</SelectItem>
+                    <SelectItem value="all">Tous les types</SelectItem>
+                    <SelectItem value="apartment">Appartement</SelectItem>
+                    <SelectItem value="house">Maison</SelectItem>
+                    <SelectItem value="villa">Villa</SelectItem>
+                    <SelectItem value="land">Terrain</SelectItem>
+                    <SelectItem value="commercial">Commercial</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Price Range</Label>
+                <Label>Fourchette de Prix</Label>
                 <div className="flex items-center space-x-2">
                   <Input
                     type="number"
@@ -176,9 +156,9 @@ const Favorites = () => {
         {filteredProperties.length === 0 ? (
           <div className="text-center py-16 border rounded-lg">
             <Heart className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-            <h2 className="text-2xl font-medium mb-2">No favorites yet</h2>
-            <p className="text-muted-foreground mb-8">Start saving properties to see them here</p>
-            <Button onClick={() => navigate('/')}>Browse Properties</Button>
+            <h2 className="text-2xl font-medium mb-2">Pas encore de favoris</h2>
+            <p className="text-muted-foreground mb-8">Commencez à enregistrer des propriétés pour les voir ici</p>
+            <Button onClick={() => navigate('/')}>Parcourir les Propriétés</Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -187,7 +167,7 @@ const Favorites = () => {
                 key={property.id}
                 property={property}
                 onRemoveFromFavorites={() => removeFromFavorites(property.id)}
-                showRemoveButton
+                showRemoveButton={true}
               />
             ))}
           </div>

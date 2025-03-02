@@ -1,40 +1,60 @@
 
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 type AuthDialogProps = {
-  children: React.ReactNode;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 };
 
-const AuthDialog = ({ children }: AuthDialogProps) => {
-  const { signIn, signUp, resetPassword, session } = useAuth();
+const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
+  const { signIn, signUp, resetPassword, session, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [role, setRole] = useState('tenant');
+  const [userRole, setUserRole] = useState('tenant');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showResetForm, setShowResetForm] = useState(false);
-  const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  
+  useEffect(() => {
+    // Check URL for reset parameter
+    const params = new URLSearchParams(location.search);
+    if (params.get('reset') === 'true') {
+      setShowResetForm(true);
+    }
+    
+    // Close dialog if authenticated
+    if (session && !isLoading) {
+      onOpenChange(false);
+      navigate('/dashboard');
+    }
+  }, [session, isLoading, navigate, location, onOpenChange]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,10 +71,10 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
         });
       } else {
         toast({
-          title: 'Bienvenue !',
-          description: 'Vous êtes connecté avec succès.',
+          title: 'Bienvenue!',
+          description: 'Vous vous êtes connecté avec succès.',
         });
-        setOpen(false);
+        onOpenChange(false);
         navigate('/dashboard');
       }
     } catch (error: any) {
@@ -76,32 +96,31 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
       if (!firstName || !lastName) {
         toast({
           title: 'Informations manquantes',
-          description: 'Veuillez fournir vos nom et prénom',
+          description: 'Veuillez fournir votre prénom et nom',
           variant: 'destructive',
         });
         setIsSubmitting(false);
         return;
       }
       
-      const { error } = await signUp(email, password, firstName, lastName, role);
+      const { error } = await signUp(email, password, firstName, lastName, userRole);
       
       if (error) {
         toast({
-          title: 'Échec de l\'inscription',
+          title: 'Échec d\'inscription',
           description: error.message,
           variant: 'destructive',
         });
       } else {
         toast({
           title: 'Compte créé',
-          description: 'Veuillez compléter la vérification KYC pour activer votre compte.',
+          description: 'Veuillez vérifier votre email pour confirmation.',
         });
-        setOpen(false);
-        navigate('/kyc-verification');
+        setActiveTab('login');
       }
     } catch (error: any) {
       toast({
-        title: 'Échec de l\'inscription',
+        title: 'Échec d\'inscription',
         description: error.message || 'Une erreur inattendue est survenue',
         variant: 'destructive',
       });
@@ -140,18 +159,27 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
       setIsSubmitting(false);
     }
   };
-  
+
+  if (isLoading) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-center">Chargement...</DialogTitle>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children}
-      </DialogTrigger>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-center">
             {showResetForm ? 'Réinitialiser le mot de passe' : 'Bienvenue sur TogoProp'}
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-center">
             {showResetForm 
               ? 'Entrez votre email pour recevoir un lien de réinitialisation' 
               : 'La première plateforme de gestion immobilière pour les utilisateurs togolais'}
@@ -172,13 +200,14 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
               />
             </div>
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? 'Traitement...' : 'Envoyer le lien'}
+              {isSubmitting ? 'Traitement...' : 'Envoyer le lien de réinitialisation'}
             </Button>
             <div className="text-center">
               <Button 
                 variant="link" 
                 onClick={() => setShowResetForm(false)}
                 className="text-sm"
+                type="button"
               >
                 Retour à la connexion
               </Button>
@@ -213,7 +242,7 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
                       onClick={() => setShowResetForm(true)}
                       type="button"
                     >
-                      Mot de passe oublié ?
+                      Mot de passe oublié?
                     </Button>
                   </div>
                   <Input 
@@ -267,6 +296,24 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="userRole">Rôle</Label>
+                  <Select 
+                    value={userRole} 
+                    onValueChange={setUserRole}
+                  >
+                    <SelectTrigger id="userRole">
+                      <SelectValue placeholder="Sélectionnez un rôle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="tenant">Locataire</SelectItem>
+                      <SelectItem value="landlord">Propriétaire</SelectItem>
+                      <SelectItem value="agent">Agent immobilier</SelectItem>
+                      <SelectItem value="manager">Gestionnaire de propriété</SelectItem>
+                      <SelectItem value="vendor">Prestataire de service</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="password">Mot de passe</Label>
                   <Input 
                     id="password" 
@@ -277,27 +324,6 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Type de compte</Label>
-                  <RadioGroup value={role} onValueChange={setRole} className="flex flex-col space-y-1">
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="tenant" id="tenant" />
-                      <Label htmlFor="tenant" className="cursor-pointer">Locataire</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="landlord" id="landlord" />
-                      <Label htmlFor="landlord" className="cursor-pointer">Propriétaire</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="agent" id="agent" />
-                      <Label htmlFor="agent" className="cursor-pointer">Agent immobilier</Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <RadioGroupItem value="manager" id="manager" />
-                      <Label htmlFor="manager" className="cursor-pointer">Gestionnaire immobilier</Label>
-                    </div>
-                  </RadioGroup>
-                </div>
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? 'Création du compte...' : 'Créer un compte'}
                 </Button>
@@ -306,7 +332,7 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
           </Tabs>
         )}
         
-        <div className="text-center text-sm text-muted-foreground mt-4">
+        <DialogFooter className="text-center text-sm text-muted-foreground">
           En continuant, vous acceptez les{" "}
           <a href="/terms" className="underline underline-offset-4 hover:text-primary">
             Conditions d'utilisation
@@ -315,7 +341,7 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
           <a href="/privacy" className="underline underline-offset-4 hover:text-primary">
             Politique de confidentialité
           </a>
-        </div>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );

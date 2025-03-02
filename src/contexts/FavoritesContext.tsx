@@ -1,101 +1,194 @@
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from './AuthContext';
 
-type FavoriteContextType = {
-  favorites: string[];
-  addFavorite: (propertyId: string) => void;
-  removeFromFavorite: (propertyId: string) => void;
-  isFavorite: (propertyId: string) => boolean;
+// Define a complete PropertyType
+export interface PropertyType {
+  id: string;
+  title: string;
+  address: string;
+  city: string;
+  price: number;
+  property_type: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  main_image_url: string | null;
+  status: string;
+  description: string;
+  square_footage: number;
+  year_built: number;
+  amenities: string[];
+  image_urls: string[];
+  availability_date: string;
+}
+
+export type FavoriteContextType = {
+  favorites: PropertyType[];
+  isFavorite: (id: string) => boolean;
+  addToFavorites: (property: PropertyType) => void;
+  removeFromFavorites: (id: string) => void;
+  clearFavorites: () => void;
+  toggleFavorite: (property: PropertyType) => void;
 };
 
-const FavoritesContext = createContext<FavoriteContextType | undefined>(undefined);
+const FavoritesContext = createContext<FavoriteContextType | null>(null);
 
 export const FavoritesProvider = ({ children }: { children: React.ReactNode }) => {
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const { user } = useAuth();
+  const [favorites, setFavorites] = useState<PropertyType[]>([]);
+  const { toast } = useToast();
+  const { session } = useAuth();
 
   useEffect(() => {
-    const fetchFavorites = async () => {
-      if (user) {
-        const { data, error } = await supabase
-          .from('user_favorites')
-          .select('property_id')
-          .eq('user_id', user.id);
+    if (session?.user?.id) {
+      fetchFavorites();
+    } else {
+      // When logged out, clear favorites
+      setFavorites([]);
+    }
+  }, [session?.user?.id]);
 
-        if (error) {
-          console.error('Error fetching favorites:', error);
-        } else {
-          const propertyIds = data.map(item => item.property_id);
-          setFavorites(propertyIds);
-        }
-      } else {
-        setFavorites([]);
-      }
-    };
+  const fetchFavorites = async () => {
+    if (!session?.user?.id) return;
 
-    fetchFavorites();
-  }, [user]);
+    try {
+      const { data, error } = await supabase
+        .from('user_favorites')
+        .select(`
+          property_id,
+          properties(*)
+        `)
+        .eq('user_id', session.user.id);
 
-  const addFavorite = async (propertyId: string) => {
-    if (!user) {
-      console.error('User not authenticated');
+      if (error) throw error;
+
+      // Transform the data to get just the properties
+      const favoriteProperties = data.map(item => item.properties) as PropertyType[];
+      setFavorites(favoriteProperties);
+    } catch (error) {
+      console.error('Error fetching favorites:', error);
+    }
+  };
+
+  const isFavorite = (id: string): boolean => {
+    return favorites.some(property => property.id === id);
+  };
+
+  const addToFavorites = async (property: PropertyType) => {
+    if (!session?.user?.id) {
+      toast({
+        title: "Connexion requise",
+        description: "Veuillez vous connecter pour ajouter aux favoris",
+        variant: "destructive",
+      });
       return;
     }
 
-    setFavorites(prevFavorites => {
-      if (prevFavorites.includes(propertyId)) {
-        return prevFavorites;
-      }
-      return [...prevFavorites, propertyId];
-    });
+    try {
+      // Add to database if logged in
+      const { error } = await supabase
+        .from('user_favorites')
+        .insert({
+          user_id: session.user.id,
+          property_id: property.id
+        });
 
-    const { error } = await supabase
-      .from('user_favorites')
-      .insert([{ user_id: user.id, property_id: propertyId }]);
+      if (error) throw error;
 
-    if (error) {
-      console.error('Error adding favorite:', error);
-      // Optimistically remove the favorite if the insertion fails
-      setFavorites(prevFavorites => prevFavorites.filter(id => id !== propertyId));
+      // Update local state
+      setFavorites([...favorites, property]);
+      
+      toast({
+        title: "Ajouté aux favoris",
+        description: `${property.title} a été ajouté à vos favoris`,
+      });
+    } catch (error: any) {
+      console.error('Error adding to favorites:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de l'ajout aux favoris",
+        variant: "destructive",
+      });
     }
   };
 
-  const removeFromFavorite = async (propertyId: string) => {
-    if (!user) {
-      console.error('User not authenticated');
-      return;
-    }
+  const removeFromFavorites = async (id: string) => {
+    if (!session?.user?.id) return;
 
-    setFavorites(prevFavorites => prevFavorites.filter(id => id !== propertyId));
+    try {
+      // Remove from database if logged in
+      const { error } = await supabase
+        .from('user_favorites')
+        .delete()
+        .eq('user_id', session.user.id)
+        .eq('property_id', id);
 
-    const { error } = await supabase
-      .from('user_favorites')
-      .delete()
-      .eq('user_id', user.id)
-      .eq('property_id', propertyId);
+      if (error) throw error;
 
-    if (error) {
-      console.error('Error removing favorite:', error);
-      // Optimistically add the favorite back if deletion fails
-      setFavorites(prevFavorites => [...prevFavorites, propertyId]);
+      // Update local state
+      setFavorites(favorites.filter(property => property.id !== id));
+      
+      toast({
+        title: "Retiré des favoris",
+        description: "La propriété a été retirée de vos favoris",
+      });
+    } catch (error: any) {
+      console.error('Error removing from favorites:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la suppression des favoris",
+        variant: "destructive",
+      });
     }
   };
 
-  const isFavorite = (propertyId: string) => {
-    return favorites.includes(propertyId);
+  const clearFavorites = async () => {
+    if (!session?.user?.id) return;
+
+    try {
+      // Remove all user favorites from database
+      const { error } = await supabase
+        .from('user_favorites')
+        .delete()
+        .eq('user_id', session.user.id);
+
+      if (error) throw error;
+
+      // Clear local state
+      setFavorites([]);
+      
+      toast({
+        title: "Favoris effacés",
+        description: "Tous vos favoris ont été supprimés",
+      });
+    } catch (error: any) {
+      console.error('Error clearing favorites:', error);
+      toast({
+        title: "Erreur",
+        description: error.message || "Erreur lors de la suppression des favoris",
+        variant: "destructive",
+      });
+    }
   };
 
-  const value: FavoriteContextType = {
-    favorites,
-    addFavorite,
-    removeFromFavorite,
-    isFavorite,
+  const toggleFavorite = (property: PropertyType) => {
+    if (isFavorite(property.id)) {
+      removeFromFavorites(property.id);
+    } else {
+      addToFavorites(property);
+    }
   };
 
   return (
-    <FavoritesContext.Provider value={value}>
+    <FavoritesContext.Provider value={{ 
+      favorites, 
+      isFavorite, 
+      addToFavorites, 
+      removeFromFavorites, 
+      clearFavorites,
+      toggleFavorite 
+    }}>
       {children}
     </FavoritesContext.Provider>
   );

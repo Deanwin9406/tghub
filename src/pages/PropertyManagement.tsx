@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -30,6 +29,35 @@ interface PropertyType {
   availability_date: string;
 }
 
+type RoleCheckResult = {
+  user_id: string;
+  role: 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager';
+};
+
+interface ExtendedPropertyType {
+  address: string;
+  bathrooms: number;
+  bedrooms: number;
+  city: string;
+  country: string;
+  created_at: string;
+  description: string;
+  featured: boolean;
+  id: string;
+  main_image_url: string;
+  owner_id: string;
+  price: number;
+  property_type: string;
+  status: string;
+  title: string;
+  updated_at: string;
+  square_footage: number;
+  year_built: number;
+  amenities: string[];
+  image_urls: string[];
+  availability_date: string;
+}
+
 const PropertyManagement = () => {
   const navigate = useNavigate();
   const { user, session } = useAuth();
@@ -43,58 +71,48 @@ const PropertyManagement = () => {
     }
   }, [user, session]);
 
+  const checkIfHasRole = async (role: string): Promise<RoleCheckResult> => {
+    const { data, error } = await supabase.rpc('has_role', {
+      user_id: session?.user.id || '',
+      role: role
+    });
+
+    if (error) {
+      console.error('Error checking role:', error);
+      return { user_id: session?.user.id || '', role: 'tenant' };
+    }
+    
+    return { user_id: session?.user.id || '', role: role as 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' };
+  };
+
   const fetchProperties = async () => {
     setLoading(true);
+    if (!session) return;
+
     try {
-      // Check if the user has the 'manager' role
-      const { data: hasRoleResponse, error: hasRoleError } = await supabase.rpc('has_role', {
-        role: 'manager'
-      });
-
-      if (hasRoleError) {
-        throw hasRoleError;
-      }
-
-      let query = supabase
+      const { data, error } = await supabase
         .from('properties')
-        .select('*');
-
-      // If the user doesn't have the 'manager' role, only fetch their own properties
-      if (!hasRoleResponse) {
-        query = query.eq('owner_id', user?.id);
-      }
-
-      const { data, error } = await query;
+        .select('*')
+        .eq('owner_id', session.user.id);
 
       if (error) throw error;
-
-      // Create sample data for missing fields to match PropertyType
-      const propertiesData: PropertyType[] = data.map(item => ({
-        id: item.id,
-        title: item.title,
-        address: item.address,
-        city: item.city,
-        price: item.price,
-        property_type: item.property_type,
-        bedrooms: item.bedrooms,
-        bathrooms: item.bathrooms,
-        main_image_url: item.main_image_url,
-        status: item.status,
-        description: item.description || 'No description available',
-        square_footage: item.square_footage || 0,
-        year_built: item.year_built || 2000,
-        amenities: item.amenities || [],
-        image_urls: item.image_urls || [],
-        availability_date: item.availability_date || new Date().toISOString(),
-      }));
-
-      setProperties(propertiesData);
+      
+      const propertyData = data.map(property => ({
+        ...property,
+        square_footage: property.square_footage || property.size_sqm || 0,
+        year_built: property.year_built || 0,
+        amenities: property.amenities || [],
+        image_urls: property.image_urls || [],
+        availability_date: property.availability_date || new Date().toISOString()
+      })) as ExtendedPropertyType[];
+      
+      setProperties(propertyData);
     } catch (error) {
       console.error('Error fetching properties:', error);
       toast({
+        title: 'Erreur',
+        description: 'Impossible de charger vos propriétés',
         variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to fetch properties. Please try again.',
       });
     } finally {
       setLoading(false);

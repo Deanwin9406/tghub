@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -30,6 +29,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const navigate = useNavigate();
   const { comparisonList, clearComparison } = useComparison();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [authDialogOpen, setAuthDialogOpen] = useState(false);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -39,11 +39,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     setIsMenuOpen(false);
   };
 
+  const openAuthDialog = () => {
+    setAuthDialogOpen(true);
+  };
+
   const navItems = [
-    { name: 'Search', path: '/search' },
+    { name: 'Recherche', path: '/search' },
     { name: 'Agents', path: '/agents' },
-    { name: 'Communities', path: '/communities' },
-    { name: 'Vendors', path: '/vendors' },
+    { name: 'Communautés', path: '/communities' },
+    { name: 'Prestataires', path: '/vendors' },
   ];
 
   return (
@@ -76,17 +80,17 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               <>
                 <li>
                   <Link to="/property-management" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
-                    <span className="ml-3">My Properties</span>
+                    <span className="ml-3">Mes Propriétés</span>
                   </Link>
                 </li>
                 <li>
                   <Link to="/dashboard" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
-                    <span className="ml-3">Dashboard</span>
+                    <span className="ml-3">Tableau de bord</span>
                   </Link>
                 </li>
                 <li>
                   <Link to="/favorites" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
-                    <span className="ml-3">Favorites</span>
+                    <span className="ml-3">Favoris</span>
                   </Link>
                 </li>
               </>
@@ -124,19 +128,19 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                       to="/property-management"
                       className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                     >
-                      My Properties
+                      Mes Propriétés
                     </Link>
                     <Link
                       to="/dashboard"
                       className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                     >
-                      Dashboard
+                      Tableau de bord
                     </Link>
                     <Link
                       to="/favorites"
                       className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                     >
-                      Favorites
+                      Favoris
                     </Link>
                   </>
                 )}
@@ -148,11 +152,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline">
-                      Compare <Badge className="ml-2">{comparisonList.length}</Badge>
+                      Comparer <Badge className="ml-2">{comparisonList.length}</Badge>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-72" align="end">
-                    <DropdownMenuLabel>Comparison List</DropdownMenuLabel>
+                    <DropdownMenuLabel>Liste de comparaison</DropdownMenuLabel>
                     <ScrollArea className="h-64">
                       {comparisonList.map((property) => (
                         <DropdownMenuItem key={property.id} onClick={() => navigate(`/property/${property.id}`)}>
@@ -162,7 +166,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     </ScrollArea>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={clearComparison}>
-                      Clear Comparison
+                      Effacer la comparaison
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -178,29 +182,32 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
-                    <DropdownMenuLabel>My Account</DropdownMenuLabel>
+                    <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
                     <DropdownMenuItem onClick={() => navigate('/profile')}>
                       <User className="h-4 w-4 mr-2" />
-                      Profile
+                      Profil
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/settings')}>
                       <Settings className="h-4 w-4 mr-2" />
-                      Settings
+                      Paramètres
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={signOut}>
                       <LogOut className="h-4 w-4 mr-2" />
-                      Log out
+                      Se déconnecter
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : (
-                <Button onClick={() => navigate('/auth')}>Sign In</Button>
+                <Button onClick={openAuthDialog}>Connexion</Button>
               )}
             </div>
           </div>
         </div>
       </header>
+
+      {/* Auth Dialog */}
+      <AuthDialog open={authDialogOpen} onOpenChange={setAuthDialogOpen} />
 
       {/* Main Content */}
       <main>

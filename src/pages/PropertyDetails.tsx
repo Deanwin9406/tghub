@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -40,9 +39,7 @@ const fetchProperty = async (id: string) => {
   return data;
 };
 
-// Mock additional data that might be missing in the real database
 const getPropertyDetails = (baseProperty: any) => {
-  // Add any missing fields to match the expected PropertyType
   return {
     ...baseProperty,
     square_footage: baseProperty.square_footage || 1200,
@@ -64,20 +61,57 @@ const PropertyDetails = () => {
   const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
   const { addToComparison } = useComparison();
   const [isFavorite, setIsFavorite] = useState(false);
+  const [property, setProperty] = useState(null);
+  const [isLoading, setLoading] = useState(true);
 
-  const { data: property, isLoading, error } = useQuery({
+  const { data: propertyData, isLoading: propertyLoading, error: propertyError } = useQuery({
     queryKey: ['property', id],
     queryFn: () => fetchProperty(id as string),
     enabled: !!id,
   });
 
-  const propertyWithDetails = property ? getPropertyDetails(property) : null;
-
   useEffect(() => {
-    if (property && favorites) {
-      setIsFavorite(favorites.some((fav) => fav.id === property.id));
+    const fetchPropertyDetails = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('properties')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) throw error;
+
+        if (data) {
+          const enhancedProperty = {
+            ...data,
+            square_footage: data.square_footage || data.size_sqm || 0,
+            year_built: data.year_built || 0,
+            amenities: data.amenities || [],
+            image_urls: data.image_urls || [],
+            availability_date: data.availability_date || new Date().toISOString()
+          };
+          
+          setProperty(enhancedProperty);
+          checkFavoriteStatus(enhancedProperty.id);
+        }
+      } catch (error) {
+        console.error('Error fetching property details:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPropertyDetails();
+  }, [id]);
+
+  const checkFavoriteStatus = (propertyId: string) => {
+    if (favorites.some(fav => fav.id === propertyId)) {
+      setIsFavorite(true);
+    } else {
+      setIsFavorite(false);
     }
-  }, [property, favorites]);
+  };
 
   const handleToggleFavorite = () => {
     if (!session) {
@@ -132,7 +166,7 @@ const PropertyDetails = () => {
     );
   }
 
-  if (error || !propertyWithDetails) {
+  if (propertyLoading || propertyError || !property) {
     return (
       <Layout>
         <div className="container mx-auto py-8">
@@ -161,7 +195,7 @@ const PropertyDetails = () => {
                 autoPlay={true} 
                 interval={5000}
               >
-                {propertyWithDetails.image_urls.map((url, index) => (
+                {property.image_urls.map((url, index) => (
                   <div key={index} className="h-[400px] relative">
                     <img 
                       src={url} 
@@ -174,7 +208,7 @@ const PropertyDetails = () => {
             </div>
 
             <div className="flex flex-wrap items-center justify-between mb-6">
-              <h1 className="text-3xl font-bold">{propertyWithDetails.title}</h1>
+              <h1 className="text-3xl font-bold">{property.title}</h1>
               <div className="flex space-x-2 mt-2 sm:mt-0">
                 <Button 
                   variant="outline" 
@@ -198,7 +232,7 @@ const PropertyDetails = () => {
 
             <div className="flex items-center text-muted-foreground mb-6">
               <MapPin className="h-5 w-5 mr-1" />
-              <span>{propertyWithDetails.address}, {propertyWithDetails.city}</span>
+              <span>{property.address}, {property.city}</span>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
@@ -207,7 +241,7 @@ const PropertyDetails = () => {
                   <BedDouble className="h-5 w-5 mr-2 text-primary" />
                   <div>
                     <p className="text-sm text-muted-foreground">Bedrooms</p>
-                    <p className="font-medium">{propertyWithDetails.bedrooms}</p>
+                    <p className="font-medium">{property.bedrooms}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -216,7 +250,7 @@ const PropertyDetails = () => {
                   <Bath className="h-5 w-5 mr-2 text-primary" />
                   <div>
                     <p className="text-sm text-muted-foreground">Bathrooms</p>
-                    <p className="font-medium">{propertyWithDetails.bathrooms}</p>
+                    <p className="font-medium">{property.bathrooms}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -225,7 +259,7 @@ const PropertyDetails = () => {
                   <Ruler className="h-5 w-5 mr-2 text-primary" />
                   <div>
                     <p className="text-sm text-muted-foreground">Area</p>
-                    <p className="font-medium">{propertyWithDetails.square_footage} m²</p>
+                    <p className="font-medium">{property.square_footage} m²</p>
                   </div>
                 </CardContent>
               </Card>
@@ -234,7 +268,7 @@ const PropertyDetails = () => {
                   <Home className="h-5 w-5 mr-2 text-primary" />
                   <div>
                     <p className="text-sm text-muted-foreground">Year</p>
-                    <p className="font-medium">{propertyWithDetails.year_built}</p>
+                    <p className="font-medium">{property.year_built}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -249,25 +283,25 @@ const PropertyDetails = () => {
               <TabsContent value="description" className="mt-4">
                 <Card>
                   <CardContent className="p-6">
-                    <p>{propertyWithDetails.description}</p>
+                    <p>{property.description}</p>
                     <div className="mt-6">
                       <h3 className="font-semibold mb-2">Property Details</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="flex items-center">
                           <div className="w-4 h-4 rounded-full bg-primary/20 mr-2"></div>
-                          <span>Property Type: {propertyWithDetails.property_type}</span>
+                          <span>Property Type: {property.property_type}</span>
                         </div>
                         <div className="flex items-center">
                           <div className="w-4 h-4 rounded-full bg-primary/20 mr-2"></div>
-                          <span>Status: {propertyWithDetails.status}</span>
+                          <span>Status: {property.status}</span>
                         </div>
                         <div className="flex items-center">
                           <div className="w-4 h-4 rounded-full bg-primary/20 mr-2"></div>
-                          <span>Price: ${propertyWithDetails.price.toLocaleString()}</span>
+                          <span>Price: ${property.price.toLocaleString()}</span>
                         </div>
                         <div className="flex items-center">
                           <div className="w-4 h-4 rounded-full bg-primary/20 mr-2"></div>
-                          <span>Available from: {formatDate(propertyWithDetails.availability_date)}</span>
+                          <span>Available from: {formatDate(property.availability_date)}</span>
                         </div>
                       </div>
                     </div>
@@ -279,7 +313,7 @@ const PropertyDetails = () => {
                   <CardContent className="p-6">
                     <h3 className="font-semibold mb-4">Amenities</h3>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-y-3">
-                      {propertyWithDetails.amenities.map((amenity, index) => (
+                      {property.amenities.map((amenity, index) => (
                         <div key={index} className="flex items-center">
                           <div className="w-4 h-4 rounded-full bg-primary/20 mr-2"></div>
                           <span>{amenity}</span>
@@ -293,10 +327,7 @@ const PropertyDetails = () => {
                 <Card>
                   <CardContent className="p-6">
                     <div className="h-[400px] rounded-lg overflow-hidden">
-                      <PropertyMap 
-                        property={propertyWithDetails} 
-                        properties={[propertyWithDetails]} 
-                      />
+                      <PropertyMap properties={[property]} />
                     </div>
                   </CardContent>
                 </Card>
@@ -309,9 +340,9 @@ const PropertyDetails = () => {
               <CardContent className="p-6">
                 <div className="flex justify-between items-start mb-4">
                   <div>
-                    <p className="text-3xl font-bold">${propertyWithDetails.price.toLocaleString()}</p>
+                    <p className="text-3xl font-bold">${property.price.toLocaleString()}</p>
                     <Badge variant="outline" className="mt-1">
-                      {propertyWithDetails.status}
+                      {property.status}
                     </Badge>
                   </div>
                 </div>
@@ -319,11 +350,11 @@ const PropertyDetails = () => {
                 <div className="space-y-4 mb-6">
                   <div className="flex items-center text-muted-foreground">
                     <Clock className="h-4 w-4 mr-2" />
-                    <span>Listed on {new Date(propertyWithDetails.created_at).toLocaleDateString()}</span>
+                    <span>Listed on {new Date(property.created_at).toLocaleDateString()}</span>
                   </div>
                   <div className="flex items-center text-muted-foreground">
                     <CalendarDays className="h-4 w-4 mr-2" />
-                    <span>Available from {formatDate(propertyWithDetails.availability_date)}</span>
+                    <span>Available from {formatDate(property.availability_date)}</span>
                   </div>
                 </div>
 
@@ -334,10 +365,9 @@ const PropertyDetails = () => {
               </CardContent>
             </Card>
 
-            {/* Property Ownership Info */}
             <PropertyOwnershipInfo
-              propertyId={propertyWithDetails.id}
-              ownerId={propertyWithDetails.owner_id}
+              propertyId={property.id}
+              ownerId={property.owner_id}
             />
           </div>
         </div>
