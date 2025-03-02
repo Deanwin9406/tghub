@@ -46,6 +46,11 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     navigate('/');
   };
 
+  const handleNavigation = (path: string) => {
+    navigate(path);
+    closeMenu(); // Close mobile menu if open
+  };
+
   const navItems = [
     { name: 'Recherche', path: '/search' },
     { name: 'Agents', path: '/agents' },
@@ -70,31 +75,39 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <ul className="space-y-2 font-medium">
             {navItems.map((item) => (
               <li key={item.name}>
-                <Link
-                  to={item.path}
-                  className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group"
-                  onClick={closeMenu}
+                <button
+                  onClick={() => handleNavigation(item.path)}
+                  className="flex w-full items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group text-left"
                 >
                   <span className="ml-3">{item.name}</span>
-                </Link>
+                </button>
               </li>
             ))}
             {session ? (
               <>
                 <li>
-                  <Link to="/property-management" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
+                  <button 
+                    onClick={() => handleNavigation('/property-management')}
+                    className="flex w-full items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group text-left"
+                  >
                     <span className="ml-3">Mes Propriétés</span>
-                  </Link>
+                  </button>
                 </li>
                 <li>
-                  <Link to="/dashboard" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
+                  <button 
+                    onClick={() => handleNavigation('/dashboard')}
+                    className="flex w-full items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group text-left"
+                  >
                     <span className="ml-3">Tableau de bord</span>
-                  </Link>
+                  </button>
                 </li>
                 <li>
-                  <Link to="/favorites" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group" onClick={closeMenu}>
+                  <button 
+                    onClick={() => handleNavigation('/favorites')}
+                    className="flex w-full items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group text-left"
+                  >
                     <span className="ml-3">Favoris</span>
-                  </Link>
+                  </button>
                 </li>
               </>
             ) : null}
@@ -110,41 +123,41 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               <Button variant="ghost" size="icon" className="lg:hidden mr-2" onClick={toggleMenu}>
                 <Menu className="h-6 w-6" />
               </Button>
-              <Link to="/" className="flex items-center">
+              <button onClick={() => navigate('/')} className="flex items-center">
                 <ShoppingBag className="mr-2 h-6 w-6 text-primary" />
                 <span className="text-xl font-bold">TogoPropConnect</span>
-              </Link>
+              </button>
               {/* Desktop Nav Items */}
               <nav className="hidden lg:flex ml-10 space-x-4">
                 {navItems.map((item) => (
-                  <Link
+                  <button
                     key={item.name}
-                    to={item.path}
+                    onClick={() => navigate(item.path)}
                     className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                   >
                     {item.name}
-                  </Link>
+                  </button>
                 ))}
                 {session && (
                   <>
-                    <Link
-                      to="/property-management"
+                    <button
+                      onClick={() => navigate('/property-management')}
                       className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                     >
                       Mes Propriétés
-                    </Link>
-                    <Link
-                      to="/dashboard"
+                    </button>
+                    <button
+                      onClick={() => navigate('/dashboard')}
                       className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                     >
                       Tableau de bord
-                    </Link>
-                    <Link
-                      to="/favorites"
+                    </button>
+                    <button
+                      onClick={() => navigate('/favorites')}
                       className="px-3 py-2 rounded-md text-sm font-medium text-foreground hover:bg-accent hover:text-accent-foreground"
                     >
                       Favoris
-                    </Link>
+                    </button>
                   </>
                 )}
               </nav>
