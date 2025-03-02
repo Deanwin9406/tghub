@@ -8,10 +8,7 @@ export const getCommunities = async (): Promise<Community[]> => {
     const { data: communities, error } = await supabase
       .from("communities")
       .select(`
-        *,
-        community_members!inner (
-          id
-        )
+        *
       `);
 
     if (error) throw error;
@@ -27,7 +24,8 @@ export const getCommunities = async (): Promise<Community[]> => {
         return {
           ...community,
           member_count: count || 0,
-          location: community.location || 'Unknown Location'
+          location: community.location || 'Unknown Location',
+          tags: community.tags || []
         };
       })
     );
@@ -42,16 +40,21 @@ export const getCommunities = async (): Promise<Community[]> => {
 // Get community details
 export const getCommunityDetails = async (communityId: string): Promise<Community> => {
   try {
+    // First, get the community details
     const { data, error } = await supabase
       .from("communities")
-      .select(`
-        *,
-        created_by_profile:profiles!communities_created_by_fkey(*)
-      `)
+      .select(`*`)
       .eq("id", communityId)
       .single();
 
     if (error) throw error;
+
+    // Get the creator profile
+    const { data: creatorProfile, error: creatorError } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", data.created_by)
+      .single();
 
     // Get member count
     const { count } = await supabase
@@ -64,7 +67,12 @@ export const getCommunityDetails = async (communityId: string): Promise<Communit
       member_count: count || 0,
       location: data.location || 'Unknown Location',
       tags: data.tags || [],
-      created_by_profile: data.created_by_profile || null
+      created_by_profile: creatorError ? null : {
+        id: creatorProfile?.id || '',
+        first_name: creatorProfile?.first_name || '',
+        last_name: creatorProfile?.last_name || '',
+        avatar_url: creatorProfile?.avatar_url || null
+      }
     };
   } catch (error) {
     console.error("Error fetching community details:", error);
@@ -75,20 +83,25 @@ export const getCommunityDetails = async (communityId: string): Promise<Communit
 // Get community posts with author info
 export const getCommunityPosts = async (communityId: string): Promise<CommunityPost[]> => {
   try {
+    // Get all posts for the community
     const { data, error } = await supabase
       .from("community_posts")
-      .select(`
-        *,
-        author:profiles!community_posts_user_id_fkey(*)
-      `)
+      .select("*")
       .eq("community_id", communityId)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
-    // Get comments and reactions counts
+    // Get comments and reactions counts, and author info for each post
     const postsWithCounts = await Promise.all(
       data.map(async (post) => {
+        // Get author info
+        const { data: authorData, error: authorError } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", post.user_id)
+          .single();
+
         // Get comments count
         const { count: commentsCount } = await supabase
           .from("community_comments")
@@ -102,14 +115,14 @@ export const getCommunityPosts = async (communityId: string): Promise<CommunityP
           .eq("post_id", post.id);
 
         // Format author info
-        const author = post.author ? {
-          first_name: post.author.first_name || "",
-          last_name: post.author.last_name || "",
-          avatar_url: post.author.avatar_url || ""
-        } : {
+        const author = authorError ? {
           first_name: "Unknown",
           last_name: "User",
-          avatar_url: ""
+          avatar_url: null
+        } : {
+          first_name: authorData.first_name || "Unknown",
+          last_name: authorData.last_name || "User",
+          avatar_url: authorData.avatar_url
         };
 
         return {
@@ -121,7 +134,7 @@ export const getCommunityPosts = async (communityId: string): Promise<CommunityP
       })
     );
 
-    return postsWithCounts as CommunityPost[];
+    return postsWithCounts;
   } catch (error) {
     console.error("Error fetching community posts:", error);
     throw error;
@@ -224,28 +237,32 @@ export const getMarketplaceItems = async (communityId: string): Promise<Marketpl
   try {
     const { data, error } = await supabase
       .from("marketplace_items")
-      .select(`
-        *,
-        seller:profiles!marketplace_items_seller_id_fkey(*)
-      `)
+      .select("*")
       .eq("community_id", communityId)
       .order("created_at", { ascending: false });
 
     if (error) throw error;
 
     // Format the items with seller info
-    const formattedItems = data.map(item => {
-      const sellerInfo = item.seller ? {
-        first_name: item.seller.first_name || "",
-        last_name: item.seller.last_name || "",
-        avatar_url: item.seller.avatar_url || ""
-      } : null;
+    const formattedItems = await Promise.all(data.map(async (item) => {
+      // Get seller profile
+      const { data: sellerData, error: sellerError } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", item.seller_id)
+        .single();
+
+      const sellerInfo = sellerError ? null : {
+        first_name: sellerData?.first_name || "",
+        last_name: sellerData?.last_name || "",
+        avatar_url: sellerData?.avatar_url || null
+      };
 
       return {
         ...item,
         seller: sellerInfo
       } as MarketplaceItem;
-    });
+    }));
 
     return formattedItems;
   } catch (error) {
