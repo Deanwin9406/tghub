@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -13,7 +12,9 @@ import {
   MessageSquare,
   ArrowLeft,
   Info,
-  Check
+  Check,
+  Users,
+  Building
 } from 'lucide-react';
 import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,10 @@ import { PropertyType } from '@/components/PropertyCard';
 import { motion } from 'framer-motion';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import FeaturedProperties from '@/components/FeaturedProperties';
+import { useAuth } from '@/contexts/AuthContext';
+import PropertyOwnershipInfo from '@/components/PropertyOwnershipInfo';
+import AssignManagerModal from '@/components/dashboard/AssignManagerModal';
+import AssignAgentModal from '@/components/dashboard/AssignAgentModal';
 import mockProperties from '../data/mockProperties';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
@@ -34,6 +39,14 @@ const PropertyDetails = () => {
   const [loading, setLoading] = useState(true);
   const [activeImage, setActiveImage] = useState(0);
   const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+  const { user, roles } = useAuth();
+  const [isAssignManagerModalOpen, setIsAssignManagerModalOpen] = useState(false);
+  const [isAssignAgentModalOpen, setIsAssignAgentModalOpen] = useState(false);
+  
+  const isLandlord = roles.includes('landlord');
+  const isTenant = roles.includes('tenant');
+  const isManager = roles.includes('manager');
+  const isAgent = roles.includes('agent');
   
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -104,6 +117,14 @@ const PropertyDetails = () => {
   const formatPrice = (price: number) => {
     return `${price.toLocaleString()} XOF`;
   };
+
+  const handleAssignManager = () => {
+    setIsAssignManagerModalOpen(true);
+  };
+
+  const handleAssignAgent = () => {
+    setIsAssignAgentModalOpen(true);
+  };
   
   return (
     <Layout>
@@ -112,6 +133,29 @@ const PropertyDetails = () => {
           <ArrowLeft size={16} className="mr-2" />
           Retour aux résultats
         </Link>
+        
+        {isLandlord && id && (
+          <div className="flex gap-2 mb-6 p-4 bg-muted/30 rounded-lg border border-border">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleAssignManager}
+              className="flex items-center gap-2"
+            >
+              <Building className="h-4 w-4" />
+              Assign Property Manager
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleAssignAgent}
+              className="flex items-center gap-2"
+            >
+              <Users className="h-4 w-4" />
+              Assign Agent
+            </Button>
+          </div>
+        )}
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10 h-[500px]">
           <div className="md:col-span-2 h-full">
@@ -229,7 +273,11 @@ const PropertyDetails = () => {
             <TabsTrigger value="description">Description</TabsTrigger>
             <TabsTrigger value="details">Détails</TabsTrigger>
             <TabsTrigger value="contact">Contact</TabsTrigger>
+            {(isTenant) && id && (
+              <TabsTrigger value="ownership">Ownership</TabsTrigger>
+            )}
           </TabsList>
+          
           <TabsContent value="description" className="mt-4 space-y-2">
             <p>{property.description}</p>
             <h4 className="font-semibold mt-4">Commodités</h4>
@@ -239,6 +287,7 @@ const PropertyDetails = () => {
               ))}
             </ul>
           </TabsContent>
+          
           <TabsContent value="details" className="mt-4 space-y-2">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -260,6 +309,7 @@ const PropertyDetails = () => {
               </div>
             </div>
           </TabsContent>
+          
           <TabsContent value="contact" className="mt-4 space-y-2">
             <div className="bg-muted/30 rounded-md p-4">
               <h4 className="font-semibold mb-2">Contactez l'agent</h4>
@@ -288,6 +338,12 @@ const PropertyDetails = () => {
               </div>
             </div>
           </TabsContent>
+          
+          {(isTenant) && id && (
+            <TabsContent value="ownership" className="mt-4">
+              <PropertyOwnershipInfo propertyId={id} />
+            </TabsContent>
+          )}
         </Tabs>
         
         <section className="mt-12">
@@ -295,6 +351,21 @@ const PropertyDetails = () => {
           <FeaturedProperties />
         </section>
       </div>
+      
+      {id && (
+        <>
+          <AssignManagerModal 
+            isOpen={isAssignManagerModalOpen} 
+            onClose={() => setIsAssignManagerModalOpen(false)} 
+            propertyId={id} 
+          />
+          <AssignAgentModal 
+            isOpen={isAssignAgentModalOpen} 
+            onClose={() => setIsAssignAgentModalOpen(false)} 
+            propertyId={id} 
+          />
+        </>
+      )}
     </Layout>
   );
 };
