@@ -35,14 +35,38 @@ const PropertyAssignments = () => {
           commission_percentage,
           message,
           created_at,
-          properties(id, title, address, city, main_image_url),
-          profiles!management_requests_requester_id_fkey(first_name, last_name)
+          properties(id, title, address, city, main_image_url)
         `)
         .eq('recipient_id', user.id)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      
+      // Fetch requester profiles separately
+      const requestsWithProfiles = await Promise.all(
+        (data || []).map(async (request) => {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', request.requester_id)
+            .single();
+            
+          if (profileError) {
+            console.error('Error fetching requester profile:', profileError);
+            return {
+              ...request,
+              requester_profile: { first_name: 'Unknown', last_name: 'User' }
+            };
+          }
+          
+          return {
+            ...request,
+            requester_profile: profileData
+          };
+        })
+      );
+      
+      return requestsWithProfiles || [];
     },
     enabled: !!user
   });
@@ -63,14 +87,38 @@ const PropertyAssignments = () => {
           commission_percentage,
           message,
           created_at,
-          properties(id, title, address, city, main_image_url),
-          profiles!management_requests_recipient_id_fkey(first_name, last_name)
+          properties(id, title, address, city, main_image_url)
         `)
         .eq('requester_id', user.id)
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data || [];
+      
+      // Fetch recipient profiles separately
+      const requestsWithProfiles = await Promise.all(
+        (data || []).map(async (request) => {
+          const { data: profileData, error: profileError } = await supabase
+            .from('profiles')
+            .select('first_name, last_name')
+            .eq('id', request.recipient_id)
+            .single();
+            
+          if (profileError) {
+            console.error('Error fetching recipient profile:', profileError);
+            return {
+              ...request,
+              recipient_profile: { first_name: 'Unknown', last_name: 'User' }
+            };
+          }
+          
+          return {
+            ...request,
+            recipient_profile: profileData
+          };
+        })
+      );
+      
+      return requestsWithProfiles || [];
     },
     enabled: !!user
   });
@@ -87,8 +135,7 @@ const PropertyAssignments = () => {
           property_id,
           manager_id,
           assigned_at,
-          properties(id, title, address, city, main_image_url, owner_id),
-          profiles!property_managers_manager_id_fkey(first_name, last_name)
+          properties(id, title, address, city, main_image_url, owner_id)
         `)
         .eq('manager_id', user.id);
       
@@ -221,7 +268,7 @@ const PropertyAssignments = () => {
                             <div className="flex items-center gap-2 mb-2">
                               <UserCog className="h-4 w-4 text-muted-foreground" />
                               <span>
-                                Request from: {request.profiles.first_name} {request.profiles.last_name}
+                                Request from: {request.requester_profile.first_name} {request.requester_profile.last_name}
                               </span>
                             </div>
                             <div className="flex items-center gap-2 mb-2">
@@ -311,7 +358,7 @@ const PropertyAssignments = () => {
                               {request.properties.address}, {request.properties.city}
                             </p>
                             <div className="flex items-center gap-2 mb-2">
-                              <span>Sent to: {request.profiles.first_name} {request.profiles.last_name}</span>
+                              <span>Sent to: {request.recipient_profile.first_name} {request.recipient_profile.last_name}</span>
                             </div>
                             <div className="flex items-center gap-2 mb-2">
                               <BarChart className="h-4 w-4 text-muted-foreground" />

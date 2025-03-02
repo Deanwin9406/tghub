@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -5,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 type FavoriteContextType = {
   favorites: string[];
   addFavorite: (propertyId: string) => void;
-  removeFavorite: (propertyId: string) => void;
+  removeFromFavorite: (propertyId: string) => void;
   isFavorite: (propertyId: string) => boolean;
 };
 
@@ -61,7 +62,7 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
     }
   };
 
-  const removeFavorite = async (propertyId: string) => {
+  const removeFromFavorite = async (propertyId: string) => {
     if (!user) {
       console.error('User not authenticated');
       return;
@@ -89,7 +90,7 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
   const value: FavoriteContextType = {
     favorites,
     addFavorite,
-    removeFavorite,
+    removeFromFavorite,
     isFavorite,
   };
 

@@ -46,26 +46,32 @@ const AssignManagerModal = ({ isOpen, onClose, propertyId }: AssignManagerModalP
   const fetchManagers = async () => {
     setLoading(true);
     try {
-      // Fetch users with manager role
-      const { data: roleData, error: roleError } = await supabase
-        .rpc('has_role', {
-          role: 'manager'
-        });
+      // Get all users with manager role
+      const { data: usersData, error: usersError } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, email');
       
-      if (roleError) throw roleError;
+      if (usersError) throw usersError;
       
-      if (roleData) {
-        // Fetch profiles of users with manager role
-        const { data: profilesData, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, email')
-          .order('first_name');
-          
-        if (profilesError) throw profilesError;
+      if (usersData) {
+        // Check which users have manager role
+        const managerProfiles: User[] = [];
         
-        if (profilesData) {
-          setAvailableManagers(profilesData);
+        for (const profile of usersData) {
+          const { data: hasRole, error: roleError } = await supabase
+            .rpc('has_role', {
+              user_id: profile.id,
+              role: 'manager'
+            });
+            
+          if (roleError) console.error('Error checking role:', roleError);
+          
+          if (hasRole) {
+            managerProfiles.push(profile);
+          }
         }
+        
+        setAvailableManagers(managerProfiles);
       }
     } catch (error) {
       console.error('Error fetching managers:', error);

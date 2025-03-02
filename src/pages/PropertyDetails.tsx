@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -24,44 +25,29 @@ import {
   Plus,
   Check,
   ArrowLeft,
-  CircleDollarSign  // Use CircleDollarSign instead of SquareFootage
+  CircleDollarSign,
+  MessageSquare,
+  Loader2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Carousel } from 'react-responsive-carousel';
-import 'react-responsive-carousel/lib/styles/carousel.min.css';
 import { format, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { useComparison } from '@/contexts/ComparisonContext';
 import { supabase } from '@/integrations/supabase/client';
 import PropertyOwnershipInfo from '@/components/PropertyOwnershipInfo';
+import { PropertyType } from '@/components/PropertyCard';
 
-interface PropertyType {
-  id: string;
-  title: string;
-  address: string;
-  city: string;
-  price: number;
-  description: string;
-  property_type: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  square_footage: number | null;
-  year_built: number | null;
-  amenities: string[] | null;
-  main_image_url: string | null;
-  image_urls: string[] | null;
-  availability_date: string | null;
-  status: string;
-}
+// Install react-responsive-carousel
+<lov-add-dependency>react-responsive-carousel@latest</lov-add-dependency>
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
+  const { favorites, addFavorite, removeFromFavorite } = useFavorites();
   const { addToComparison, isInComparison } = useComparison();
   const [property, setProperty] = useState<PropertyType | null>(null);
   const [loading, setLoading] = useState(true);
@@ -89,7 +75,28 @@ const PropertyDetails = () => {
         
       if (error) throw error;
       
-      setProperty(data);
+      // Ensure the data conforms to PropertyType
+      const propertyData: PropertyType = {
+        id: data.id,
+        title: data.title,
+        address: data.address,
+        city: data.city,
+        price: data.price,
+        description: data.description,
+        property_type: data.property_type,
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+        square_footage: data.square_footage,
+        year_built: data.year_built,
+        amenities: data.amenities,
+        main_image_url: data.main_image_url,
+        image_urls: data.image_urls,
+        availability_date: data.availability_date,
+        status: data.status,
+        owner_id: data.owner_id,
+      };
+      
+      setProperty(propertyData);
     } catch (error) {
       console.error('Error fetching property details:', error);
       toast({
@@ -107,9 +114,9 @@ const PropertyDetails = () => {
     if (!property) return;
     
     if (isInFavorites) {
-      removeFromFavorites(property.id);
+      removeFromFavorite(property.id);
     } else {
-      addToFavorites(property.id);
+      addFavorite(property.id);
     }
   };
   
@@ -182,6 +189,11 @@ const PropertyDetails = () => {
     );
   }
 
+  // Dynamically import the Carousel component when needed
+  const CarouselComponent = React.lazy(() => import('react-responsive-carousel').then(module => ({
+    default: module.Carousel
+  })));
+
   return (
     <Layout>
       <div className="container mx-auto py-8">
@@ -194,25 +206,27 @@ const PropertyDetails = () => {
           <div className="lg:col-span-2">
             <Card className="overflow-hidden">
               <div className="relative">
-                <Carousel
-                  showThumbs={false}
-                  showStatus={false}
-                  infiniteLoop
-                  autoPlay
-                  interval={5000}
-                >
-                  {property.image_urls && property.image_urls.length > 0 ? (
-                    property.image_urls.map((url, index) => (
-                      <div key={index}>
-                        <img src={url} alt={`${property.title} - Image ${index + 1}`} className="object-cover w-full h-96" />
+                <React.Suspense fallback={<div className="h-96 bg-muted flex items-center justify-center"><Loader2 className="animate-spin" /></div>}>
+                  <CarouselComponent
+                    showThumbs={false}
+                    showStatus={false}
+                    infiniteLoop
+                    autoPlay
+                    interval={5000}
+                  >
+                    {property.image_urls && property.image_urls.length > 0 ? (
+                      property.image_urls.map((url, index) => (
+                        <div key={index}>
+                          <img src={url} alt={`${property.title} - Image ${index + 1}`} className="object-cover w-full h-96" />
+                        </div>
+                      ))
+                    ) : (
+                      <div>
+                        <img src={property.main_image_url || ''} alt={property.title} className="object-cover w-full h-96" />
                       </div>
-                    ))
-                  ) : (
-                    <div>
-                      <img src={property.main_image_url} alt={property.title} className="object-cover w-full h-96" />
-                    </div>
-                  )}
-                </Carousel>
+                    )}
+                  </CarouselComponent>
+                </React.Suspense>
                 <div className="absolute top-2 left-2">
                   <Badge variant={getStatusBadgeVariant(property.status)}>
                     {property.status.replace('_', ' ')}
@@ -321,7 +335,7 @@ const PropertyDetails = () => {
           </div>
           
           <div className="lg:col-span-1">
-            <PropertyOwnershipInfo propertyId={id} />
+            {id && <PropertyOwnershipInfo propertyId={id} />}
             <Card>
               <CardHeader>
                 <CardTitle>Contact Owner</CardTitle>

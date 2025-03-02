@@ -8,8 +8,28 @@ import { Building, Bed, Bath, MapPin, Heart, HeartOff, Plus, Check } from 'lucid
 import { useFavorites } from '@/contexts/FavoritesContext';
 import { useComparison } from '@/contexts/ComparisonContext';
 
+export interface PropertyType {
+  id: string;
+  title: string;
+  address: string;
+  city: string;
+  price: number;
+  description: string;
+  property_type: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  square_footage: number | null;
+  year_built: number | null;
+  amenities: string[] | null;
+  main_image_url: string | null;
+  image_urls: string[] | null;
+  availability_date: string | null;
+  status: string;
+  owner_id?: string;
+}
+
 interface PropertyCardProps {
-  property: any;
+  property: PropertyType;
   showFavoriteButton?: boolean;
   showCompareButton?: boolean;
   onRemoveFromFavorites?: () => void;
@@ -22,7 +42,7 @@ const PropertyCard = ({
   onRemoveFromFavorites
 }: PropertyCardProps) => {
   const navigate = useNavigate();
-  const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
+  const { favorites, addFavorite, removeFromFavorite } = useFavorites();
   const { addToComparison, isInComparison } = useComparison();
   
   const isInFavorites = favorites.includes(property.id);
@@ -34,10 +54,10 @@ const PropertyCard = ({
       if (onRemoveFromFavorites) {
         onRemoveFromFavorites();
       } else {
-        removeFromFavorites(property.id);
+        removeFromFavorite(property.id);
       }
     } else {
-      addToFavorites(property.id);
+      addFavorite(property.id);
     }
   };
   
