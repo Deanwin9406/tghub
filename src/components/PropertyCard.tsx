@@ -1,154 +1,149 @@
 
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Link } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import { Heart, MapPin, Bed, Bath, Square, ArrowUpRight } from 'lucide-react';
+import { Building, Bed, Bath, MapPin, Heart, HeartOff, Plus, Check } from 'lucide-react';
 import { useFavorites } from '@/contexts/FavoritesContext';
-
-export interface PropertyType {
-  id: string;
-  title: string;
-  location: string;
-  price: number;
-  priceUnit: string;
-  type: 'apartment' | 'house' | 'land' | 'commercial' | 'villa' | 'office' | 'other';
-  purpose: 'rent' | 'sale';
-  beds?: number;
-  baths?: number;
-  area?: number;
-  image: string;
-  agent?: {
-    name: string;
-    avatar: string;
-  };
-  featured?: boolean;
-  new?: boolean;
-  description?: string;
-  features?: string[];
-  created_at?: string;
-}
+import { useComparison } from '@/contexts/ComparisonContext';
 
 interface PropertyCardProps {
-  property: PropertyType;
-  variant?: 'default' | 'compact';
+  property: any;
+  showFavoriteButton?: boolean;
+  showCompareButton?: boolean;
+  onRemoveFromFavorites?: () => void;
 }
 
-const PropertyCard = ({ property, variant = 'default' }: PropertyCardProps) => {
-  const { isFavorite, addFavorite, removeFavorite } = useFavorites();
+const PropertyCard = ({ 
+  property, 
+  showFavoriteButton = true, 
+  showCompareButton = true,
+  onRemoveFromFavorites
+}: PropertyCardProps) => {
+  const navigate = useNavigate();
+  const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
+  const { addToComparison, isInComparison } = useComparison();
+  
+  const isInFavorites = favorites.includes(property.id);
+  const inComparison = isInComparison(property.id);
   
   const handleFavoriteClick = (e: React.MouseEvent) => {
-    e.preventDefault();
     e.stopPropagation();
-    
-    if (isFavorite(property.id)) {
-      removeFavorite(property.id);
+    if (isInFavorites) {
+      if (onRemoveFromFavorites) {
+        onRemoveFromFavorites();
+      } else {
+        removeFromFavorites(property.id);
+      }
     } else {
-      addFavorite(property);
+      addToFavorites(property.id);
     }
   };
   
-  const isPropertyFavorite = isFavorite(property.id);
+  const handleCompareClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToComparison(property);
+  };
   
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'available':
+        return 'default';
+      case 'rented':
+        return 'secondary';
+      case 'sold':
+        return 'destructive';
+      case 'under_maintenance':
+        return 'outline';
+      default:
+        return 'default';
+    }
+  };
+
   return (
-    <Card className="overflow-hidden transition-all hover:shadow-md h-full">
-      <Link to={`/property/${property.id}`} className="block h-full">
-        <div className="relative">
-          <div className="aspect-[4/3] relative overflow-hidden">
-            <img 
-              src={property.image} 
-              alt={property.title} 
-              className="object-cover w-full h-full transition-transform hover:scale-105 duration-700"
-            />
-            <div className="absolute top-0 left-0 p-3 flex space-x-2">
-              {property.featured && (
-                <Badge className="bg-togo-yellow text-black font-medium">
-                  Featured
-                </Badge>
-              )}
-              {property.new && (
-                <Badge className="bg-togo-green text-white font-medium">
-                  Nouveau
-                </Badge>
-              )}
+    <Card className="overflow-hidden h-full flex flex-col cursor-pointer hover:border-primary transition-colors duration-200" onClick={() => navigate(`/property/${property.id}`)}>
+      <div className="relative h-48 overflow-hidden bg-muted">
+        {property.main_image_url ? (
+          <img 
+            src={property.main_image_url} 
+            alt={property.title} 
+            className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+            <Building className="h-12 w-12 text-muted-foreground" />
+          </div>
+        )}
+        <div className="absolute top-2 left-2">
+          <Badge variant={getStatusBadgeVariant(property.status)}>
+            {property.status.replace('_', ' ')}
+          </Badge>
+        </div>
+        {showFavoriteButton && (
+          <button 
+            className="absolute top-2 right-2 p-1.5 bg-background rounded-full shadow-sm hover:scale-110 transition-transform"
+            onClick={handleFavoriteClick}
+          >
+            {isInFavorites ? (
+              <Heart className="h-4 w-4 text-red-500 fill-red-500" />
+            ) : (
+              <Heart className="h-4 w-4" />
+            )}
+          </button>
+        )}
+      </div>
+      <CardContent className="flex-grow p-4">
+        <div className="flex justify-between items-start mb-2">
+          <h3 className="font-semibold text-lg line-clamp-1">{property.title}</h3>
+          <p className="font-bold text-primary whitespace-nowrap">{property.price.toLocaleString()} XOF</p>
+        </div>
+        <div className="flex items-center text-muted-foreground mb-3">
+          <MapPin className="h-3 w-3 mr-1" />
+          <span className="text-sm truncate">{property.address}, {property.city}</span>
+        </div>
+        <div className="flex gap-3 text-sm">
+          {property.bedrooms != null && (
+            <div className="flex items-center">
+              <Bed className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+              <span>{property.bedrooms} Bed{property.bedrooms !== 1 ? 's' : ''}</span>
             </div>
-            <div className="absolute top-0 right-0 p-3">
-              <Button 
-                variant="secondary" 
-                size="icon"
-                className={`rounded-full ${isPropertyFavorite ? 'bg-primary text-primary-foreground hover:bg-primary/90' : 'bg-white/80'}`}
-                onClick={handleFavoriteClick}
-              >
-                <Heart size={16} className={isPropertyFavorite ? 'fill-current' : ''} />
-              </Button>
+          )}
+          {property.bathrooms != null && (
+            <div className="flex items-center">
+              <Bath className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+              <span>{property.bathrooms} Bath{property.bathrooms !== 1 ? 's' : ''}</span>
             </div>
-            <Badge className={`absolute bottom-3 left-3 ${property.purpose === 'sale' ? 'bg-togo-red/90' : 'bg-blue-500/90'} text-white`}>
-              {property.purpose === 'sale' ? 'À Vendre' : 'À Louer'}
-            </Badge>
+          )}
+          <div className="flex items-center">
+            <Building className="h-3.5 w-3.5 mr-1 text-muted-foreground" />
+            <span className="capitalize">{property.property_type.replace('_', ' ')}</span>
           </div>
         </div>
-        
-        <CardContent className="py-4">
-          <div className="flex items-start justify-between mb-2">
-            <h3 className="font-semibold text-lg line-clamp-1">{property.title}</h3>
-            <div className="text-lg font-bold text-primary">
-              {property.price.toLocaleString()} {property.priceUnit}
-            </div>
-          </div>
-          
-          <div className="flex items-center text-muted-foreground text-sm mb-4">
-            <MapPin size={14} className="mr-1" />
-            <span className="line-clamp-1">{property.location}</span>
-          </div>
-          
-          <div className="flex justify-between text-sm">
-            {property.beds !== undefined && (
-              <div className="flex items-center">
-                <Bed size={16} className="mr-1 text-muted-foreground" />
-                <span>{property.beds} ch</span>
-              </div>
+      </CardContent>
+      {showCompareButton && (
+        <CardFooter className="p-4 pt-0">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="w-full"
+            onClick={handleCompareClick}
+            disabled={inComparison}
+          >
+            {inComparison ? (
+              <>
+                <Check className="h-3.5 w-3.5 mr-1" />
+                Added to Comparison
+              </>
+            ) : (
+              <>
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                Add to Compare
+              </>
             )}
-            
-            {property.baths !== undefined && (
-              <div className="flex items-center">
-                <Bath size={16} className="mr-1 text-muted-foreground" />
-                <span>{property.baths} sdb</span>
-              </div>
-            )}
-            
-            {property.area !== undefined && (
-              <div className="flex items-center">
-                <Square size={16} className="mr-1 text-muted-foreground" />
-                <span>{property.area} m²</span>
-              </div>
-            )}
-          </div>
-        </CardContent>
-        
-        <CardFooter className="pt-0 pb-4">
-          <div className="w-full flex justify-between items-center">
-            {property.agent && (
-              <div className="flex items-center">
-                <div className="w-8 h-8 rounded-full bg-muted overflow-hidden mr-2">
-                  <img 
-                    src={property.agent.avatar} 
-                    alt={property.agent.name} 
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <span className="text-sm">{property.agent.name}</span>
-              </div>
-            )}
-            
-            <Button variant="ghost" size="sm" className="text-primary p-0 h-auto hover:bg-transparent hover:text-primary">
-              Détails <ArrowUpRight size={14} className="ml-1" />
-            </Button>
-          </div>
+          </Button>
         </CardFooter>
-      </Link>
+      )}
     </Card>
   );
 };

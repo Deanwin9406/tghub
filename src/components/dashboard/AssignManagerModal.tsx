@@ -1,12 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useForm } from 'react-hook-form';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { toast } from "sonner";
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { Loader2 } from 'lucide-react';
+
+interface User {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+}
 
 interface AssignManagerModalProps {
   isOpen: boolean;
@@ -14,134 +21,168 @@ interface AssignManagerModalProps {
   propertyId: string;
 }
 
-interface ManagerProfile {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-}
-
 const AssignManagerModal = ({ isOpen, onClose, propertyId }: AssignManagerModalProps) => {
-  const [selectedManager, setSelectedManager] = useState<string>('');
-  const queryClient = useQueryClient();
-
-  // Fetch property managers (users with manager role)
-  const { data: managers = [], isLoading } = useQuery({
-    queryKey: ['property-managers'],
-    queryFn: async () => {
-      // Safely get managers by first checking if the table exists
-      try {
-        const { data: userRoles, error: rolesError } = await supabase
-          .from('user_roles')
-          .select('user_id')
-          .eq('role', 'manager');
-
-        if (rolesError) throw rolesError;
-
-        if (!userRoles?.length) return [];
-
-        const managerIds = userRoles.map(role => role.user_id);
-        
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, first_name, last_name, email')
-          .in('id', managerIds);
-
-        if (profilesError) throw profilesError;
-        
-        return profiles as ManagerProfile[];
-      } catch (error) {
-        console.error("Error fetching managers:", error);
-        return [];
-      }
-    },
-    enabled: isOpen
-  });
-
-  // Assign property manager mutation
-  const assignManager = useMutation({
-    mutationFn: async () => {
-      if (!selectedManager || !propertyId) return;
-
-      try {
-        // Check if the property_managers table exists and the row exists
-        const { data: existingManager } = await supabase
-          .rpc('check_property_manager', { 
-            p_property_id: propertyId 
-          });
-
-        if (existingManager) {
-          // Update the existing manager assignment
-          const { error } = await supabase
-            .rpc('update_property_manager', { 
-              p_property_id: propertyId,
-              p_manager_id: selectedManager,
-              p_updated_at: new Date().toISOString()
-            });
-            
-          if (error) throw error;
-        } else {
-          // Insert a new manager assignment
-          const { error } = await supabase
-            .rpc('insert_property_manager', { 
-              p_property_id: propertyId,
-              p_manager_id: selectedManager,
-              p_assigned_at: new Date().toISOString()
-            });
-            
-          if (error) throw error;
-        }
-      } catch (error) {
-        console.error("Error in assignManager mutation:", error);
-        throw error;
-      }
-    },
-    onSuccess: () => {
-      toast.success("Property manager assigned successfully!");
-      queryClient.invalidateQueries({ queryKey: ['property-details', propertyId] });
-      queryClient.invalidateQueries({ queryKey: ['property-manager', propertyId] });
-      queryClient.invalidateQueries({ queryKey: ['property-ownership', propertyId] });
-      onClose();
-    },
-    onError: (error) => {
-      console.error("Error assigning property manager:", error);
-      toast.error("Failed to assign property manager");
+  const { toast } = useToast();
+  const [availableManagers, setAvailableManagers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [currentManagerId, setCurrentManagerId] = useState<string | null>(null);
+  
+  const { handleSubmit, register, setValue, watch } = useForm({
+    defaultValues: {
+      managerId: ''
     }
   });
 
-  // Handle form submission
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    assignManager.mutate();
-  };
+  const selectedManagerId = watch('managerId');
 
-  // Load current manager if exists
   useEffect(() => {
-    if (isOpen && propertyId) {
-      const fetchCurrentManager = async () => {
-        try {
-          const { data, error } = await supabase
-            .rpc('get_property_manager', { 
-              p_property_id: propertyId 
-            });
-            
-          if (data && !error) {
-            setSelectedManager(data.manager_id);
-          } else {
-            setSelectedManager('');
-          }
-        } catch (error) {
-          console.error("Error fetching current manager:", error);
-          setSelectedManager('');
-        }
-      };
-      
-      fetchCurrentManager();
+    if (isOpen) {
+      fetchManagers();
+      checkCurrentManager();
     }
   }, [isOpen, propertyId]);
 
+  const fetchManagers = async () => {
+    setLoading(true);
+    try {
+      // Fetch users with manager role
+      const { data: roleData, error: roleError } = await supabase
+        .rpc('has_role', {
+          role: 'manager'
+        });
+      
+      if (roleError) throw roleError;
+      
+      if (roleData) {
+        // Fetch profiles of users with manager role
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name, email')
+          .order('first_name');
+          
+        if (profilesError) throw profilesError;
+        
+        if (profilesData) {
+          setAvailableManagers(profilesData);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching managers:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to load property managers.',
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const checkCurrentManager = async () => {
+    try {
+      // Check if property already has a manager
+      const { data, error } = await supabase
+        .from('property_managers')
+        .select('manager_id')
+        .eq('property_id', propertyId)
+        .maybeSingle();
+        
+      if (error) throw error;
+      
+      if (data) {
+        setCurrentManagerId(data.manager_id);
+        setValue('managerId', data.manager_id);
+      }
+    } catch (error) {
+      console.error('Error checking current manager:', error);
+    }
+  };
+
+  const onSubmit = async (data: { managerId: string }) => {
+    if (!data.managerId) {
+      toast({
+        title: 'Error',
+        description: 'Please select a manager.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (currentManagerId) {
+        // Update existing property manager
+        const { error } = await supabase
+          .from('property_managers')
+          .update({ manager_id: data.managerId })
+          .eq('property_id', propertyId);
+          
+        if (error) throw error;
+      } else {
+        // Insert new property manager
+        const { error } = await supabase
+          .from('property_managers')
+          .insert({
+            property_id: propertyId,
+            manager_id: data.managerId,
+          });
+          
+        if (error) throw error;
+      }
+      
+      toast({
+        title: 'Success',
+        description: 'Property manager has been assigned successfully.',
+      });
+      
+      onClose();
+    } catch (error) {
+      console.error('Error assigning manager:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to assign property manager.',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const removeManager = async () => {
+    if (!currentManagerId) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('property_managers')
+        .delete()
+        .eq('property_id', propertyId);
+        
+      if (error) throw error;
+      
+      toast({
+        title: 'Success',
+        description: 'Property manager has been removed successfully.',
+      });
+      
+      setCurrentManagerId(null);
+      setValue('managerId', '');
+      onClose();
+    } catch (error) {
+      console.error('Error removing manager:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to remove property manager.',
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={() => onClose()}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Assign Property Manager</DialogTitle>
@@ -150,22 +191,22 @@ const AssignManagerModal = ({ isOpen, onClose, propertyId }: AssignManagerModalP
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit}>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label htmlFor="manager" className="col-span-4">
-                Property Manager
-              </Label>
-              <Select
-                value={selectedManager}
-                onValueChange={setSelectedManager}
-                disabled={isLoading}
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Select 
+                value={selectedManagerId} 
+                onValueChange={value => setValue('managerId', value)}
               >
-                <SelectTrigger className="col-span-4">
-                  <SelectValue placeholder="Select a manager" />
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a property manager" />
                 </SelectTrigger>
                 <SelectContent>
-                  {managers.map((manager) => (
+                  {availableManagers.map((manager) => (
                     <SelectItem key={manager.id} value={manager.id}>
                       {manager.first_name} {manager.last_name} ({manager.email})
                     </SelectItem>
@@ -173,24 +214,27 @@ const AssignManagerModal = ({ isOpen, onClose, propertyId }: AssignManagerModalP
                 </SelectContent>
               </Select>
             </div>
-          </div>
-          
-          <DialogFooter>
-            <Button 
-              type="button" 
-              variant="outline" 
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={!selectedManager || assignManager.isPending}
-            >
-              {assignManager.isPending ? "Assigning..." : "Assign Manager"}
-            </Button>
-          </DialogFooter>
-        </form>
+            
+            <div className="flex justify-between pt-4">
+              {currentManagerId && (
+                <Button 
+                  type="button"
+                  variant="outline" 
+                  onClick={removeManager}
+                  disabled={saving}
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                  Remove Manager
+                </Button>
+              )}
+              
+              <Button type="submit" disabled={saving || !selectedManagerId}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                {currentManagerId ? 'Update Manager' : 'Assign Manager'}
+              </Button>
+            </div>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );
