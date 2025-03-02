@@ -23,12 +23,33 @@ interface PropertyType {
   main_image_url: string | null;
   status: string;
   description: string;
-  square_footage?: number;
-  size_sqm?: number;
-  year_built?: number;
-  amenities?: string[];
-  image_urls?: string[];
-  availability_date?: string;
+  square_footage: number;
+  size_sqm: number | null;
+  year_built: number;
+  amenities: string[];
+  image_urls: string[];
+  availability_date: string;
+}
+
+// Database property type returned from Supabase
+interface DatabasePropertyType {
+  id: string;
+  title: string;
+  address: string;
+  city: string;
+  price: number;
+  property_type: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  main_image_url: string | null;
+  status: string;
+  description: string | null;
+  size_sqm: number | null;
+  owner_id: string;
+  country: string;
+  created_at: string;
+  updated_at: string;
+  featured: boolean | null;
 }
 
 type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor';
@@ -102,15 +123,26 @@ const PropertyManagement = () => {
 
       if (error) throw error;
       
-      // Transform the data to match PropertyType interface
-      const propertyData = data.map(property => ({
-        ...property,
-        square_footage: property.square_footage || property.size_sqm || 0,
-        year_built: property.year_built || 0,
-        amenities: property.amenities || [],
-        image_urls: property.image_urls || [],
-        availability_date: property.availability_date || new Date().toISOString()
-      })) as PropertyType[];
+      // Transform the database properties to match the PropertyType interface
+      const propertyData = data.map((property: DatabasePropertyType) => ({
+        id: property.id,
+        title: property.title,
+        address: property.address,
+        city: property.city,
+        price: property.price,
+        property_type: property.property_type,
+        bedrooms: property.bedrooms,
+        bathrooms: property.bathrooms,
+        main_image_url: property.main_image_url,
+        status: property.status,
+        description: property.description || '',
+        square_footage: property.size_sqm || 0,
+        size_sqm: property.size_sqm,
+        year_built: 0, // Default value for property not in database
+        amenities: [], // Default value for property not in database
+        image_urls: [], // Default value for property not in database
+        availability_date: new Date().toISOString() // Default value
+      }));
       
       setProperties(propertyData);
     } catch (error) {
@@ -167,14 +199,7 @@ const PropertyManagement = () => {
                 {properties.map((property) => (
                   <PropertyCard
                     key={property.id}
-                    property={{
-                      ...property,
-                      square_footage: property.square_footage || 0,
-                      year_built: property.year_built || 0,
-                      amenities: property.amenities || [],
-                      image_urls: property.image_urls || [],
-                      availability_date: property.availability_date || new Date().toISOString()
-                    }}
+                    property={property}
                   />
                 ))}
               </div>
