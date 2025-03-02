@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -11,7 +10,7 @@ import PropertyManagerTab from '@/components/dashboard/PropertyManagerTab';
 import MessagesTab from '@/components/dashboard/MessagesTab';
 import PaymentsTab from '@/components/dashboard/PaymentsTab';
 import MaintenanceTab from '@/components/dashboard/MaintenanceTab';
-import { Building, DollarSign, Tool, FileText } from 'lucide-react';
+import { Building, DollarSign, Wrench, FileText } from 'lucide-react';
 
 interface Property {
   id: string;
@@ -70,7 +69,6 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Mock data for demonstration
     const mockProperties: Property[] = [
       {
         id: '1',
@@ -202,25 +200,25 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
           <StatCard 
             title="Revenu total" 
-            value={250000} 
+            value="250000" 
             description="Revenu annuel total" 
             icon={DollarSign} 
           />
           <StatCard 
             title="Propriétés listées" 
-            value={12} 
+            value="12" 
             description="Nombre total de propriétés" 
             icon={Building} 
           />
           <StatCard 
             title="Demandes de maintenance" 
-            value={5} 
+            value="5" 
             description="Demandes en attente" 
-            icon={Tool} 
+            icon={Wrench} 
           />
           <StatCard 
             title="Paiements en attente" 
-            value={3} 
+            value="3" 
             description="Paiements à recevoir" 
             icon={FileText} 
           />
