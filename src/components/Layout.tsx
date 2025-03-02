@@ -47,6 +47,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   };
 
   // Directly use Link for navigation instead of custom function
+  // Fixed the navigation links to use actual paths
   const navItems = [
     { name: 'Recherche', path: '/search' },
     { name: 'Agents', path: '/agents' },

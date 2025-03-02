@@ -1,38 +1,36 @@
 
-import React from 'react';
-import { Navigate, useLocation, Outlet } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from "sonner";
 
-export interface AuthGuardProps {
-  children?: React.ReactNode;
-}
-
-const AuthGuard: React.FC<AuthGuardProps> = ({ children }: AuthGuardProps) => {
-  const { session, isLoading } = useAuth();
+const AuthGuard = () => {
+  const { session, loading } = useAuth();
   const location = useLocation();
+  const [isReady, setIsReady] = useState(false);
 
-  console.log("AuthGuard checking session:", session ? "logged in" : "not logged in");
-  console.log("Current path:", location.pathname);
+  useEffect(() => {
+    // Only set isReady once loading is complete
+    if (!loading) {
+      setIsReady(true);
+    }
+  }, [loading]);
 
-  if (isLoading) {
+  // Show nothing while checking authentication
+  if (!isReady) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex justify-center items-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
+  // If user is not authenticated, redirect to home with the intended location
   if (!session) {
-    // Show a toast notification that login is required
-    toast.error("Connectez-vous pour accéder à cette page");
-    
-    // Redirect to the home page, but save the current location
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // User is authenticated, render children or Outlet without redirecting
-  return <>{children || <Outlet />}</>;
+  // If user is authenticated, render the protected route
+  return <Outlet />;
 };
 
 export default AuthGuard;
