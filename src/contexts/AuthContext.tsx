@@ -224,8 +224,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export { AuthContext, useAuth };
+// Export the context and the hook, but don't redeclare useAuth
+export { AuthContext };
 
+// Define and export useAuth hook only once
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
