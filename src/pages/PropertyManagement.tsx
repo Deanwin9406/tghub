@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -10,7 +9,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import PropertyCard from '@/components/PropertyCard';
 
-// Define the PropertyType interface to match with the component
 interface PropertyType {
   id: string;
   title: string;
@@ -31,7 +29,6 @@ interface PropertyType {
   availability_date: string;
 }
 
-// Database property type returned from Supabase
 interface DatabasePropertyType {
   id: string;
   title: string;
@@ -70,7 +67,6 @@ const PropertyManagement = () => {
   }, [user, session, roles]);
 
   const checkUserPermissions = () => {
-    // Check if user has any of the authorized roles for creating listings
     const authorizedRoles = ['landlord', 'agent', 'manager', 'admin'];
     const hasPermission = roles.some(role => authorizedRoles.includes(role));
     setCanCreateListings(hasPermission);
@@ -85,7 +81,6 @@ const PropertyManagement = () => {
         .from('properties')
         .select('*');
 
-      // For agents and managers, fetch properties they're assigned to manage or sell
       if (roles.includes('agent')) {
         const { data: agentProperties, error: agentError } = await supabase
           .from('agent_properties')
@@ -115,7 +110,6 @@ const PropertyManagement = () => {
           query = query.eq('owner_id', session.user.id);
         }
       } else {
-        // For landlords or other roles, show only properties they own
         query = query.eq('owner_id', session.user.id);
       }
 
@@ -123,7 +117,6 @@ const PropertyManagement = () => {
 
       if (error) throw error;
       
-      // Transform the database properties to match the PropertyType interface
       const propertyData = data.map((property: DatabasePropertyType) => ({
         id: property.id,
         title: property.title,
@@ -138,10 +131,10 @@ const PropertyManagement = () => {
         description: property.description || '',
         square_footage: property.size_sqm || 0,
         size_sqm: property.size_sqm,
-        year_built: 0, // Default value for property not in database
-        amenities: [], // Default value for property not in database
-        image_urls: [], // Default value for property not in database
-        availability_date: new Date().toISOString() // Default value
+        year_built: 0,
+        amenities: [],
+        image_urls: [],
+        availability_date: new Date().toISOString()
       }));
       
       setProperties(propertyData);

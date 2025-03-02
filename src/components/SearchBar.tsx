@@ -29,7 +29,7 @@ const SearchBar = ({ className, variant = 'default', onSearch }: SearchBarProps)
     
     if (onSearch && location.trim()) {
       onSearch(location);
-    } else {
+    } else if (location.trim()) {
       navigate(`/search?type=${searchType}&location=${encodeURIComponent(location)}`);
     }
   };
