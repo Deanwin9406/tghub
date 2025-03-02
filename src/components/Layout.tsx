@@ -22,7 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import AuthDialog from '@/components/AuthDialog';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
-  const { session, user } = useAuth();
+  const { session, user, signOut } = useAuth();
   const navigate = useNavigate();
   const { comparisonList, clearComparison } = useComparison();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -40,22 +40,13 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     setAuthDialogOpen(true);
   };
 
+  // Updated to use signOut from AuthContext
   const handleSignOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) console.error('Error signing out:', error);
+    await signOut();
     navigate('/');
   };
 
-  // Modified navigation function to fix routing issues
-  const handleNavigation = (path: string) => {
-    console.log("Navigating to:", path);
-    closeMenu();
-    // Use setTimeout to ensure React's state updates complete before navigation
-    setTimeout(() => {
-      navigate(path);
-    }, 0);
-  };
-
+  // Directly use Link for navigation instead of custom function
   const navItems = [
     { name: 'Recherche', path: '/search' },
     { name: 'Agents', path: '/agents' },
@@ -69,10 +60,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       <div className={`fixed inset-0 bg-background/80 backdrop-blur-sm z-50 lg:hidden ${isMenuOpen ? 'block' : 'hidden'}`}>
         <div className="fixed inset-y-0 left-0 w-64 bg-background border-r p-4">
           <div className="flex items-center justify-between mb-4">
-            <button onClick={() => handleNavigation('/')} className="flex items-center">
+            <Link to="/" className="flex items-center" onClick={closeMenu}>
               <ShoppingBag className="mr-2 h-6 w-6 text-primary" />
               <span className="text-xl font-bold">TogoPropConnect</span>
-            </button>
+            </Link>
             <Button variant="ghost" size="icon" onClick={closeMenu}>
               <X className="h-5 w-5" />
             </Button>
@@ -80,43 +71,43 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <ul className="space-y-2 font-medium">
             {navItems.map((item) => (
               <li key={item.name}>
-                <Button
-                  variant="ghost"
-                  onClick={() => handleNavigation(item.path)}
-                  className="flex w-full items-center p-2 text-left justify-start"
+                <Link 
+                  to={item.path} 
+                  onClick={closeMenu}
+                  className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
                 >
                   <span>{item.name}</span>
-                </Button>
+                </Link>
               </li>
             ))}
             {session ? (
               <>
                 <li>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleNavigation('/property-management')}
-                    className="flex w-full items-center p-2 text-left justify-start"
+                  <Link 
+                    to="/property-management" 
+                    onClick={closeMenu}
+                    className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
                   >
                     <span>Mes Propriétés</span>
-                  </Button>
+                  </Link>
                 </li>
                 <li>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleNavigation('/dashboard')}
-                    className="flex w-full items-center p-2 text-left justify-start"
+                  <Link 
+                    to="/dashboard" 
+                    onClick={closeMenu}
+                    className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
                   >
                     <span>Tableau de bord</span>
-                  </Button>
+                  </Link>
                 </li>
                 <li>
-                  <Button
-                    variant="ghost"
-                    onClick={() => handleNavigation('/favorites')}
-                    className="flex w-full items-center p-2 text-left justify-start"
+                  <Link 
+                    to="/favorites" 
+                    onClick={closeMenu}
+                    className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
                   >
                     <span>Favoris</span>
-                  </Button>
+                  </Link>
                 </li>
               </>
             ) : null}
@@ -132,45 +123,41 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               <Button variant="ghost" size="icon" className="lg:hidden mr-2" onClick={toggleMenu}>
                 <Menu className="h-6 w-6" />
               </Button>
-              <Button variant="ghost" onClick={() => handleNavigation('/')} className="flex items-center">
+              <Link to="/" className="flex items-center">
                 <ShoppingBag className="mr-2 h-6 w-6 text-primary" />
                 <span className="text-xl font-bold">TogoPropConnect</span>
-              </Button>
+              </Link>
               {/* Desktop Nav Items */}
               <nav className="hidden lg:flex ml-10 space-x-4">
                 {navItems.map((item) => (
-                  <Button
+                  <Link
                     key={item.name}
-                    variant="ghost"
-                    onClick={() => handleNavigation(item.path)}
-                    className="px-3 py-2 rounded-md text-sm font-medium"
+                    to={item.path}
+                    className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
                   >
                     {item.name}
-                  </Button>
+                  </Link>
                 ))}
                 {session && (
                   <>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleNavigation('/property-management')}
-                      className="px-3 py-2 rounded-md text-sm font-medium"
+                    <Link
+                      to="/property-management"
+                      className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
                     >
                       Mes Propriétés
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleNavigation('/dashboard')}
-                      className="px-3 py-2 rounded-md text-sm font-medium"
+                    </Link>
+                    <Link
+                      to="/dashboard"
+                      className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
                     >
                       Tableau de bord
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => handleNavigation('/favorites')}
-                      className="px-3 py-2 rounded-md text-sm font-medium"
+                    </Link>
+                    <Link
+                      to="/favorites"
+                      className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
                     >
                       Favoris
-                    </Button>
+                    </Link>
                   </>
                 )}
               </nav>
@@ -188,8 +175,10 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                     <DropdownMenuLabel>Liste de comparaison</DropdownMenuLabel>
                     <ScrollArea className="h-64">
                       {comparisonList.map((property) => (
-                        <DropdownMenuItem key={property.id} onClick={() => handleNavigation(`/property/${property.id}`)}>
-                          {property.title}
+                        <DropdownMenuItem key={property.id}>
+                          <Link to={`/property/${property.id}`} className="w-full">
+                            {property.title}
+                          </Link>
                         </DropdownMenuItem>
                       ))}
                     </ScrollArea>
@@ -212,13 +201,17 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-56" align="end" forceMount>
                     <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
-                    <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
-                      <User className="h-4 w-4 mr-2" />
-                      Profil
+                    <DropdownMenuItem>
+                      <Link to="/profile" className="flex items-center w-full">
+                        <User className="h-4 w-4 mr-2" />
+                        Profil
+                      </Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => handleNavigation('/settings')}>
-                      <Settings className="h-4 w-4 mr-2" />
-                      Paramètres
+                    <DropdownMenuItem>
+                      <Link to="/settings" className="flex items-center w-full">
+                        <Settings className="h-4 w-4 mr-2" />
+                        Paramètres
+                      </Link>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={handleSignOut}>
