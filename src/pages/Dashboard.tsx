@@ -537,7 +537,11 @@ const Dashboard = () => {
     });
   };
 
-  const isTenant = roles.includes('tenant') && !roles.includes('landlord') && !roles.includes('manager') && !roles.includes('agent');
+  const isTenant = roles.includes('tenant') && 
+                  !(roles.includes('landlord') || 
+                    roles.includes('manager') || 
+                    roles.includes('agent') || 
+                    roles.includes('admin'));
   
   console.log("Dashboard - Is tenant:", isTenant, "Roles:", roles);
 
