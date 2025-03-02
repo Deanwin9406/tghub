@@ -1,363 +1,272 @@
-import { useState, useEffect } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import Layout from '@/components/Layout';
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import React, { useState } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { toast } from "@/components/ui/use-toast";
+import { cn } from "@/lib/utils";
+import { Icons } from "@/components/Icons";
+import * as z from "zod";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const signInSchema = z.object({
+  email: z.string().email({ message: "Adresse e-mail invalide" }),
+  password: z.string().min(8, { message: "Le mot de passe doit contenir au moins 8 caractères" }),
+});
+
+const signUpSchema = z.object({
+  email: z.string().email({ message: "Adresse e-mail invalide" }),
+  password: z.string().min(8, { message: "Le mot de passe doit contenir au moins 8 caractères" }),
+  firstName: z.string().min(2, { message: "Le prénom doit contenir au moins 2 caractères" }),
+  lastName: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
+});
+
+type SignInFormValues = z.infer<typeof signInSchema>;
+type SignUpFormValues = z.infer<typeof signUpSchema>;
 
 const Auth = () => {
-  const { signIn, signUp, resetPassword, session, isLoading } = useAuth();
-  const [activeTab, setActiveTab] = useState('login');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [userRole, setUserRole] = useState('tenant');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showResetForm, setShowResetForm] = useState(false);
-  const { toast } = useToast();
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+  const { signIn, signUp } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const location = useLocation();
 
-  useEffect(() => {
-    // Check URL for reset parameter
-    const params = new URLSearchParams(location.search);
-    if (params.get('reset') === 'true') {
-      setShowResetForm(true);
-    }
-    
-    // Redirect if already authenticated
-    if (session && !isLoading) {
-      navigate('/dashboard');
-    }
-  }, [session, isLoading, navigate, location]);
+  const signInForm = useForm<SignInFormValues>({
+    resolver: zodResolver(signInSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
-  const handleSignIn = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    try {
-      const { error } = await signIn(email, password);
-      
-      if (error) {
-        toast({
-          title: 'Login failed',
-          description: error.message,
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Welcome back!',
-          description: 'You have successfully logged in.',
-        });
-        navigate('/dashboard');
-      }
-    } catch (error: any) {
+  const signUpForm = useForm<SignUpFormValues>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+      firstName: "",
+      lastName: "",
+    },
+  });
+
+  const handleSignIn = async (data: SignInFormValues) => {
+    setIsLoading(true);
+    const { error } = await signIn(data.email, data.password);
+    setIsLoading(false);
+    if (error) {
       toast({
-        title: 'Login failed',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive',
+        title: "Erreur de connexion",
+        description: error.message,
+        variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      navigate("/");
     }
   };
 
-  const handleSignUp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    try {
-      if (!firstName || !lastName) {
-        toast({
-          title: 'Missing information',
-          description: 'Please provide your first and last name',
-          variant: 'destructive',
-        });
-        setIsSubmitting(false);
-        return;
-      }
-
-      if (password !== confirmPassword) {
-        toast({
-          title: 'Password mismatch',
-          description: 'The passwords you entered do not match',
-          variant: 'destructive',
-        });
-        setIsSubmitting(false);
-        return;
-      }
-      
-      const { error } = await signUp(email, password, firstName, lastName);
-      
-      if (error) {
-        toast({
-          title: 'Registration failed',
-          description: error.message,
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Account created',
-          description: 'Please check your email for confirmation.',
-        });
-        setActiveTab('login');
-      }
-    } catch (error: any) {
+  const handleSignUp = async (data: SignUpFormValues) => {
+    setIsLoading(true);
+    const { error } = await signUp(data.email, data.password, data.firstName, data.lastName);
+    setIsLoading(false);
+    if (error) {
       toast({
-        title: 'Registration failed',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive',
+        title: "Erreur d'inscription",
+        description: error.message,
+        variant: "destructive",
       });
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      toast({
+        title: "Inscription réussie",
+        description: "Vous pouvez maintenant vous connecter",
+      });
+      setAuthMode("signin");
     }
   };
-
-  const handleResetPassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    
-    try {
-      const { error } = await resetPassword(email);
-      
-      if (error) {
-        toast({
-          title: 'Password reset failed',
-          description: error.message,
-          variant: 'destructive',
-        });
-      } else {
-        toast({
-          title: 'Password reset email sent',
-          description: 'Please check your email for instructions.',
-        });
-        setShowResetForm(false);
-      }
-    } catch (error: any) {
-      toast({
-        title: 'Password reset failed',
-        description: error.message || 'An unexpected error occurred',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  if (isLoading) {
-    return (
-      <Layout>
-        <div className="container mx-auto py-16 flex justify-center items-center h-[calc(100vh-200px)]">
-          <Card className="w-full max-w-md">
-            <CardHeader className="space-y-1 text-center">
-              <CardTitle className="text-2xl font-bold">Loading...</CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-      </Layout>
-    );
-  }
 
   return (
-    <Layout>
-      <div className="container mx-auto py-16">
-        <div className="flex justify-center">
-          <Card className="w-full max-w-md">
-            <CardHeader className="space-y-1">
-              <CardTitle className="text-2xl font-bold text-center">
-                {showResetForm ? 'Reset Password' : 'Welcome to TogoProp'}
-              </CardTitle>
-              <CardDescription className="text-center">
-                {showResetForm 
-                  ? 'Enter your email to receive a password reset link' 
-                  : 'The first property management platform for Togolese users'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {showResetForm ? (
-                <form onSubmit={handleResetPassword} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input 
-                      id="email" 
-                      type="email" 
-                      placeholder="your.email@example.com" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button type="submit" className="w-full" disabled={isSubmitting}>
-                    {isSubmitting ? 'Processing...' : 'Send Reset Link'}
-                  </Button>
-                  <div className="text-center">
-                    <Button 
-                      variant="link" 
-                      onClick={() => setShowResetForm(false)}
-                      className="text-sm"
-                      type="button"
-                    >
-                      Back to login
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid w-full grid-cols-2 mb-4">
-                    <TabsTrigger value="login">Login</TabsTrigger>
-                    <TabsTrigger value="register">Register</TabsTrigger>
-                  </TabsList>
-                  
-                  <TabsContent value="login">
-                    <form onSubmit={handleSignIn} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input 
-                          id="email" 
-                          type="email" 
-                          placeholder="your.email@example.com" 
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label htmlFor="password">Password</Label>
-                          <Button 
-                            variant="link" 
-                            className="text-xs"
-                            onClick={() => setShowResetForm(true)}
-                            type="button"
-                          >
-                            Forgot password?
-                          </Button>
-                        </div>
-                        <Input 
-                          id="password" 
-                          type="password" 
-                          placeholder="••••••••" 
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <Button type="submit" className="w-full" disabled={isSubmitting}>
-                        {isSubmitting ? 'Logging in...' : 'Login'}
-                      </Button>
-                    </form>
-                  </TabsContent>
-                  
-                  <TabsContent value="register">
-                    <form onSubmit={handleSignUp} className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label htmlFor="firstName">First Name</Label>
-                          <Input 
-                            id="firstName" 
-                            placeholder="John" 
-                            value={firstName}
-                            onChange={(e) => setFirstName(e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="lastName">Last Name</Label>
-                          <Input 
-                            id="lastName" 
-                            placeholder="Doe" 
-                            value={lastName}
-                            onChange={(e) => setLastName(e.target.value)}
-                            required
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
-                        <Input 
-                          id="email" 
-                          type="email" 
-                          placeholder="your.email@example.com" 
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="userRole">Role</Label>
-                        <Select 
-                          value={userRole} 
-                          onValueChange={setUserRole}
-                        >
-                          <SelectTrigger id="userRole">
-                            <SelectValue placeholder="Select a role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="tenant">Tenant</SelectItem>
-                            <SelectItem value="landlord">Landlord</SelectItem>
-                            <SelectItem value="agent">Real Estate Agent</SelectItem>
-                            <SelectItem value="manager">Property Manager</SelectItem>
-                            <SelectItem value="vendor">Service Provider</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="password">Password</Label>
-                        <Input 
-                          id="password" 
-                          type="password" 
-                          placeholder="••••••••" 
-                          value={password}
-                          onChange={(e) => setPassword(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="confirmPassword">Confirm Password</Label>
-                        <Input 
-                          id="confirmPassword" 
-                          type="password" 
-                          placeholder="••••••••" 
-                          value={confirmPassword}
-                          onChange={(e) => setConfirmPassword(e.target.value)}
-                          required
-                        />
-                      </div>
-                      <Button type="submit" className="w-full" disabled={isSubmitting}>
-                        {isSubmitting ? 'Creating account...' : 'Create Account'}
-                      </Button>
-                    </form>
-                  </TabsContent>
-                </Tabs>
-              )}
-            </CardContent>
-            <CardFooter className="text-center text-sm text-muted-foreground">
-              By continuing, you agree to the{" "}
-              <a href="/terms" className="underline underline-offset-4 hover:text-primary">
-                Terms of Service
-              </a>{" "}
-              and{" "}
-              <a href="/privacy" className="underline underline-offset-4 hover:text-primary">
-                Privacy Policy
-              </a>
-            </CardFooter>
-          </Card>
+    <div className="container relative h-[800px] flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
+      <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex">
+        <div className="absolute inset-0 bg-zinc-900/80" />
+        <div className="relative z-20 mt-auto">
+          <CardTitle className="text-5xl font-bold">
+            TogoPropConnect
+          </CardTitle>
+          <CardDescription className="mt-4 text-zinc-400">
+            Votre plateforme immobilière de confiance au Togo.
+          </CardDescription>
         </div>
       </div>
-    </Layout>
+      <div className="lg:p-8">
+        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
+          {authMode === "signin" ? (
+            <>
+              <CardHeader className="space-y-0">
+                <CardTitle>Se connecter</CardTitle>
+                <CardDescription>
+                  Entrez votre e-mail et votre mot de passe pour vous connecter
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                <form onSubmit={signInForm.handleSubmit(handleSignIn)}>
+                  <div className="grid gap-2">
+                    <div className="grid gap-1">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        placeholder="exemple@gmail.com"
+                        type="email"
+                        {...signInForm.register("email")}
+                      />
+                      {signInForm.formState.errors.email && (
+                        <p className="text-sm text-red-500">
+                          {signInForm.formState.errors.email.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <div className="grid gap-1">
+                      <Label htmlFor="password">Mot de passe</Label>
+                      <Input
+                        id="password"
+                        placeholder="********"
+                        type="password"
+                        {...signInForm.register("password")}
+                      />
+                      {signInForm.formState.errors.password && (
+                        <p className="text-sm text-red-500">
+                          {signInForm.formState.errors.password.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Button disabled={isLoading} className="w-full">
+                    {isLoading ? (
+                      <>
+                        <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+                        Patientez...
+                      </>
+                    ) : (
+                      "Se connecter"
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </>
+          ) : (
+            <>
+              <CardHeader className="space-y-0">
+                <CardTitle>Créer un compte</CardTitle>
+                <CardDescription>
+                  Entrez votre e-mail et créez un mot de passe
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-4">
+                <form onSubmit={signUpForm.handleSubmit(handleSignUp)}>
+                  <div className="grid gap-2">
+                    <div className="grid gap-1">
+                      <Label htmlFor="firstName">Prénom</Label>
+                      <Input
+                        id="firstName"
+                        placeholder="John"
+                        type="text"
+                        {...signUpForm.register("firstName")}
+                      />
+                      {signUpForm.formState.errors.firstName && (
+                        <p className="text-sm text-red-500">
+                          {signUpForm.formState.errors.firstName.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <div className="grid gap-1">
+                      <Label htmlFor="lastName">Nom</Label>
+                      <Input
+                        id="lastName"
+                        placeholder="Doe"
+                        type="text"
+                        {...signUpForm.register("lastName")}
+                      />
+                      {signUpForm.formState.errors.lastName && (
+                        <p className="text-sm text-red-500">
+                          {signUpForm.formState.errors.lastName.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <div className="grid gap-1">
+                      <Label htmlFor="email">Email</Label>
+                      <Input
+                        id="email"
+                        placeholder="exemple@gmail.com"
+                        type="email"
+                        {...signUpForm.register("email")}
+                      />
+                      {signUpForm.formState.errors.email && (
+                        <p className="text-sm text-red-500">
+                          {signUpForm.formState.errors.email.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <div className="grid gap-1">
+                      <Label htmlFor="password">Mot de passe</Label>
+                      <Input
+                        id="password"
+                        placeholder="********"
+                        type="password"
+                        {...signUpForm.register("password")}
+                      />
+                      {signUpForm.formState.errors.password && (
+                        <p className="text-sm text-red-500">
+                          {signUpForm.formState.errors.password.message}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                  <Button disabled={isLoading} className="w-full">
+                    {isLoading ? (
+                      <>
+                        <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
+                        Patientez...
+                      </>
+                    ) : (
+                      "Créer un compte"
+                    )}
+                  </Button>
+                </form>
+              </CardContent>
+            </>
+          )}
+          <div className="relative mt-6">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Ou
+              </span>
+            </div>
+          </div>
+          <Button variant="secondary" className="w-full" onClick={() => setAuthMode(authMode === "signin" ? "signup" : "signin")}>
+            {authMode === "signin"
+              ? "Créer un compte"
+              : "J'ai déjà un compte"}
+          </Button>
+        </div>
+      </div>
+    </div>
   );
 };
 

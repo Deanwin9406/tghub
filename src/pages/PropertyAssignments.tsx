@@ -1,28 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import Layout from '@/components/Layout';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import Layout from "@/components/Layout";
 import { 
-  Dialog, 
-  DialogTrigger, 
-  DialogContent, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogDescription, 
+  Card, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardContent, 
+  CardFooter 
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from "@/components/ui/tabs";
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
   DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
   DialogClose
-} from '@/components/ui/dialog';
+} from "@/components/ui/dialog";
 import { 
-  Select, 
-  SelectTrigger, 
-  SelectValue, 
-  SelectContent, 
-  SelectItem 
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Check, X, MessageSquare, AlertTriangle, Loader2, Clock, Wrench } from 'lucide-react';
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import { 
+  AlertTriangle, 
+  Check, 
+  X, 
+  Wrench, 
+  MessageSquare, 
+  Clock,
+  Loader2 
+} from "lucide-react";
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -48,7 +68,6 @@ const PropertyAssignments = () => {
     setError(null);
     
     try {
-      // Fetch maintenance requests assigned to the current user (service provider)
       const { data, error } = await supabase
         .from('maintenance_requests')
         .select(`
@@ -82,14 +101,12 @@ const PropertyAssignments = () => {
       
       if (error) throw error;
       
-      // Update local state
       setAssignments(prev => 
         prev.map(item => 
           item.id === id ? { ...item, status } : item
         )
       );
       
-      // If we're updating the currently selected assignment
       if (selectedAssignment && selectedAssignment.id === id) {
         setSelectedAssignment(prev => ({ ...prev, status }));
       }
@@ -120,7 +137,6 @@ const PropertyAssignments = () => {
       
       if (error) throw error;
       
-      // Update local state
       setAssignments(prev => 
         prev.map(item => 
           item.id === selectedAssignment.id 
@@ -132,7 +148,6 @@ const PropertyAssignments = () => {
         )
       );
       
-      // Update selected assignment if needed
       if (selectedAssignment) {
         setSelectedAssignment(prev => ({
           ...prev,
@@ -140,7 +155,6 @@ const PropertyAssignments = () => {
         }));
       }
       
-      // Clear comment input
       setComment('');
       
     } catch (err) {

@@ -7,6 +7,8 @@ import Index from './pages/Index';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import KycVerification from './pages/KycVerification';
+import Communities from './pages/Communities';
+import CommunityDetails from './pages/CommunityDetails';
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
             <Route path="/auth" element={<Auth />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/kyc" element={<KycVerification />} />
+            <Route path="/communities" element={<Communities />} />
+            <Route path="/communities/:id" element={<CommunityDetails />} />
           </Routes>
         </Router>
       </AuthProvider>
