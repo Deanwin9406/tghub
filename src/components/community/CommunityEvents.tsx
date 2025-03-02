@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { fetchCommunityEvents } from '@/services/communityService';
+import { getCommunityEvents } from '@/services/communityService';
 import { CommunityEvent } from '@/types/community';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,7 +19,7 @@ const CommunityEvents = ({ communityId }: CommunityEventsProps) => {
   useEffect(() => {
     const loadEvents = async () => {
       try {
-        const data = await fetchCommunityEvents(communityId);
+        const data = await getCommunityEvents(communityId);
         setEvents(data);
       } catch (error) {
         console.error("Failed to load community events:", error);

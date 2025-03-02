@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { fetchCommunityPolls } from '@/services/communityService';
+import { getCommunityPolls } from '@/services/communityService';
 import { CommunityPoll } from '@/types/community';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,7 +22,7 @@ const CommunityPolls = ({ communityId }: CommunityPollsProps) => {
   useEffect(() => {
     const loadPolls = async () => {
       try {
-        const data = await fetchCommunityPolls(communityId);
+        const data = await getCommunityPolls(communityId);
         setPolls(data);
       } catch (error) {
         console.error("Failed to load community polls:", error);
@@ -108,18 +107,14 @@ const PollCard = ({ poll, isClosed }: PollCardProps) => {
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
 
-  // Calculate total votes
   const totalVotes = poll.options.reduce((sum, option) => sum + (option.votes_count || 0), 0);
 
   const handleVote = () => {
     if (!selectedOption) return;
     
-    // Here you would send the vote to the API
-    // For now, we'll just simulate a successful vote
     setHasVoted(true);
   };
 
-  // Calculate percentages for the progress bars
   const getPercentage = (voteCount: number = 0) => {
     if (totalVotes === 0) return 0;
     return Math.round((voteCount / totalVotes) * 100);
@@ -145,7 +140,6 @@ const PollCard = ({ poll, isClosed }: PollCardProps) => {
       </CardHeader>
       <CardContent>
         {(hasVoted || isClosed) ? (
-          // Show results view
           <div className="space-y-4">
             {poll.options.map((option) => (
               <div key={option.id} className="space-y-1">
@@ -161,7 +155,6 @@ const PollCard = ({ poll, isClosed }: PollCardProps) => {
             </div>
           </div>
         ) : (
-          // Show voting view
           <RadioGroup value={selectedOption || ""} onValueChange={setSelectedOption} className="space-y-3">
             {poll.options.map((option) => (
               <div key={option.id} className="flex items-center space-x-2">

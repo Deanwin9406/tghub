@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ComparisonProvider } from "@/contexts/ComparisonContext";
 import Index from './pages/Index';
 import Auth from './pages/Auth';
 import Profile from './pages/Profile';
@@ -19,16 +20,18 @@ function App() {
       disableTransitionOnChange
     >
       <AuthProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/kyc" element={<KycVerification />} />
-            <Route path="/communities" element={<Communities />} />
-            <Route path="/communities/:id" element={<CommunityDetails />} />
-          </Routes>
-        </Router>
+        <ComparisonProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/kyc" element={<KycVerification />} />
+              <Route path="/communities" element={<Communities />} />
+              <Route path="/communities/:id" element={<CommunityDetails />} />
+            </Routes>
+          </Router>
+        </ComparisonProvider>
       </AuthProvider>
     </ThemeProvider>
   );

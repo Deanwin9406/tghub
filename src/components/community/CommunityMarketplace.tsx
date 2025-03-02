@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { fetchMarketplaceItems } from '@/services/communityService';
+import { getMarketplaceItems } from '@/services/communityService';
 import { MarketplaceItem } from '@/types/community';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -24,7 +23,7 @@ const CommunityMarketplace = ({ communityId }: CommunityMarketplaceProps) => {
   useEffect(() => {
     const loadItems = async () => {
       try {
-        const data = await fetchMarketplaceItems(communityId);
+        const data = await getMarketplaceItems(communityId);
         setItems(data);
       } catch (error) {
         console.error("Failed to load marketplace items:", error);
@@ -48,7 +47,6 @@ const CommunityMarketplace = ({ communityId }: CommunityMarketplaceProps) => {
     return matchesSearch && matchesCategory;
   });
 
-  // Extract unique categories
   const categories = ['all', ...new Set(items.map(item => item.category).filter(Boolean) as string[])];
 
   if (isLoading) {

@@ -1,13 +1,12 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { fetchCommunityPosts, createCommunityPost } from '@/services/communityService';
+import { useToast } from '@/hooks/use-toast';
+import { getCommunityPosts, createCommunityPost } from '@/services/communityService';
 import { CommunityPost } from '@/types/community';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, Heart, Share, Image, Send } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -20,13 +19,15 @@ const CommunityFeed = ({ communityId }: CommunityFeedProps) => {
   const { toast } = useToast();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [newPostContent, setNewPostContent] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [postContent, setPostContent] = useState('');
+  const [selectedImage, setSelectedImage] = useState('');
+  const [showImageUpload, setShowImageUpload] = useState(false);
+  const [isPosting, setIsPosting] = useState(false);
 
   useEffect(() => {
     const loadPosts = async () => {
       try {
-        const data = await fetchCommunityPosts(communityId);
+        const data = await getCommunityPosts(communityId);
         setPosts(data);
       } catch (error) {
         console.error("Failed to load community posts:", error);
@@ -43,51 +44,39 @@ const CommunityFeed = ({ communityId }: CommunityFeedProps) => {
     loadPosts();
   }, [communityId, toast]);
 
-  const handleSubmitPost = async () => {
-    if (!user) {
+  const handleCreatePost = async () => {
+    if (!postContent.trim()) {
       toast({
-        title: "Authentication required",
-        description: "Please log in to post in this community",
+        title: "Post content required",
+        description: "Please write something in your post.",
         variant: "destructive"
       });
       return;
     }
 
-    if (!newPostContent.trim()) {
-      toast({
-        title: "Empty post",
-        description: "Please enter some content for your post",
-        variant: "destructive"
-      });
-      return;
-    }
-
+    setIsPosting(true);
     try {
-      setIsSubmitting(true);
-      await createCommunityPost({
-        community_id: communityId,
-        user_id: user.id,
-        content: newPostContent
-      });
-
-      setNewPostContent('');
+      await createCommunityPost(communityId, user!.id, postContent, selectedImage);
+      
+      // Clear form and reload posts
+      setPostContent('');
+      setSelectedImage('');
+      setShowImageUpload(false);
+      loadPosts();
+      
       toast({
         title: "Post created",
-        description: "Your post has been shared with the community",
+        description: "Your post has been published.",
       });
-
-      // Refresh posts
-      const updatedPosts = await fetchCommunityPosts(communityId);
-      setPosts(updatedPosts);
     } catch (error) {
-      console.error("Failed to create post:", error);
+      console.error("Error creating post:", error);
       toast({
         title: "Failed to create post",
-        description: "An error occurred while creating your post.",
+        description: "There was an error publishing your post. Please try again.",
         variant: "destructive"
       });
     } finally {
-      setIsSubmitting(false);
+      setIsPosting(false);
     }
   };
 
@@ -117,8 +106,8 @@ const CommunityFeed = ({ communityId }: CommunityFeedProps) => {
               <div className="flex-1">
                 <Textarea
                   placeholder="Share something with the community..."
-                  value={newPostContent}
-                  onChange={(e) => setNewPostContent(e.target.value)}
+                  value={postContent}
+                  onChange={(e) => setPostContent(e.target.value)}
                   rows={3}
                   className="w-full mb-2"
                 />
@@ -128,11 +117,11 @@ const CommunityFeed = ({ communityId }: CommunityFeedProps) => {
                     Add Image
                   </Button>
                   <Button 
-                    onClick={handleSubmitPost}
-                    disabled={isSubmitting || !newPostContent.trim()}
+                    onClick={handleCreatePost}
+                    disabled={isPosting || !postContent.trim()}
                   >
                     <Send className="h-4 w-4 mr-2" />
-                    {isSubmitting ? "Posting..." : "Post"}
+                    {isPosting ? "Posting..." : "Post"}
                   </Button>
                 </div>
               </div>
