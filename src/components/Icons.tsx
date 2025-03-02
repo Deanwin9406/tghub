@@ -5,12 +5,12 @@ import {
   Lock, 
   User, 
   Github, 
-  Google, 
   Facebook,
   Twitter, 
   CheckCircle,
   XCircle,
-  AlertTriangle
+  AlertTriangle,
+  Loader2
 } from 'lucide-react';
 
 export const Icons = {
@@ -18,10 +18,10 @@ export const Icons = {
   lock: Lock,
   user: User,
   github: Github,
-  google: Google,
   facebook: Facebook,
   twitter: Twitter,
   success: CheckCircle,
   error: XCircle,
-  warning: AlertTriangle
+  warning: AlertTriangle,
+  spinner: Loader2
 };

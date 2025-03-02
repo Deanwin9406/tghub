@@ -1,273 +1,297 @@
-import React, { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Button } from "@/components/ui/button";
-import { toast } from "@/components/ui/use-toast";
-import { cn } from "@/lib/utils";
-import { Icons } from "@/components/Icons";
-import * as z from "zod";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
 
-const signInSchema = z.object({
-  email: z.string().email({ message: "Adresse e-mail invalide" }),
-  password: z.string().min(8, { message: "Le mot de passe doit contenir au moins 8 caractères" }),
-});
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Icons } from '@/components/Icons';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
-const signUpSchema = z.object({
-  email: z.string().email({ message: "Adresse e-mail invalide" }),
-  password: z.string().min(8, { message: "Le mot de passe doit contenir au moins 8 caractères" }),
-  firstName: z.string().min(2, { message: "Le prénom doit contenir au moins 2 caractères" }),
-  lastName: z.string().min(2, { message: "Le nom doit contenir au moins 2 caractères" }),
-});
-
-type SignInFormValues = z.infer<typeof signInSchema>;
-type SignUpFormValues = z.infer<typeof signUpSchema>;
-
-const Auth = () => {
-  const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
-  const { signIn, signUp } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
+const AuthPage = () => {
   const navigate = useNavigate();
+  const { signIn, signUp } = useAuth();
+  const { toast } = useToast();
+  const [loadingSignIn, setLoadingSignIn] = useState(false);
+  const [loadingSignUp, setLoadingSignUp] = useState(false);
+  const [signInError, setSignInError] = useState('');
+  const [signUpError, setSignUpError] = useState('');
 
-  const signInForm = useForm<SignInFormValues>({
-    resolver: zodResolver(signInSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
+  const [signInData, setSignInData] = useState({
+    email: '',
+    password: ''
   });
 
-  const signUpForm = useForm<SignUpFormValues>({
-    resolver: zodResolver(signUpSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-      firstName: "",
-      lastName: "",
-    },
+  const [signUpData, setSignUpData] = useState({
+    email: '',
+    password: '',
+    passwordConfirm: '',
+    firstName: '',
+    lastName: ''
   });
 
-  const handleSignIn = async (data: SignInFormValues) => {
-    setIsLoading(true);
-    const { error } = await signIn(data.email, data.password);
-    setIsLoading(false);
-    if (error) {
+  const handleSignInChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setSignInData(prev => ({ ...prev, [name]: value }));
+    setSignInError('');
+  };
+
+  const handleSignUpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setSignUpData(prev => ({ ...prev, [name]: value }));
+    setSignUpError('');
+  };
+
+  const validateSignIn = () => {
+    if (!signInData.email || !signInData.password) {
+      setSignInError('Please fill in all fields');
+      return false;
+    }
+    return true;
+  };
+
+  const validateSignUp = () => {
+    if (!signUpData.email || !signUpData.password || !signUpData.passwordConfirm || !signUpData.firstName || !signUpData.lastName) {
+      setSignUpError('Please fill in all fields');
+      return false;
+    }
+
+    if (signUpData.password !== signUpData.passwordConfirm) {
+      setSignUpError('Passwords do not match');
+      return false;
+    }
+
+    if (signUpData.password.length < 6) {
+      setSignUpError('Password must be at least 6 characters');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateSignIn()) return;
+
+    setLoadingSignIn(true);
+    try {
+      const { error } = await signIn(signInData.email, signInData.password);
+      if (error) {
+        throw new Error(error.message || 'Failed to sign in');
+      }
       toast({
-        title: "Erreur de connexion",
-        description: error.message,
-        variant: "destructive",
+        title: "Welcome back!",
+        description: "You have successfully signed in."
       });
-    } else {
-      navigate("/");
+      navigate('/');
+    } catch (error: any) {
+      setSignInError(error.message || 'Failed to sign in');
+      toast({
+        title: "Authentication failed",
+        description: error.message || 'Failed to sign in',
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingSignIn(false);
     }
   };
 
-  const handleSignUp = async (data: SignUpFormValues) => {
-    setIsLoading(true);
-    const { error } = await signUp(data.email, data.password, data.firstName, data.lastName);
-    setIsLoading(false);
-    if (error) {
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!validateSignUp()) return;
+
+    setLoadingSignUp(true);
+    try {
+      const { error } = await signUp(signUpData.email, signUpData.password, signUpData.firstName, signUpData.lastName);
+      if (error) {
+        throw new Error(error.message || 'Failed to sign up');
+      }
       toast({
-        title: "Erreur d'inscription",
-        description: error.message,
-        variant: "destructive",
+        title: "Account created",
+        description: "You have successfully signed up."
       });
-    } else {
+      navigate('/');
+    } catch (error: any) {
+      setSignUpError(error.message || 'Failed to sign up');
       toast({
-        title: "Inscription réussie",
-        description: "Vous pouvez maintenant vous connecter",
+        title: "Registration failed",
+        description: error.message || 'Failed to sign up',
+        variant: "destructive"
       });
-      setAuthMode("signin");
+    } finally {
+      setLoadingSignUp(false);
     }
   };
 
   return (
-    <div className="container relative h-[800px] flex-col items-center justify-center md:grid lg:max-w-none lg:grid-cols-2 lg:px-0">
-      <div className="relative hidden h-full flex-col bg-muted p-10 text-white lg:flex">
-        <div className="absolute inset-0 bg-zinc-900/80" />
-        <div className="relative z-20 mt-auto">
-          <CardTitle className="text-5xl font-bold">
-            TogoPropConnect
-          </CardTitle>
-          <CardDescription className="mt-4 text-zinc-400">
-            Votre plateforme immobilière de confiance au Togo.
-          </CardDescription>
+    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900">
+      <div className="w-full max-w-md">
+        <div className="mb-8 text-center">
+          <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Welcome to PropertyPal
+          </h2>
+          <p className="mt-2 text-gray-600 dark:text-gray-400">
+            Sign in to your account or create a new one
+          </p>
         </div>
-      </div>
-      <div className="lg:p-8">
-        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-          {authMode === "signin" ? (
-            <>
-              <CardHeader className="space-y-0">
-                <CardTitle>Se connecter</CardTitle>
-                <CardDescription>
-                  Entrez votre e-mail et votre mot de passe pour vous connecter
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <form onSubmit={signInForm.handleSubmit(handleSignIn)}>
-                  <div className="grid gap-2">
-                    <div className="grid gap-1">
-                      <Label htmlFor="email">Email</Label>
+
+        <div className="rounded-lg border bg-card shadow-sm">
+          <Tabs defaultValue="sign-in" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="sign-in">Sign In</TabsTrigger>
+              <TabsTrigger value="sign-up">Sign Up</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="sign-in" className="p-6">
+              <form onSubmit={handleSignIn}>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="signin-email">Email</Label>
+                    <div className="relative">
+                      <Icons.mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="email"
-                        placeholder="exemple@gmail.com"
+                        id="signin-email"
+                        name="email"
                         type="email"
-                        {...signInForm.register("email")}
+                        placeholder="name@example.com"
+                        value={signInData.email}
+                        onChange={handleSignInChange}
+                        className="pl-10"
                       />
-                      {signInForm.formState.errors.email && (
-                        <p className="text-sm text-red-500">
-                          {signInForm.formState.errors.email.message}
-                        </p>
-                      )}
                     </div>
                   </div>
-                  <div className="grid gap-2">
-                    <div className="grid gap-1">
-                      <Label htmlFor="password">Mot de passe</Label>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="signin-password">Password</Label>
+                      <button
+                        type="button"
+                        className="text-sm text-primary hover:underline"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                    <div className="relative">
+                      <Icons.lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="password"
-                        placeholder="********"
+                        id="signin-password"
+                        name="password"
                         type="password"
-                        {...signInForm.register("password")}
+                        placeholder="••••••••"
+                        value={signInData.password}
+                        onChange={handleSignInChange}
+                        className="pl-10"
                       />
-                      {signInForm.formState.errors.password && (
-                        <p className="text-sm text-red-500">
-                          {signInForm.formState.errors.password.message}
-                        </p>
-                      )}
                     </div>
                   </div>
-                  <Button disabled={isLoading} className="w-full">
-                    {isLoading ? (
+                  {signInError && (
+                    <div className="text-sm text-destructive">{signInError}</div>
+                  )}
+                  <Button type="submit" className="w-full" disabled={loadingSignIn}>
+                    {loadingSignIn ? (
                       <>
                         <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                        Patientez...
+                        Signing in...
                       </>
                     ) : (
-                      "Se connecter"
+                      "Sign In"
                     )}
                   </Button>
-                </form>
-              </CardContent>
-            </>
-          ) : (
-            <>
-              <CardHeader className="space-y-0">
-                <CardTitle>Créer un compte</CardTitle>
-                <CardDescription>
-                  Entrez votre e-mail et créez un mot de passe
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                <form onSubmit={signUpForm.handleSubmit(handleSignUp)}>
-                  <div className="grid gap-2">
-                    <div className="grid gap-1">
-                      <Label htmlFor="firstName">Prénom</Label>
+                </div>
+              </form>
+            </TabsContent>
+
+            <TabsContent value="sign-up" className="p-6">
+              <form onSubmit={handleSignUp}>
+                <div className="grid gap-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName">First Name</Label>
                       <Input
                         id="firstName"
+                        name="firstName"
                         placeholder="John"
-                        type="text"
-                        {...signUpForm.register("firstName")}
+                        value={signUpData.firstName}
+                        onChange={handleSignUpChange}
                       />
-                      {signUpForm.formState.errors.firstName && (
-                        <p className="text-sm text-red-500">
-                          {signUpForm.formState.errors.firstName.message}
-                        </p>
-                      )}
                     </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <div className="grid gap-1">
-                      <Label htmlFor="lastName">Nom</Label>
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName">Last Name</Label>
                       <Input
                         id="lastName"
+                        name="lastName"
                         placeholder="Doe"
-                        type="text"
-                        {...signUpForm.register("lastName")}
+                        value={signUpData.lastName}
+                        onChange={handleSignUpChange}
                       />
-                      {signUpForm.formState.errors.lastName && (
-                        <p className="text-sm text-red-500">
-                          {signUpForm.formState.errors.lastName.message}
-                        </p>
-                      )}
                     </div>
                   </div>
-                  <div className="grid gap-2">
-                    <div className="grid gap-1">
-                      <Label htmlFor="email">Email</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-email">Email</Label>
+                    <div className="relative">
+                      <Icons.mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="email"
-                        placeholder="exemple@gmail.com"
+                        id="signup-email"
+                        name="email"
                         type="email"
-                        {...signUpForm.register("email")}
+                        placeholder="name@example.com"
+                        value={signUpData.email}
+                        onChange={handleSignUpChange}
+                        className="pl-10"
                       />
-                      {signUpForm.formState.errors.email && (
-                        <p className="text-sm text-red-500">
-                          {signUpForm.formState.errors.email.message}
-                        </p>
-                      )}
                     </div>
                   </div>
-                  <div className="grid gap-2">
-                    <div className="grid gap-1">
-                      <Label htmlFor="password">Mot de passe</Label>
+                  <div className="space-y-2">
+                    <Label htmlFor="signup-password">Password</Label>
+                    <div className="relative">
+                      <Icons.lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                       <Input
-                        id="password"
-                        placeholder="********"
+                        id="signup-password"
+                        name="password"
                         type="password"
-                        {...signUpForm.register("password")}
+                        placeholder="••••••••"
+                        value={signUpData.password}
+                        onChange={handleSignUpChange}
+                        className="pl-10"
                       />
-                      {signUpForm.formState.errors.password && (
-                        <p className="text-sm text-red-500">
-                          {signUpForm.formState.errors.password.message}
-                        </p>
-                      )}
                     </div>
                   </div>
-                  <Button disabled={isLoading} className="w-full">
-                    {isLoading ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="passwordConfirm">Confirm Password</Label>
+                    <div className="relative">
+                      <Icons.lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="passwordConfirm"
+                        name="passwordConfirm"
+                        type="password"
+                        placeholder="••••••••"
+                        value={signUpData.passwordConfirm}
+                        onChange={handleSignUpChange}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+                  {signUpError && (
+                    <div className="text-sm text-destructive">{signUpError}</div>
+                  )}
+                  <Button type="submit" className="w-full" disabled={loadingSignUp}>
+                    {loadingSignUp ? (
                       <>
                         <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
-                        Patientez...
+                        Creating account...
                       </>
                     ) : (
-                      "Créer un compte"
+                      "Create Account"
                     )}
                   </Button>
-                </form>
-              </CardContent>
-            </>
-          )}
-          <div className="relative mt-6">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Ou
-              </span>
-            </div>
-          </div>
-          <Button variant="secondary" className="w-full" onClick={() => setAuthMode(authMode === "signin" ? "signup" : "signin")}>
-            {authMode === "signin"
-              ? "Créer un compte"
-              : "J'ai déjà un compte"}
-          </Button>
+                </div>
+              </form>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>
   );
 };
 
-export default Auth;
+export default AuthPage;

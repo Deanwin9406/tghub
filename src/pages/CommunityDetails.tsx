@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -131,7 +132,7 @@ const CommunityDetails = () => {
             </div>
             
             {/* Community Tabs */}
-            <CommunityTabs communityId={community.id} />
+            <CommunityTabs community={community} />
           </>
         ) : (
           <Alert>

@@ -1,4 +1,3 @@
-
 export interface Community {
   id: string;
   name: string;
@@ -11,6 +10,13 @@ export interface Community {
   updated_at: string;
   member_count?: number;
   property_count?: number;
+  created_by_profile?: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    avatar_url: string | null;
+  };
+  tags?: string[];
 }
 
 export interface CommunityMember {

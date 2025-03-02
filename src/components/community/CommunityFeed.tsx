@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -24,23 +25,23 @@ const CommunityFeed = ({ communityId }: CommunityFeedProps) => {
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
 
-  useEffect(() => {
-    const loadPosts = async () => {
-      try {
-        const data = await getCommunityPosts(communityId);
-        setPosts(data);
-      } catch (error) {
-        console.error("Failed to load community posts:", error);
-        toast({
-          title: "Failed to load posts",
-          description: "Could not load community posts. Please try again.",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const loadPosts = async () => {
+    try {
+      const data = await getCommunityPosts(communityId);
+      setPosts(data);
+    } catch (error) {
+      console.error("Failed to load community posts:", error);
+      toast({
+        title: "Failed to load posts",
+        description: "Could not load community posts. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     loadPosts();
   }, [communityId, toast]);
 

@@ -1,3 +1,4 @@
+
 import { supabase } from "@/integrations/supabase/client";
 import { Community, CommunityPost, CommunityEvent, CommunityPoll, MarketplaceItem } from "@/types/community";
 
@@ -25,7 +26,8 @@ export const getCommunities = async (): Promise<Community[]> => {
 
         return {
           ...community,
-          member_count: count || 0
+          member_count: count || 0,
+          location: community.location || 'Unknown Location'
         };
       })
     );
@@ -44,7 +46,7 @@ export const getCommunityDetails = async (communityId: string): Promise<Communit
       .from("communities")
       .select(`
         *,
-        created_by_profile:profiles(*)
+        created_by_profile:profiles!communities_created_by_fkey(*)
       `)
       .eq("id", communityId)
       .single();
@@ -59,7 +61,10 @@ export const getCommunityDetails = async (communityId: string): Promise<Communit
 
     return {
       ...data,
-      member_count: count || 0
+      member_count: count || 0,
+      location: data.location || 'Unknown Location',
+      tags: data.tags || [],
+      created_by_profile: data.created_by_profile || null
     };
   } catch (error) {
     console.error("Error fetching community details:", error);
@@ -74,7 +79,7 @@ export const getCommunityPosts = async (communityId: string): Promise<CommunityP
       .from("community_posts")
       .select(`
         *,
-        profiles(*)
+        author:profiles!community_posts_user_id_fkey(*)
       `)
       .eq("community_id", communityId)
       .order("created_at", { ascending: false });
@@ -97,10 +102,10 @@ export const getCommunityPosts = async (communityId: string): Promise<CommunityP
           .eq("post_id", post.id);
 
         // Format author info
-        const author = post.profiles ? {
-          first_name: post.profiles.first_name || "",
-          last_name: post.profiles.last_name || "",
-          avatar_url: post.profiles.avatar_url || ""
+        const author = post.author ? {
+          first_name: post.author.first_name || "",
+          last_name: post.author.last_name || "",
+          avatar_url: post.author.avatar_url || ""
         } : {
           first_name: "Unknown",
           last_name: "User",
@@ -221,7 +226,7 @@ export const getMarketplaceItems = async (communityId: string): Promise<Marketpl
       .from("marketplace_items")
       .select(`
         *,
-        profiles(*)
+        seller:profiles!marketplace_items_seller_id_fkey(*)
       `)
       .eq("community_id", communityId)
       .order("created_at", { ascending: false });
@@ -230,10 +235,10 @@ export const getMarketplaceItems = async (communityId: string): Promise<Marketpl
 
     // Format the items with seller info
     const formattedItems = data.map(item => {
-      const sellerInfo = item.profiles ? {
-        first_name: item.profiles.first_name || "",
-        last_name: item.profiles.last_name || "",
-        avatar_url: item.profiles.avatar_url || ""
+      const sellerInfo = item.seller ? {
+        first_name: item.seller.first_name || "",
+        last_name: item.seller.last_name || "",
+        avatar_url: item.seller.avatar_url || ""
       } : null;
 
       return {

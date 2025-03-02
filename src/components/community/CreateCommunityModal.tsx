@@ -1,33 +1,48 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { createCommunity } from '@/services/communityService';
-import { Modal } from '@/components/ui/modal';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Plus, Loader2 } from 'lucide-react';
 
-interface CreateCommunityModalProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-const CreateCommunityModal = ({ open, onOpenChange }: CreateCommunityModalProps) => {
+const CreateCommunityModal = () => {
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
-  
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [location, setLocation] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
+  const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    location: '',
+    image_url: ''
+  });
 
-  const handleCreateCommunity = async () => {
-    if (!name || !description || !location) {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async () => {
+    if (!user) {
       toast({
-        title: "All fields are required",
-        description: "Please fill in all fields to create a community.",
+        title: "Authentication required",
+        description: "Please sign in to create a community.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!formData.name || !formData.description) {
+      toast({
+        title: "Missing information",
+        description: "Please provide a name and description for your community.",
         variant: "destructive"
       });
       return;
@@ -36,17 +51,19 @@ const CreateCommunityModal = ({ open, onOpenChange }: CreateCommunityModalProps)
     setIsLoading(true);
     try {
       const communityId = await createCommunity({
-        name,
-        description,
-        location,
-        image_url: imageUrl,
-        created_by: user!.id
+        name: formData.name,
+        description: formData.description,
+        location: formData.location,
+        image_url: formData.image_url,
+        created_by: user.id
       });
+      
       toast({
         title: "Community created",
         description: "Your community has been created successfully.",
       });
-      onOpenChange(false);
+      
+      setOpen(false);
       navigate(`/communities/${communityId}`);
     } catch (error) {
       console.error("Error creating community:", error);
@@ -61,43 +78,91 @@ const CreateCommunityModal = ({ open, onOpenChange }: CreateCommunityModalProps)
   };
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange}>
-      <Modal.Content>
-        <Modal.Header>
-          <h2>Create Community</h2>
-        </Modal.Header>
-        <Modal.Body>
-          <Input
-            placeholder="Community Name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="mb-4"
-          />
-          <Input
-            placeholder="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className="mb-4"
-          />
-          <Input
-            placeholder="Location"
-            value={location}
-            onChange={(e) => setLocation(e.target.value)}
-            className="mb-4"
-          />
-          <Input
-            placeholder="Image URL (optional)"
-            value={imageUrl}
-            onChange={(e) => setImageUrl(e.target.value)}
-            className="mb-4"
-          />
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleCreateCommunity} isLoading={isLoading}>Create</Button>
-        </Modal.Footer>
-      </Modal.Content>
-    </Modal>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="mr-2" />
+          Create Community
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Create New Community</DialogTitle>
+          <DialogDescription>
+            Create a new community to connect with people sharing similar interests.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="grid gap-4 py-4">
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="name" className="text-right">
+              Name
+            </Label>
+            <Input
+              id="name"
+              name="name"
+              value={formData.name}
+              onChange={handleChange}
+              className="col-span-3"
+              placeholder="Community name"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="location" className="text-right">
+              Location
+            </Label>
+            <Input
+              id="location"
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
+              className="col-span-3"
+              placeholder="City, State, Country"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="description" className="text-right">
+              Description
+            </Label>
+            <Textarea
+              id="description"
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              className="col-span-3"
+              placeholder="Tell us about your community"
+            />
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="image_url" className="text-right">
+              Image URL
+            </Label>
+            <Input
+              id="image_url"
+              name="image_url"
+              value={formData.image_url}
+              onChange={handleChange}
+              className="col-span-3"
+              placeholder="https://example.com/image.jpg"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create Community"
+            )}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 };
 
