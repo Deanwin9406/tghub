@@ -77,11 +77,11 @@ const Search = () => {
       
       const formattedProperties = (data || []).map(property => ({
         ...property,
-        square_footage: property.square_footage || property.size_sqm || 0,
-        year_built: property.year_built || 0,
-        amenities: property.amenities || [],
-        image_urls: property.image_urls || [],
-        availability_date: property.availability_date || new Date().toISOString()
+        square_footage: property.size_sqm || 0,
+        year_built: 0,
+        amenities: [],
+        image_urls: [],
+        availability_date: new Date().toISOString()
       })) as PropertyType[];
 
       setProperties(formattedProperties);
