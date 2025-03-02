@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -32,7 +33,7 @@ interface Lease {
 // Function to safely get tenant name
 const getTenantName = (lease: Lease): string => {
   if (!lease.tenant) return 'Tenant inconnu';
-  return `${lease.tenant?.first_name || ''} ${lease.tenant?.last_name || ''}`.trim() || 'Tenant inconnu';
+  return `${lease.tenant.first_name || ''} ${lease.tenant.last_name || ''}`.trim() || 'Tenant inconnu';
 };
 
 const Leases = () => {
@@ -48,52 +49,61 @@ const Leases = () => {
     queryFn: async () => {
       if (!user) return [];
 
-      let query = supabase
-        .from('leases')
-        .select(`
-          id,
-          start_date,
-          end_date,
-          rent_amount,
-          status,
-          property:properties (
-            title,
-            address,
-            city
-          ),
-          tenant:profiles (
-            first_name,
-            last_name,
-            email
-          )
-        `)
-        .order('start_date', { ascending: false });
+      try {
+        let query = supabase
+          .from('leases')
+          .select(`
+            id,
+            start_date,
+            end_date,
+            monthly_rent as rent_amount,
+            status,
+            property:properties (
+              title,
+              address,
+              city
+            ),
+            tenant:profiles (
+              first_name,
+              last_name,
+              email
+            )
+          `)
+          .order('start_date', { ascending: false });
 
-      if (isTenant) {
-        query = query.eq('tenant_id', user.id);
-      } else if (isLandlord) {
-        query = query.eq('landlord_id', user.id);
-      }
+        if (isTenant) {
+          query = query.eq('tenant_id', user.id);
+        } else if (isLandlord) {
+          query = query.eq('landlord_id', user.id);
+        }
 
-      const { data, error } = await query;
+        const { data, error } = await query;
 
-      if (error) {
-        console.error("Error fetching leases:", error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de récupérer les baux. Veuillez réessayer.",
-        });
+        if (error) {
+          console.error("Error fetching leases:", error);
+          toast({
+            title: "Erreur",
+            description: "Impossible de récupérer les baux. Veuillez réessayer.",
+          });
+          return [];
+        }
+
+        return Array.isArray(data) ? data.map(lease => ({
+          ...lease,
+          rent_amount: lease.rent_amount || 0, // Ensure rent_amount is never undefined
+          tenant: lease.tenant || null // Ensure tenant is never undefined
+        })) : [];
+      } catch (err) {
+        console.error("Unexpected error:", err);
         return [];
       }
-
-      return (Array.isArray(data) ? data : []) as Lease[];
     },
     enabled: !!user,
   });
 
   useEffect(() => {
     if (data) {
-      setLeases(data);
+      setLeases(data as Lease[]);
     }
   }, [data]);
 

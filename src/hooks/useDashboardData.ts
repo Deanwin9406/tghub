@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -177,13 +178,18 @@ export const useDashboardData = ({ user, roles }: UseDashboardDataProps) => {
   useEffect(() => {
     if (messageData) {
       const safeMessages = messageData.map(msg => {
+        // Handle case where sender might be an error object
+        const senderData = (msg.sender && typeof msg.sender === 'object' && !('error' in msg.sender)) 
+          ? msg.sender 
+          : { first_name: 'Unknown', last_name: '' };
+        
         return {
           id: msg.id || 'unknown',
           content: msg.content || 'No content',
           created_at: msg.created_at || new Date().toISOString(),
           sender: {
-            first_name: msg.sender?.first_name || 'Unknown',
-            last_name: msg.sender?.last_name || ''
+            first_name: senderData.first_name || 'Unknown',
+            last_name: senderData.last_name || ''
           }
         };
       });
