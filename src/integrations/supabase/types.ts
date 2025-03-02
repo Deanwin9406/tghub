@@ -114,7 +114,9 @@ export type Database = {
           id: string
           image_url: string | null
           is_private: boolean | null
+          location: string | null
           name: string
+          tags: string[] | null
           updated_at: string
         }
         Insert: {
@@ -124,7 +126,9 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_private?: boolean | null
+          location?: string | null
           name: string
+          tags?: string[] | null
           updated_at?: string
         }
         Update: {
@@ -134,7 +138,9 @@ export type Database = {
           id?: string
           image_url?: string | null
           is_private?: boolean | null
+          location?: string | null
           name?: string
+          tags?: string[] | null
           updated_at?: string
         }
         Relationships: []
@@ -1099,6 +1105,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_view_community: {
+        Args: {
+          community_id: string
+          user_id: string
+        }
+        Returns: boolean
+      }
       has_completed_kyc: {
         Args: {
           user_id: string
@@ -1109,6 +1122,13 @@ export type Database = {
         Args: {
           user_id: string
           role: Database["public"]["Enums"]["user_role"]
+        }
+        Returns: boolean
+      }
+      is_community_member: {
+        Args: {
+          community_id: string
+          user_id: string
         }
         Returns: boolean
       }

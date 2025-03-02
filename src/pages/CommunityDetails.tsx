@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import CommunityTabs from '@/components/community/CommunityTabs';
-import { getCommunityDetails } from '@/services/communityService';
+import { getCommunityDetails, joinCommunity, isUserCommunityMember } from '@/services/communityService';
 import { Community } from '@/types/community';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -13,12 +13,18 @@ import { format } from 'date-fns';
 import { getInitials } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
 
 const CommunityDetails = () => {
   const { id } = useParams<{ id: string }>();
   const [community, setCommunity] = useState<Community | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isMember, setIsMember] = useState(false);
+  const [isJoining, setIsJoining] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   useEffect(() => {
     const loadCommunity = async () => {
@@ -26,6 +32,12 @@ const CommunityDetails = () => {
       try {
         const data = await getCommunityDetails(id!);
         setCommunity(data);
+        
+        // Check if current user is a member
+        if (user) {
+          const memberStatus = await isUserCommunityMember(id!, user.id);
+          setIsMember(memberStatus);
+        }
       } catch (error) {
         console.error('Error loading community details:', error);
         setError('Failed to load community details. Please try again later.');
@@ -35,7 +47,37 @@ const CommunityDetails = () => {
     };
 
     loadCommunity();
-  }, [id]);
+  }, [id, user]);
+
+  const handleJoinCommunity = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to join this community",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsJoining(true);
+    try {
+      await joinCommunity(id!, user.id);
+      setIsMember(true);
+      toast({
+        title: "Success!",
+        description: "You've joined the community successfully",
+      });
+    } catch (error) {
+      console.error('Error joining community:', error);
+      toast({
+        title: "Error",
+        description: "Failed to join community. Please try again later.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsJoining(false);
+    }
+  };
 
   return (
     <Layout>
@@ -85,12 +127,23 @@ const CommunityDetails = () => {
               <div className="flex-1">
                 <div className="flex justify-between items-start">
                   <h1 className="text-3xl font-bold mb-2">{community.name}</h1>
-                  <Button>Join Community</Button>
+                  {!isMember ? (
+                    <Button 
+                      onClick={handleJoinCommunity} 
+                      disabled={isJoining}
+                    >
+                      {isJoining ? 'Joining...' : 'Join Community'}
+                    </Button>
+                  ) : (
+                    <Button variant="outline">
+                      Member
+                    </Button>
+                  )}
                 </div>
                 
                 <div className="flex items-center text-muted-foreground mb-4">
                   <MapPin className="h-4 w-4 mr-1" />
-                  <span>{community.location}</span>
+                  <span>{community.location || 'Unknown Location'}</span>
                   <span className="mx-2">•</span>
                   <Users className="h-4 w-4 mr-1" />
                   <span>{community.member_count} members</span>
@@ -132,7 +185,7 @@ const CommunityDetails = () => {
             </div>
             
             {/* Community Tabs */}
-            <CommunityTabs community={community} />
+            <CommunityTabs community={community} isMember={isMember} />
           </>
         ) : (
           <Alert>

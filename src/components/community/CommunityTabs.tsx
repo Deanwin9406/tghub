@@ -10,9 +10,10 @@ import CommunityMembers from './CommunityMembers';
 
 interface CommunityTabsProps {
   community: Community;
+  isMember?: boolean;
 }
 
-const CommunityTabs = ({ community }: CommunityTabsProps) => {
+const CommunityTabs = ({ community, isMember = false }: CommunityTabsProps) => {
   return (
     <Tabs defaultValue="feed" className="w-full">
       <TabsList className="mb-4">
@@ -24,7 +25,7 @@ const CommunityTabs = ({ community }: CommunityTabsProps) => {
       </TabsList>
       
       <TabsContent value="feed">
-        <CommunityFeed communityId={community.id} />
+        <CommunityFeed communityId={community.id} isMember={isMember} />
       </TabsContent>
       
       <TabsContent value="events">
