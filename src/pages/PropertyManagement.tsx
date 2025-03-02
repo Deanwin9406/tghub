@@ -4,13 +4,13 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Building, Bed, Bath, MapPin, CreditCard } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import PropertyCard from '@/components/PropertyCard';
 
+// Define the PropertyType interface to match with the component
 interface PropertyType {
   id: string;
   title: string;
@@ -33,36 +33,6 @@ interface PropertyType {
 
 type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor';
 
-type RoleCheckResult = {
-  user_id: string;
-  role: UserRole;
-};
-
-interface ExtendedPropertyType {
-  address: string;
-  bathrooms: number;
-  bedrooms: number;
-  city: string;
-  country: string;
-  created_at: string;
-  description: string;
-  featured: boolean;
-  id: string;
-  main_image_url: string;
-  owner_id: string;
-  price: number;
-  property_type: string;
-  status: string;
-  title: string;
-  updated_at: string;
-  square_footage?: number;
-  size_sqm?: number;
-  year_built?: number;
-  amenities?: string[];
-  image_urls?: string[];
-  availability_date?: string;
-}
-
 const PropertyManagement = () => {
   const navigate = useNavigate();
   const { user, session, roles } = useAuth();
@@ -83,20 +53,6 @@ const PropertyManagement = () => {
     const authorizedRoles = ['landlord', 'agent', 'manager', 'admin'];
     const hasPermission = roles.some(role => authorizedRoles.includes(role));
     setCanCreateListings(hasPermission);
-  };
-
-  const checkIfHasRole = async (role: UserRole): Promise<RoleCheckResult> => {
-    const { data, error } = await supabase.rpc('has_role', {
-      user_id: session?.user.id || '',
-      role: role
-    });
-
-    if (error) {
-      console.error('Error checking role:', error);
-      return { user_id: session?.user.id || '', role: 'tenant' as UserRole };
-    }
-    
-    return { user_id: session?.user.id || '', role: role as UserRole };
   };
 
   const fetchProperties = async () => {
@@ -146,6 +102,7 @@ const PropertyManagement = () => {
 
       if (error) throw error;
       
+      // Transform the data to match PropertyType interface
       const propertyData = data.map(property => ({
         ...property,
         square_footage: property.square_footage || property.size_sqm || 0,
@@ -210,7 +167,14 @@ const PropertyManagement = () => {
                 {properties.map((property) => (
                   <PropertyCard
                     key={property.id}
-                    property={property}
+                    property={{
+                      ...property,
+                      square_footage: property.square_footage || 0,
+                      year_built: property.year_built || 0,
+                      amenities: property.amenities || [],
+                      image_urls: property.image_urls || [],
+                      availability_date: property.availability_date || new Date().toISOString()
+                    }}
                   />
                 ))}
               </div>
