@@ -13,7 +13,7 @@ type Profile = {
   avatar_url?: string;
 };
 
-type UserRole = 'tenant' | 'landlord' | 'manager' | 'admin';
+type UserRole = 'tenant' | 'landlord' | 'manager' | 'admin' | 'agent';
 
 type AuthContextType = {
   session: Session | null;
@@ -22,10 +22,11 @@ type AuthContextType = {
   roles: UserRole[];
   isLoading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, firstName: string, lastName: string, role?: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any }>;
+  hasCompletedKyc: boolean;
 };
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -36,6 +37,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [hasCompletedKyc, setHasCompletedKyc] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,6 +49,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (session?.user) {
         fetchProfile(session.user.id);
         fetchRoles(session.user.id);
+        checkKycStatus(session.user.id);
       } else {
         setIsLoading(false);
       }
@@ -60,10 +63,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       if (session?.user) {
         fetchProfile(session.user.id);
         fetchRoles(session.user.id);
+        checkKycStatus(session.user.id);
       } else {
         setProfile(null);
         setRoles([]);
         setIsLoading(false);
+        setHasCompletedKyc(false);
       }
     });
 
@@ -113,6 +118,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  const checkKycStatus = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('kyc_verifications')
+        .select('status')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" error code
+        throw error;
+      }
+
+      setHasCompletedKyc(data?.status === 'approved');
+    } catch (error) {
+      console.error('Error checking KYC status:', error);
+    }
+  };
+
   const signIn = async (email: string, password: string) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -122,7 +147,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
+  const signUp = async (email: string, password: string, firstName: string, lastName: string, role: string = 'tenant') => {
     try {
       const { error } = await supabase.auth.signUp({
         email,
@@ -131,9 +156,13 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           data: {
             first_name: firstName,
             last_name: lastName,
+            user_role: role,
           },
         },
       });
+      
+      // Note: Role is assigned by database trigger automatically based on user_role metadata
+      
       return { error };
     } catch (error) {
       return { error };
@@ -185,6 +214,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     signOut,
     resetPassword,
     updateProfile,
+    hasCompletedKyc,
   };
 
   return (
@@ -193,6 +223,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     </AuthContext.Provider>
   );
 };
+
+export { AuthContext, useAuth };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

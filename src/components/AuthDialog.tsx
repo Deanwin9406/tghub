@@ -13,8 +13,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 type AuthDialogProps = {
   children: React.ReactNode;
@@ -27,6 +28,7 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
+  const [role, setRole] = useState('tenant');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showResetForm, setShowResetForm] = useState(false);
   const [open, setOpen] = useState(false);
@@ -81,7 +83,7 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
         return;
       }
       
-      const { error } = await signUp(email, password, firstName, lastName);
+      const { error } = await signUp(email, password, firstName, lastName, role);
       
       if (error) {
         toast({
@@ -92,9 +94,10 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
       } else {
         toast({
           title: 'Compte créé',
-          description: 'Veuillez vérifier votre email pour confirmation.',
+          description: 'Veuillez compléter la vérification KYC pour activer votre compte.',
         });
-        setActiveTab('login');
+        setOpen(false);
+        navigate('/kyc-verification');
       }
     } catch (error: any) {
       toast({
@@ -273,6 +276,27 @@ const AuthDialog = ({ children }: AuthDialogProps) => {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label>Type de compte</Label>
+                  <RadioGroup value={role} onValueChange={setRole} className="flex flex-col space-y-1">
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="tenant" id="tenant" />
+                      <Label htmlFor="tenant" className="cursor-pointer">Locataire</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="landlord" id="landlord" />
+                      <Label htmlFor="landlord" className="cursor-pointer">Propriétaire</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="agent" id="agent" />
+                      <Label htmlFor="agent" className="cursor-pointer">Agent immobilier</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="manager" id="manager" />
+                      <Label htmlFor="manager" className="cursor-pointer">Gestionnaire immobilier</Label>
+                    </div>
+                  </RadioGroup>
                 </div>
                 <Button type="submit" className="w-full" disabled={isSubmitting}>
                   {isSubmitting ? 'Création du compte...' : 'Créer un compte'}
