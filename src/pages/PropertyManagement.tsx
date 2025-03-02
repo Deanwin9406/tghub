@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -29,9 +30,11 @@ interface PropertyType {
   availability_date: string;
 }
 
+type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager';
+
 type RoleCheckResult = {
   user_id: string;
-  role: 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager';
+  role: UserRole;
 };
 
 interface ExtendedPropertyType {
@@ -51,11 +54,12 @@ interface ExtendedPropertyType {
   status: string;
   title: string;
   updated_at: string;
-  square_footage: number;
-  year_built: number;
-  amenities: string[];
-  image_urls: string[];
-  availability_date: string;
+  square_footage?: number;
+  size_sqm?: number;
+  year_built?: number;
+  amenities?: string[];
+  image_urls?: string[];
+  availability_date?: string;
 }
 
 const PropertyManagement = () => {
@@ -79,10 +83,10 @@ const PropertyManagement = () => {
 
     if (error) {
       console.error('Error checking role:', error);
-      return { user_id: session?.user.id || '', role: 'tenant' };
+      return { user_id: session?.user.id || '', role: 'tenant' as UserRole };
     }
     
-    return { user_id: session?.user.id || '', role: role as 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' };
+    return { user_id: session?.user.id || '', role: role as UserRole };
   };
 
   const fetchProperties = async () => {
@@ -104,7 +108,7 @@ const PropertyManagement = () => {
         amenities: property.amenities || [],
         image_urls: property.image_urls || [],
         availability_date: property.availability_date || new Date().toISOString()
-      })) as ExtendedPropertyType[];
+      })) as PropertyType[];
       
       setProperties(propertyData);
     } catch (error) {
@@ -150,8 +154,6 @@ const PropertyManagement = () => {
                   <PropertyCard
                     key={property.id}
                     property={property}
-                    showFavoriteButton={false}
-                    showCompareButton={false}
                   />
                 ))}
               </div>

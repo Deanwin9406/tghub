@@ -1,7 +1,21 @@
 
 import { PropertyType } from '../components/PropertyCard';
 
-const mockProperties: PropertyType[] = [
+// Define an extended interface for the mock data
+interface ExtendedPropertyType extends PropertyType {
+  type?: string;
+  location?: string;
+  beds?: number;
+  baths?: number;
+  area?: number;
+  image?: string;
+  featured?: boolean;
+  new?: boolean;
+  purpose?: string;
+  priceUnit?: string;
+}
+
+const mockProperties: ExtendedPropertyType[] = [
   {
     id: "1",
     title: "Villa moderne avec piscine",
@@ -21,10 +35,10 @@ const mockProperties: PropertyType[] = [
     main_image_url: "https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=880&q=80",
     image: "https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=880&q=80",
     description: "Une belle villa moderne avec piscine",
-    image_urls: null,
+    image_urls: ["https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=880&q=80"],
     year_built: 2020,
     amenities: ["Piscine", "Jardin", "Garage"],
-    availability_date: null,
+    availability_date: "2023-06-01",
     featured: true,
     new: false,
     purpose: "sale",
@@ -49,10 +63,10 @@ const mockProperties: PropertyType[] = [
     main_image_url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=880&q=80",
     image: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=880&q=80",
     description: "Un appartement de standing au cœur de la ville",
-    image_urls: null,
+    image_urls: ["https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=880&q=80"],
     year_built: 2019,
     amenities: ["Balcon", "Ascenseur", "Parking"],
-    availability_date: null,
+    availability_date: "2023-07-15",
     featured: true,
     new: true,
     purpose: "rent",
@@ -77,10 +91,10 @@ const mockProperties: PropertyType[] = [
     main_image_url: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1032&q=80",
     image: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1032&q=80",
     description: "Un terrain constructible dans un quartier calme",
-    image_urls: null,
+    image_urls: ["https://images.unsplash.com/photo-1500382017468-9049fed747ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1032&q=80"],
     year_built: null,
-    amenities: null,
-    availability_date: null,
+    amenities: [],
+    availability_date: "2023-08-01",
     featured: false,
     new: true,
     purpose: "sale",
@@ -105,10 +119,10 @@ const mockProperties: PropertyType[] = [
     main_image_url: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80",
     image: "https://images.unsplash.com/photo-1600585154526-990dced4db0d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80",
     description: "Une maison familiale avec jardin dans un quartier résidentiel",
-    image_urls: null,
+    image_urls: ["https://images.unsplash.com/photo-1600585154526-990dced4db0d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80"],
     year_built: 2015,
     amenities: ["Jardin", "Garage", "Terrasse"],
-    availability_date: null,
+    availability_date: "2023-09-01",
     featured: false,
     new: false,
     purpose: "sale",
@@ -133,10 +147,10 @@ const mockProperties: PropertyType[] = [
     main_image_url: "https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1469&q=80",
     image: "https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1469&q=80",
     description: "Un espace bureau moderne au centre-ville",
-    image_urls: null,
+    image_urls: ["https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1469&q=80"],
     year_built: 2018,
     amenities: ["Climatisation", "Salle de réunion", "Parking"],
-    availability_date: null,
+    availability_date: "2023-10-01",
     featured: true,
     new: false,
     purpose: "rent",
@@ -161,10 +175,10 @@ const mockProperties: PropertyType[] = [
     main_image_url: "https://images.unsplash.com/photo-1628744448840-55bdb2497bd4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
     image: "https://images.unsplash.com/photo-1628744448840-55bdb2497bd4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
     description: "Une villa de luxe avec vue imprenable sur la mer",
-    image_urls: null,
+    image_urls: ["https://images.unsplash.com/photo-1628744448840-55bdb2497bd4?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80"],
     year_built: 2021,
     amenities: ["Vue sur mer", "Piscine", "Terrasse", "Jardin", "Garage"],
-    availability_date: null,
+    availability_date: "2023-11-01",
     featured: true,
     new: false,
     purpose: "sale",

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link } from 'react-router-dom';
@@ -18,6 +19,7 @@ import { getInitials } from '@/lib/utils';
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
+import AuthDialog from '@/components/AuthDialog';
 
 const signOut = async () => {
   const { error } = await supabase.auth.signOut();

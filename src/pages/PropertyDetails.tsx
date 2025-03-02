@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -28,6 +29,39 @@ import {
   Share2 
 } from 'lucide-react';
 
+interface DatabasePropertyType {
+  address: string;
+  bathrooms: number;
+  bedrooms: number;
+  city: string;
+  country: string;
+  created_at: string;
+  description: string;
+  featured: boolean;
+  id: string;
+  main_image_url: string;
+  owner_id: string;
+  price: number;
+  property_type: string;
+  status: string;
+  title: string;
+  updated_at: string;
+  square_footage?: number;
+  size_sqm?: number;
+  year_built?: number;
+  amenities?: string[];
+  image_urls?: string[];
+  availability_date?: string;
+}
+
+interface EnhancedPropertyType extends DatabasePropertyType {
+  square_footage: number;
+  year_built: number;
+  amenities: string[];
+  image_urls: string[];
+  availability_date: string;
+}
+
 const fetchProperty = async (id: string) => {
   const { data, error } = await supabase
     .from('properties')
@@ -39,10 +73,10 @@ const fetchProperty = async (id: string) => {
   return data;
 };
 
-const getPropertyDetails = (baseProperty: any) => {
+const getPropertyDetails = (baseProperty: DatabasePropertyType): EnhancedPropertyType => {
   return {
     ...baseProperty,
-    square_footage: baseProperty.square_footage || 1200,
+    square_footage: baseProperty.square_footage || baseProperty.size_sqm || 1200,
     year_built: baseProperty.year_built || 2015,
     amenities: baseProperty.amenities || ['Parking', 'Garden', 'Security', 'Swimming Pool'],
     image_urls: baseProperty.image_urls || [
@@ -61,7 +95,7 @@ const PropertyDetails = () => {
   const { favorites, addToFavorites, removeFromFavorites } = useFavorites();
   const { addToComparison } = useComparison();
   const [isFavorite, setIsFavorite] = useState(false);
-  const [property, setProperty] = useState(null);
+  const [property, setProperty] = useState<EnhancedPropertyType | null>(null);
   const [isLoading, setLoading] = useState(true);
 
   const { data: propertyData, isLoading: propertyLoading, error: propertyError } = useQuery({
@@ -83,15 +117,7 @@ const PropertyDetails = () => {
         if (error) throw error;
 
         if (data) {
-          const enhancedProperty = {
-            ...data,
-            square_footage: data.square_footage || data.size_sqm || 0,
-            year_built: data.year_built || 0,
-            amenities: data.amenities || [],
-            image_urls: data.image_urls || [],
-            availability_date: data.availability_date || new Date().toISOString()
-          };
-          
+          const enhancedProperty = getPropertyDetails(data as DatabasePropertyType);
           setProperty(enhancedProperty);
           checkFavoriteStatus(enhancedProperty.id);
         }
@@ -367,13 +393,18 @@ const PropertyDetails = () => {
 
             <PropertyOwnershipInfo
               propertyId={property.id}
-              ownerId={property.owner_id}
             />
           </div>
         </div>
       </div>
     </Layout>
   );
+};
+
+// Add the formatDate function
+const formatDate = (dateString: string) => {
+  const options: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'long', day: 'numeric' };
+  return new Date(dateString).toLocaleDateString(undefined, options);
 };
 
 export default PropertyDetails;

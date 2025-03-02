@@ -24,6 +24,32 @@ export interface PropertyType {
   availability_date: string;
 }
 
+// Interface for database properties
+interface DatabasePropertyType {
+  address: string;
+  bathrooms: number;
+  bedrooms: number;
+  city: string;
+  country: string;
+  created_at: string;
+  description: string;
+  featured: boolean;
+  id: string;
+  main_image_url: string;
+  owner_id: string;
+  price: number;
+  property_type: string;
+  status: string;
+  title: string;
+  updated_at: string;
+  square_footage?: number;
+  size_sqm?: number;
+  year_built?: number;
+  amenities?: string[];
+  image_urls?: string[];
+  availability_date?: string;
+}
+
 export type FavoriteContextType = {
   favorites: PropertyType[];
   isFavorite: (id: string) => boolean;
@@ -63,8 +89,19 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
 
       if (error) throw error;
 
-      // Transform the data to get just the properties
-      const favoriteProperties = data.map(item => item.properties) as PropertyType[];
+      // Transform the database properties to match PropertyType
+      const favoriteProperties = data.map(item => {
+        const dbProperty = item.properties as DatabasePropertyType;
+        return {
+          ...dbProperty,
+          square_footage: dbProperty.square_footage || dbProperty.size_sqm || 0,
+          year_built: dbProperty.year_built || 0,
+          amenities: dbProperty.amenities || [],
+          image_urls: dbProperty.image_urls || [],
+          availability_date: dbProperty.availability_date || new Date().toISOString()
+        } as PropertyType;
+      });
+      
       setFavorites(favoriteProperties);
     } catch (error) {
       console.error('Error fetching favorites:', error);

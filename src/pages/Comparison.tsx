@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, X, Bed, Bath, Square, Trash2 } from 'lucide-react';
@@ -6,6 +7,18 @@ import { useComparison } from '@/contexts/ComparisonContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
+import { PropertyType } from '@/components/PropertyCard';
+
+// Extend the PropertyType to include additional properties used in this component
+interface ExtendedPropertyType extends PropertyType {
+  image?: string;
+  location?: string;
+  purpose?: string;
+  type?: string;
+  beds?: number;
+  baths?: number;
+  area?: number;
+}
 
 const ComparisonPage = () => {
   const { comparisonList, removeFromComparison, clearComparison } = useComparison();
@@ -43,13 +56,16 @@ const ComparisonPage = () => {
       );
     }
 
+    // Cast to extended type to access additional properties
+    const extendedList = comparisonList as ExtendedPropertyType[];
+
     return (
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
           <thead>
             <tr className="bg-muted">
               <th className="p-4 text-left min-w-[200px]">Caractéristiques</th>
-              {comparisonList.map(property => (
+              {extendedList.map(property => (
                 <th key={property.id} className="p-4 text-center min-w-[300px]">
                   <div className="relative">
                     <Button 
@@ -83,7 +99,7 @@ const ComparisonPage = () => {
           <tbody>
             <tr className="border-b">
               <td className="p-4 font-medium">Prix</td>
-              {comparisonList.map(property => (
+              {extendedList.map(property => (
                 <td key={`${property.id}-price`} className="p-4 text-center">
                   <span className="font-semibold text-primary">
                     {formatPrice(property.price)}
@@ -96,7 +112,7 @@ const ComparisonPage = () => {
             </tr>
             <tr className="border-b">
               <td className="p-4 font-medium">Type</td>
-              {comparisonList.map(property => (
+              {extendedList.map(property => (
                 <td key={`${property.id}-type`} className="p-4 text-center">
                   {propertyTypeLabel(property.type || property.property_type)}
                 </td>
@@ -104,7 +120,7 @@ const ComparisonPage = () => {
             </tr>
             <tr className="border-b">
               <td className="p-4 font-medium">But</td>
-              {comparisonList.map(property => (
+              {extendedList.map(property => (
                 <td key={`${property.id}-purpose`} className="p-4 text-center">
                   {property.purpose === 'sale' ? 'À Vendre' : 'À Louer'}
                 </td>
@@ -112,7 +128,7 @@ const ComparisonPage = () => {
             </tr>
             <tr className="border-b">
               <td className="p-4 font-medium">Chambres</td>
-              {comparisonList.map(property => (
+              {extendedList.map(property => (
                 <td key={`${property.id}-beds`} className="p-4 text-center">
                   <div className="flex items-center justify-center">
                     <Bed size={16} className="mr-2 text-muted-foreground" />
@@ -123,7 +139,7 @@ const ComparisonPage = () => {
             </tr>
             <tr className="border-b">
               <td className="p-4 font-medium">Salles de bain</td>
-              {comparisonList.map(property => (
+              {extendedList.map(property => (
                 <td key={`${property.id}-baths`} className="p-4 text-center">
                   <div className="flex items-center justify-center">
                     <Bath size={16} className="mr-2 text-muted-foreground" />
@@ -134,7 +150,7 @@ const ComparisonPage = () => {
             </tr>
             <tr className="border-b">
               <td className="p-4 font-medium">Surface</td>
-              {comparisonList.map(property => (
+              {extendedList.map(property => (
                 <td key={`${property.id}-area`} className="p-4 text-center">
                   <div className="flex items-center justify-center">
                     <Square size={16} className="mr-2 text-muted-foreground" />

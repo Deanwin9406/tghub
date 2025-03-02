@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
@@ -5,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import PropertyCard, { PropertyType } from './PropertyCard';
 import { motion } from 'framer-motion';
 import mockProperties from '@/data/mockProperties';
+
+interface ExtendedPropertyType extends PropertyType {
+  featured?: boolean;
+  new?: boolean;
+}
 
 interface FeaturedPropertiesProps {
   title?: string;
@@ -24,12 +30,12 @@ const FeaturedProperties = ({
   useEffect(() => {
     // Simulate API call with delay
     const timer = setTimeout(() => {
-      let filteredProperties = [...mockProperties];
+      let filteredProperties = [...mockProperties] as ExtendedPropertyType[];
       
       if (type === 'featured') {
-        filteredProperties = mockProperties.filter(p => p.featured);
+        filteredProperties = (mockProperties as ExtendedPropertyType[]).filter(p => p.featured);
       } else if (type === 'newest') {
-        filteredProperties = mockProperties.filter(p => p.new);
+        filteredProperties = (mockProperties as ExtendedPropertyType[]).filter(p => p.new);
       }
       
       setProperties(filteredProperties.slice(0, limit));
