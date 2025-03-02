@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -21,6 +22,12 @@ interface PropertyType {
   bathrooms: number | null;
   main_image_url: string | null;
   status: string;
+  description: string;
+  square_footage: number;
+  year_built: number;
+  amenities: string[];
+  image_urls: string[];
+  availability_date: string;
 }
 
 const PropertyManagement = () => {
@@ -41,7 +48,7 @@ const PropertyManagement = () => {
     try {
       // Check if the user has the 'manager' role
       const { data: hasRoleResponse, error: hasRoleError } = await supabase.rpc('has_role', {
-        role_name: 'manager'
+        role: 'manager'
       });
 
       if (hasRoleError) {
@@ -61,7 +68,7 @@ const PropertyManagement = () => {
 
       if (error) throw error;
 
-      // Ensure the data conforms to PropertyType
+      // Create sample data for missing fields to match PropertyType
       const propertiesData: PropertyType[] = data.map(item => ({
         id: item.id,
         title: item.title,
@@ -73,6 +80,12 @@ const PropertyManagement = () => {
         bathrooms: item.bathrooms,
         main_image_url: item.main_image_url,
         status: item.status,
+        description: item.description || 'No description available',
+        square_footage: item.square_footage || 0,
+        year_built: item.year_built || 2000,
+        amenities: item.amenities || [],
+        image_urls: item.image_urls || [],
+        availability_date: item.availability_date || new Date().toISOString(),
       }));
 
       setProperties(propertiesData);
