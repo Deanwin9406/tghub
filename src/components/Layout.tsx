@@ -127,6 +127,15 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 </li>
                 <li>
                   <Link 
+                    to="/profile" 
+                    onClick={closeMenu}
+                    className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <span>Profil</span>
+                  </Link>
+                </li>
+                <li>
+                  <Link 
                     to="/favorites" 
                     onClick={closeMenu}
                     className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
@@ -178,6 +187,12 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                       className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
                     >
                       Tableau de bord
+                    </Link>
+                    <Link
+                      to="/profile"
+                      className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+                    >
+                      Profil
                     </Link>
                     <Link
                       to="/favorites"
