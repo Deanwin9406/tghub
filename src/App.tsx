@@ -13,6 +13,9 @@ import PropertyManagement from "./pages/PropertyManagement";
 import PropertyDetails from "./pages/PropertyDetails";
 import Search from "./pages/Search";
 import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import KycVerification from "./pages/KycVerification";
+import Messages from "./pages/Messages";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -39,6 +42,9 @@ const App = () => (
             
             {/* Protected Routes */}
             <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
+            <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
+            <Route path="/messages" element={<AuthGuard><Messages /></AuthGuard>} />
+            <Route path="/kyc" element={<AuthGuard><KycVerification /></AuthGuard>} />
             <Route path="/property-management" element={<AuthGuard><PropertyManagement /></AuthGuard>} />
             
             {/* Catch-all Route */}

@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Search, Home, User, Menu, X, LogOut, MessageCircle, Bell, FileText, Settings, Briefcase, Users, MapPin, Tool, CreditCard, BuildingIcon, HandshakeIcon } from 'lucide-react';
+import { Search, Home, User, Menu, X, LogOut, MessageCircle, Bell, FileText, Settings, Briefcase, Users, MapPin, Wrench, CreditCard, BuildingIcon, HandshakeIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -134,7 +133,7 @@ const Layout = ({ children }: LayoutProps) => {
                           Paiements
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => navigate('/maintenance')}>
-                          <Tool className="mr-2 h-4 w-4" />
+                          <Wrench className="mr-2 h-4 w-4" />
                           Maintenance
                         </DropdownMenuItem>
                       </>
@@ -250,7 +249,7 @@ const Layout = ({ children }: LayoutProps) => {
                     <span>Paiements</span>
                   </Link>
                   <Link to="/maintenance" className="flex items-center space-x-2 font-medium text-xl">
-                    <Tool size={20} />
+                    <Wrench size={20} />
                     <span>Maintenance</span>
                   </Link>
                 </>

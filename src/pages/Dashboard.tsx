@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -6,7 +5,7 @@ import Layout from '@/components/Layout';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Home, Building, CreditCard, Tool, MessageCircle, Users, AlertTriangle } from 'lucide-react';
+import { Home, Building, CreditCard, Wrench, MessageCircle, Users, AlertTriangle } from 'lucide-react';
 import Map from '@/components/Map';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -273,7 +272,7 @@ const Dashboard = () => {
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg flex items-center">
-                    <Tool className="h-5 w-5 mr-2 text-primary" />
+                    <Wrench className="h-5 w-5 mr-2 text-primary" />
                     Demandes de maintenance
                   </CardTitle>
                 </CardHeader>
@@ -447,7 +446,7 @@ const Dashboard = () => {
             {maintenanceRequests.length === 0 ? (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-10">
-                  <Tool className="h-16 w-16 text-muted-foreground mb-4" />
+                  <Wrench className="h-16 w-16 text-muted-foreground mb-4" />
                   <p className="text-xl font-medium mb-2">Aucune demande</p>
                   <p className="text-muted-foreground mb-6 text-center">
                     Vous n'avez pas encore de demandes de maintenance.
