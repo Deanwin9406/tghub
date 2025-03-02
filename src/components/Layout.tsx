@@ -6,9 +6,10 @@ import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { ModeToggle } from '@/components/ModeToggle';
+import { ToggleTheme } from '@/components/ToggleTheme';
 import { NavigationMenu, NavigationMenuItem, NavigationMenuLink, NavigationMenuList } from "@/components/ui/navigation-menu"
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
+import AuthDialog from '@/components/AuthDialog';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { user, profile, signOut } = useAuth();
@@ -19,17 +20,25 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     setIsMenuOpen(false);
   }, [location]);
 
-  const navigationItems = [
+  // Define navigation items, some will be conditionally shown
+  const publicNavigationItems = [
     { name: 'Accueil', href: '/' },
     { name: 'Recherche', href: '/search' },
     { name: 'Agents', href: '/agents' },
     { name: 'Favoris', href: '/favorites' },
-    { name: 'Tableau de bord', href: '/dashboard', protected: true },
-    { name: 'Annonces', href: '/property-management', protected: true },
-    { name: 'Communautés', href: '/communities', protected: true },
+  ];
+  
+  const protectedNavigationItems = [
+    { name: 'Tableau de bord', href: '/dashboard' },
+    { name: 'Annonces', href: '/property-management' },
+    { name: 'Communautés', href: '/communities' },
   ];
 
-  const protectedNavigationItems = navigationItems.filter(item => !item.protected);
+  // Combine navigation items based on authentication status
+  const navigationItems = [
+    ...publicNavigationItems,
+    ...(user ? protectedNavigationItems : [])
+  ];
 
   return (
     <div className="flex flex-col min-h-screen">
@@ -55,7 +64,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               </NavigationMenuList>
             </NavigationMenu>
             
-            <ModeToggle />
+            <ToggleTheme />
             
             {user ? (
               <div className="flex items-center space-x-4">
@@ -70,9 +79,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 </Button>
               </div>
             ) : (
-              <Link to="/auth">
+              <AuthDialog>
                 <Button size="sm">Se connecter</Button>
-              </Link>
+              </AuthDialog>
             )}
             
             <Sheet>
@@ -107,9 +116,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                       </Button>
                     </div>
                   ) : (
-                    <Link to="/auth">
-                      <Button size="sm" className="w-full">Se connecter</Button>
-                    </Link>
+                    <AuthDialog>
+                      <Button size="sm" className="w-full mt-4">Se connecter</Button>
+                    </AuthDialog>
                   )}
                 </div>
               </SheetContent>

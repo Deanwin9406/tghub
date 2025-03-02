@@ -7,10 +7,10 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ComparisonProvider } from "@/contexts/ComparisonContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
+import { ThemeProvider } from "next-themes";
 import AuthGuard from "@/components/AuthGuard";
 import ComparisonButton from "@/components/ComparisonButton";
 import Index from "./pages/Index";
-import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import PropertyManagement from "./pages/PropertyManagement";
 import PropertyDetails from "./pages/PropertyDetails";
@@ -43,54 +43,55 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <AuthProvider>
-      <ComparisonProvider>
-        <FavoritesProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                {/* Public Routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/search" element={<Search />} />
-                <Route path="/property/:id" element={<PropertyDetails />} />
-                <Route path="/compare" element={<Comparison />} />
-                <Route path="/favorites" element={<Favorites />} />
-                <Route path="/agents" element={<Agents />} />
-                <Route path="/agents/:id" element={<AgentProfile />} />
+  <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ComparisonProvider>
+          <FavoritesProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  {/* Public Routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/search" element={<Search />} />
+                  <Route path="/property/:id" element={<PropertyDetails />} />
+                  <Route path="/compare" element={<Comparison />} />
+                  <Route path="/favorites" element={<Favorites />} />
+                  <Route path="/agents" element={<Agents />} />
+                  <Route path="/agents/:id" element={<AgentProfile />} />
+                  
+                  {/* Protected Routes */}
+                  <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
+                  <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
+                  <Route path="/messages" element={<AuthGuard><Messages /></AuthGuard>} />
+                  <Route path="/kyc" element={<AuthGuard><KycVerification /></AuthGuard>} />
+                  <Route path="/maintenance" element={<AuthGuard><Maintenance /></AuthGuard>} />
+                  <Route path="/communities" element={<AuthGuard><Communities /></AuthGuard>} />
+                  <Route path="/community/:id" element={<AuthGuard><CommunityDetails /></AuthGuard>} />
+                  <Route path="/payments" element={<AuthGuard><Payments /></AuthGuard>} />
+                  <Route path="/leases" element={<AuthGuard><Leases /></AuthGuard>} />
+                  <Route path="/vendors" element={<AuthGuard><Vendors /></AuthGuard>} />
+                  <Route path="/property-management" element={<AuthGuard><PropertyManagement /></AuthGuard>} />
+                  <Route path="/property/add" element={<AuthGuard><AddProperty /></AuthGuard>} />
+                  <Route path="/property/edit/:id" element={<AuthGuard><EditProperty /></AuthGuard>} />
                 
-                {/* Protected Routes */}
-                <Route path="/dashboard" element={<AuthGuard><Dashboard /></AuthGuard>} />
-                <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
-                <Route path="/messages" element={<AuthGuard><Messages /></AuthGuard>} />
-                <Route path="/kyc" element={<AuthGuard><KycVerification /></AuthGuard>} />
-                <Route path="/maintenance" element={<AuthGuard><Maintenance /></AuthGuard>} />
-                <Route path="/communities" element={<AuthGuard><Communities /></AuthGuard>} />
-                <Route path="/community/:id" element={<AuthGuard><CommunityDetails /></AuthGuard>} />
-                <Route path="/payments" element={<AuthGuard><Payments /></AuthGuard>} />
-                <Route path="/leases" element={<AuthGuard><Leases /></AuthGuard>} />
-                <Route path="/vendors" element={<AuthGuard><Vendors /></AuthGuard>} />
-                <Route path="/property-management" element={<AuthGuard><PropertyManagement /></AuthGuard>} />
-                <Route path="/property/add" element={<AuthGuard><AddProperty /></AuthGuard>} />
-                <Route path="/property/edit/:id" element={<AuthGuard><EditProperty /></AuthGuard>} />
-              
-                {/* Agent Routes */}
-                <Route path="/agent" element={<AuthGuard><AgentDashboard /></AuthGuard>} />
-                <Route path="/agent/dashboard" element={<AuthGuard><AgentDashboard /></AuthGuard>} />
-                
-                {/* Catch-all Route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-              <ComparisonButton />
-            </BrowserRouter>
-          </TooltipProvider>
-        </FavoritesProvider>
-      </ComparisonProvider>
-    </AuthProvider>
-  </QueryClientProvider>
+                  {/* Agent Routes */}
+                  <Route path="/agent" element={<AuthGuard><AgentDashboard /></AuthGuard>} />
+                  <Route path="/agent/dashboard" element={<AuthGuard><AgentDashboard /></AuthGuard>} />
+                  
+                  {/* Catch-all Route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+                <ComparisonButton />
+              </BrowserRouter>
+            </TooltipProvider>
+          </FavoritesProvider>
+        </ComparisonProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;
