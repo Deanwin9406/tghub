@@ -1,4 +1,3 @@
-
 export interface Community {
   id: string;
   name: string;
@@ -86,4 +85,17 @@ export interface MarketplaceItem {
   created_at: string;
   updated_at: string;
   category: string | null;
+}
+
+export interface AuthContextType {
+  user: User | null;
+  profile: Profile | null;
+  roles: string[];
+  hasCompletedKyc: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: any | null }>;
+  signOut: () => Promise<void>;
+  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: any | null }>;
+  updateProfile: (updates: Partial<Profile>) => Promise<{ error: any | null }>;
+  sendPasswordResetEmail: (email: string) => Promise<{ error: any | null }>;
+  loading: boolean;
 }

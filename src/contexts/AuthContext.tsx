@@ -1,266 +1,260 @@
-
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User, Session } from '@supabase/supabase-js';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-
-export type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor';
-
-// Define a profile type
-interface Profile {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone?: string;
-  avatar_url?: string;
-  address?: string;
-  city?: string;
-  country?: string;
-}
+import { Session, User } from '@supabase/supabase-js';
+import { Profile } from '@/types/community';
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
-  isLoading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error?: any }>;
-  signUp: (email: string, password: string, userData?: any) => Promise<{ error?: any }>;
-  signOut: () => Promise<void>;
-  roles: UserRole[];
-  resetPassword: (email: string) => Promise<{ error?: any }>;
   profile: Profile | null;
-  updateProfile: (data: Partial<Profile>) => Promise<{ error?: any }>;
-  hasCompletedKyc?: boolean;
+  roles: string[];
+  hasCompletedKyc: boolean;
+  signIn: (email: string, password: string) => Promise<{ error: any | null }>;
+  signOut: () => Promise<void>;
+  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: any | null }>;
+  updateProfile: (updates: Partial<Profile>) => Promise<{ error: any | null }>;
+  sendPasswordResetEmail: (email: string) => Promise<{ error: any | null }>;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+interface AuthProviderProps {
+  children: ReactNode;
+}
+
+export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [roles, setRoles] = useState<UserRole[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [roles, setRoles] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
   const [hasCompletedKyc, setHasCompletedKyc] = useState<boolean>(false);
 
+  const navigate = useNavigate();
+
   useEffect(() => {
-    const loadSession = async () => {
-      setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-
+    supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user || null);
+      setUser(session?.user ?? null);
+      setLoading(false);
+    });
 
-      if (session?.user) {
-        await fetchUserRoles(session.user.id);
-        await fetchUserProfile(session.user.id);
-        await checkKycStatus(session.user.id);
-      }
-
-      setIsLoading(false);
-    };
-
-    loadSession();
-
-    supabase.auth.onAuthStateChange(async (event, session) => {
+    supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
-      setUser(session?.user || null);
-      
-      if (session?.user) {
-        await fetchUserRoles(session.user.id);
-        await fetchUserProfile(session.user.id);
-        await checkKycStatus(session.user.id);
-      } else {
-        setRoles([]);
-        setProfile(null);
-        setHasCompletedKyc(false);
-      }
+      setUser(session?.user ?? null);
     });
   }, []);
 
-  const fetchUserRoles = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('Error fetching user roles:', error);
-        return;
-      }
-
-      const userRoles = data.map(item => item.role as UserRole);
-      setRoles(userRoles);
-    } catch (error) {
-      console.error('Error fetching user roles:', error);
+  // Fetch user profile and roles when auth state changes
+  useEffect(() => {
+    if (user) {
+      fetchUserProfile();
+      fetchUserRoles();
+      checkKycStatus();
+    } else {
+      setProfile(null);
+      setRoles([]);
+      setHasCompletedKyc(false);
     }
-  };
+  }, [user]);
 
-  const fetchUserProfile = async (userId: string) => {
+  const fetchUserProfile = async () => {
+    if (!user) return;
+
     try {
-      const { data, error } = await supabase
+      const { data: profileData, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('id', userId)
+        .eq('id', user.id)
         .single();
 
       if (error) {
-        console.error('Error fetching user profile:', error);
-        return;
+        console.error("Error fetching profile:", error);
       }
 
-      setProfile(data as Profile);
+      setProfile(profileData || null);
     } catch (error) {
-      console.error('Error fetching user profile:', error);
+      console.error("Unexpected error fetching profile:", error);
     }
   };
 
-  const checkKycStatus = async (userId: string) => {
+  const fetchUserRoles = async () => {
+    if (!user) return;
+
     try {
+      const { data: rolesData, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error("Error fetching roles:", error);
+        return;
+      }
+
+      const rolesArray = rolesData.map(item => item.role);
+      setRoles(rolesArray);
+    } catch (error) {
+      console.error("Unexpected error fetching roles:", error);
+    }
+  };
+
+  // Check if user has completed KYC
+  const checkKycStatus = async () => {
+    if (!user) return;
+
+    try {
+      // First check if the user has an approved KYC verification
       const { data, error } = await supabase
         .from('kyc_verifications')
         .select('status')
-        .eq('user_id', userId)
-        .maybeSingle();
+        .eq('user_id', user.id)
+        .single();
 
       if (error) {
-        console.error('Error checking KYC status:', error);
+        console.error("Error fetching KYC status:", error);
+        setHasCompletedKyc(false);
         return;
       }
 
       setHasCompletedKyc(data?.status === 'approved');
     } catch (error) {
-      console.error('Error checking KYC status:', error);
+      console.error("Error checking KYC status:", error);
+      setHasCompletedKyc(false);
     }
   };
 
-  const signIn = async (email: string, password: string) => {
-    setIsLoading(true);
+  const signIn = async (email: string, password: string): Promise<{ error: any | null }> => {
+    setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) return { error };
-
-      setSession(data.session);
-      setUser(data.session?.user || null);
-      if (data.session?.user) {
-        await fetchUserRoles(data.session.user.id);
-        await fetchUserProfile(data.session.user.id);
-        await checkKycStatus(data.session.user.id);
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        console.error('Sign-in error:', error);
+        return { error };
       }
-      
       return { error: null };
-    } catch (error: any) {
-      console.error('Error signing in:', error.message);
-      return { error };
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const signUp = async (email: string, password: string, userData: any = {}) => {
-    setIsLoading(true);
+  const signOut = async (): Promise<void> => {
+    try {
+      await supabase.auth.signOut();
+      navigate('/auth');
+    } catch (error) {
+      console.error("Error signing out:", error);
+    } finally {
+      setUser(null);
+      setProfile(null);
+      setRoles([]);
+    }
+  };
+
+  const signUp = async (email: string, password: string, firstName: string, lastName: string): Promise<{ error: any | null }> => {
+    setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+        email: email,
+        password: password,
         options: {
-          data: userData,
+          data: {
+            first_name: firstName,
+            last_name: lastName,
+          },
         },
       });
 
-      if (error) return { error };
+      if (error) {
+        console.error('Sign-up error:', error);
+        return { error };
+      }
 
-      setSession(data.session);
-      setUser(data.user || null);
-      
+      // Create a user profile immediately after sign-up
+      if (data.user?.id) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([{ id: data.user.id, email: email, first_name: firstName, last_name: lastName }]);
+
+        if (profileError) {
+          console.error('Error creating profile:', profileError);
+          return { error: profileError };
+        }
+      }
+
       return { error: null };
-    } catch (error: any) {
-      console.error('Error signing up:', error.message);
-      return { error };
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const signOut = async () => {
-    setIsLoading(true);
+  const updateProfile = async (updates: Partial<Profile>): Promise<{ error: any | null }> => {
+    if (!user) return { error: new Error("No user logged in") };
+
+    setLoading(true);
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      const { error } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id);
 
-      setSession(null);
-      setUser(null);
-      setRoles([]);
-      setProfile(null);
-      setHasCompletedKyc(false);
-    } catch (error: any) {
-      console.error('Error signing out:', error.message);
+      if (error) {
+        console.error('Update profile error:', error);
+        return { error };
+      }
+
+      // Optimistically update the local profile state
+      setProfile(prevProfile => ({ ...prevProfile, ...updates } as Profile));
+
+      return { error: null };
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
-  const resetPassword = async (email: string) => {
+  const sendPasswordResetEmail = async (email: string): Promise<{ error: any | null }> => {
+    setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth?reset=true`,
       });
-      
-      return { error };
-    } catch (error: any) {
-      console.error('Error resetting password:', error.message);
-      return { error };
-    }
-  };
 
-  const updateProfile = async (data: Partial<Profile>) => {
-    if (!user) return { error: new Error('User not authenticated') };
-    
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update(data)
-        .eq('id', user.id);
-      
-      if (error) return { error };
-      
-      // Update local profile state
-      setProfile(prev => prev ? { ...prev, ...data } : null);
-      
+      if (error) {
+        console.error('Password reset error:', error);
+        return { error };
+      }
+
       return { error: null };
-    } catch (error: any) {
-      console.error('Error updating profile:', error.message);
-      return { error };
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      session, 
-      isLoading, 
-      signIn, 
-      signUp, 
-      signOut, 
-      roles,
-      resetPassword,
-      profile,
-      updateProfile,
-      hasCompletedKyc
-    }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        roles,
+        hasCompletedKyc,
+        signIn,
+        signOut,
+        signUp,
+        updateProfile,
+        sendPasswordResetEmail,
+        loading,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -27,6 +26,7 @@ const Profile = () => {
     email: profile?.email || user?.email || '',
     phone: profile?.phone || '',
   });
+  const [hasCompletedKyc, setHasCompletedKyc] = useState(false);
 
   useEffect(() => {
     if (profile) {
@@ -202,18 +202,28 @@ const Profile = () => {
                   
                   <div className="flex items-start">
                     <div className="mr-2 mt-0.5">
-                      <AlertTriangle className="h-5 w-5 text-amber-500" />
+                      {hasCompletedKyc ? (
+                        <Check className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <AlertTriangle className="h-5 w-5 text-amber-500" />
+                      )}
                     </div>
                     <div>
-                      <p className="font-medium">KYC non complété</p>
-                      <p className="text-sm text-muted-foreground">Complétez la vérification d'identité pour accéder à toutes les fonctionnalités</p>
+                      <p className="font-medium">
+                        {hasCompletedKyc ? "KYC complété" : "KYC non complété"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {hasCompletedKyc 
+                          ? "Votre identité a été vérifiée" 
+                          : "Complétez la vérification d'identité pour accéder à toutes les fonctionnalités"}
+                      </p>
                     </div>
                   </div>
                 </div>
               </CardContent>
               <CardFooter>
-                <Button variant="outline" className="w-full" onClick={() => navigate('/kyc')}>
-                  Vérifier mon identité
+                <Button variant="outline" className="w-full" onClick={() => navigate('/kyc')} disabled={hasCompletedKyc}>
+                  {hasCompletedKyc ? "Identité vérifiée" : "Vérifier mon identité"}
                 </Button>
               </CardFooter>
             </Card>
