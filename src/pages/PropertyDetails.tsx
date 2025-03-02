@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { 
@@ -22,7 +21,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PropertyType } from '@/components/PropertyCard';
 import { motion } from 'framer-motion';
 import FeaturedProperties from '@/components/FeaturedProperties';
-import { mockProperties } from '../data/mockProperties';
+import mockProperties from '../data/mockProperties';
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();

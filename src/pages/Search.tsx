@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -17,7 +16,7 @@ import {
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
 import { Filter, SlidersHorizontal, MapPin, X, ChevronDown } from 'lucide-react';
-import { mockProperties } from '../data/mockProperties';
+import mockProperties from "../data/mockProperties";
 
 const Search = () => {
   const [searchParams] = useSearchParams();
