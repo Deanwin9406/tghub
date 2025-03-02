@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -9,7 +8,7 @@ import PropertyManagerTab from '@/components/dashboard/PropertyManagerTab';
 import MessagesTab from '@/components/dashboard/MessagesTab';
 import PaymentsTab from '@/components/dashboard/PaymentsTab';
 import MaintenanceTab from '@/components/dashboard/MaintenanceTab';
-import { Building, DollarSign, Wrench, FileText } from 'lucide-react';
+import { Building, DollarSign, Wrench, FileText, Home, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -62,6 +61,148 @@ interface Payment {
   };
 }
 
+interface TenantDashboardProps {
+  properties: any[];
+  maintenanceRequests: any[];
+  payments: any[];
+  messages: any[];
+}
+
+interface ManagerDashboardProps {
+  properties: any[];
+  maintenanceRequests: any[];
+  payments: any[];
+  messages: any[];
+  stats: {
+    totalRevenue: number;
+    propertiesCount: number;
+    maintenanceCount: number;
+    pendingPaymentsCount: number;
+  };
+}
+
+const TenantDashboard: React.FC<TenantDashboardProps> = ({ 
+  properties, 
+  maintenanceRequests, 
+  payments, 
+  messages 
+}) => {
+  return (
+    <div>
+      <h1 className="text-3xl font-bold mb-6">Tableau de bord locataire</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+        <StatCard 
+          title="Mes locations" 
+          value={properties.length.toString()} 
+          description="Propriétés louées" 
+          icon={Home} 
+        />
+        <StatCard 
+          title="Demandes de maintenance" 
+          value={maintenanceRequests.length.toString()} 
+          description="Demandes actives" 
+          icon={Wrench} 
+        />
+        <StatCard 
+          title="Paiements à venir" 
+          value={payments.filter(p => p.status === 'pending').length.toString()} 
+          description="Paiements en attente" 
+          icon={DollarSign} 
+        />
+      </div>
+      
+      <Tabs defaultValue="properties" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="properties">Mes locations</TabsTrigger>
+          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+          <TabsTrigger value="payments">Paiements</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="properties">
+          <PropertiesTab properties={properties} />
+        </TabsContent>
+        <TabsContent value="maintenance">
+          <MaintenanceTab maintenanceRequests={maintenanceRequests} />
+        </TabsContent>
+        <TabsContent value="payments">
+          <PaymentsTab payments={payments} />
+        </TabsContent>
+        <TabsContent value="messages">
+          <MessagesTab messages={messages} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
+  properties,
+  maintenanceRequests,
+  payments,
+  messages,
+  stats
+}) => {
+  return (
+    <div>
+      <h1 className="text-3xl font-bold mb-6">Tableau de bord gestionnaire</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard 
+          title="Revenu total" 
+          value={stats.totalRevenue.toString()} 
+          description="Revenu annuel total" 
+          icon={DollarSign} 
+        />
+        <StatCard 
+          title="Propriétés listées" 
+          value={stats.propertiesCount.toString()} 
+          description="Nombre total de propriétés" 
+          icon={Building} 
+        />
+        <StatCard 
+          title="Demandes de maintenance" 
+          value={stats.maintenanceCount.toString()} 
+          description="Demandes en attente" 
+          icon={Wrench} 
+        />
+        <StatCard 
+          title="Paiements en attente" 
+          value={stats.pendingPaymentsCount.toString()} 
+          description="Paiements à recevoir" 
+          icon={FileText} 
+        />
+      </div>
+      
+      <Tabs defaultValue="properties" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="properties">Propriétés</TabsTrigger>
+          <TabsTrigger value="property-managers">Gestionnaires</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsTrigger value="payments">Paiements</TabsTrigger>
+          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+        </TabsList>
+        <TabsContent value="properties">
+          <PropertiesTab properties={properties} />
+        </TabsContent>
+        <TabsContent value="property-managers">
+          <PropertyManagerTab properties={properties} maintenanceRequests={maintenanceRequests} />
+        </TabsContent>
+        <TabsContent value="messages">
+          <MessagesTab messages={messages} />
+        </TabsContent>
+        <TabsContent value="payments">
+          <PaymentsTab payments={payments} />
+        </TabsContent>
+        <TabsContent value="maintenance">
+          <MaintenanceTab maintenanceRequests={maintenanceRequests} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, roles } = useAuth();
@@ -80,6 +221,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user) {
+      console.log("Dashboard - User roles:", roles);
       fetchDashboardData();
     }
   }, [user, roles]);
@@ -94,7 +236,6 @@ const Dashboard = () => {
         fetchPayments()
       ]);
       
-      // Calculate stats after data is loaded
       calculateStats();
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -112,7 +253,6 @@ const Dashboard = () => {
     try {
       let query = supabase.from('properties').select('*');
       
-      // Filter based on user role
       if (roles.includes('landlord')) {
         query = query.eq('owner_id', user?.id);
       } else if (roles.includes('agent')) {
@@ -177,7 +317,6 @@ const Dashboard = () => {
           )
         `);
       
-      // Filter based on user role
       if (roles.includes('tenant')) {
         query = query.eq('tenant_id', user?.id);
       } else if (roles.includes('landlord')) {
@@ -201,7 +340,6 @@ const Dashboard = () => {
       
       if (error) throw error;
       
-      // Transform the data to match our component's expected format
       const formattedRequests = data.map(request => ({
         id: request.id,
         title: request.title,
@@ -226,7 +364,6 @@ const Dashboard = () => {
 
   const fetchMessages = async () => {
     try {
-      // Fetch messages where the user is the recipient
       const { data: messagesData, error } = await supabase
         .from('messages')
         .select(`
@@ -241,11 +378,9 @@ const Dashboard = () => {
       
       if (error) throw error;
       
-      // If we have messages, fetch the sender profiles separately
       if (messagesData && messagesData.length > 0) {
         const senderIds = messagesData.map(msg => msg.sender_id);
         
-        // Fetch profiles for the sender IDs
         const { data: profilesData, error: profilesError } = await supabase
           .from('profiles')
           .select('id, first_name, last_name')
@@ -253,13 +388,11 @@ const Dashboard = () => {
         
         if (profilesError) throw profilesError;
         
-        // Create a map of profile data by ID for easier lookup
         const profilesMap = new Map();
         profilesData?.forEach(profile => {
           profilesMap.set(profile.id, profile);
         });
         
-        // Transform the data to match our component's expected format
         const formattedMessages = messagesData.map(msg => {
           const senderProfile = profilesMap.get(msg.sender_id);
           return {
@@ -306,7 +439,6 @@ const Dashboard = () => {
         .order('due_date', { ascending: false })
         .limit(5);
       
-      // If the user is a tenant, we want to show payments for their leases
       if (roles.includes('tenant')) {
         const { data: leases, error: leaseError } = await supabase
           .from('leases')
@@ -322,9 +454,7 @@ const Dashboard = () => {
           setPayments([]);
           return;
         }
-      }
-      // If the user is a landlord, we want to show payments for their properties
-      else if (roles.includes('landlord')) {
+      } else if (roles.includes('landlord')) {
         const { data: properties, error: propError } = await supabase
           .from('properties')
           .select('id')
@@ -357,7 +487,6 @@ const Dashboard = () => {
       
       if (error) throw error;
       
-      // Transform the data to match our component's expected format
       const formattedPayments = data.map(payment => ({
         id: payment.id,
         amount: payment.amount,
@@ -383,7 +512,6 @@ const Dashboard = () => {
   };
 
   const calculateStats = () => {
-    // Calculate total revenue from payments
     const totalRevenue = payments.reduce((sum, payment) => {
       if (payment.status === 'paid') {
         return sum + payment.amount;
@@ -391,15 +519,12 @@ const Dashboard = () => {
       return sum;
     }, 0);
     
-    // Count properties
     const propertiesCount = properties.length;
     
-    // Count pending maintenance requests
     const maintenanceCount = maintenanceRequests.filter(
       req => req.status === 'pending' || req.status === 'in_progress'
     ).length;
     
-    // Count pending payments
     const pendingPaymentsCount = payments.filter(
       payment => payment.status === 'pending'
     ).length;
@@ -412,67 +537,34 @@ const Dashboard = () => {
     });
   };
 
+  const isTenant = roles.includes('tenant') && !roles.includes('landlord') && !roles.includes('manager') && !roles.includes('agent');
+  
+  console.log("Dashboard - Is tenant:", isTenant, "Roles:", roles);
+
   return (
     <Layout>
       <div className="container mx-auto py-8">
-        <h1 className="text-3xl font-bold mb-6">Tableau de bord</h1>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <StatCard 
-            title="Revenu total" 
-            value={stats.totalRevenue.toString()} 
-            description="Revenu annuel total" 
-            icon={DollarSign} 
-          />
-          <StatCard 
-            title="Propriétés listées" 
-            value={stats.propertiesCount.toString()} 
-            description="Nombre total de propriétés" 
-            icon={Building} 
-          />
-          <StatCard 
-            title="Demandes de maintenance" 
-            value={stats.maintenanceCount.toString()} 
-            description="Demandes en attente" 
-            icon={Wrench} 
-          />
-          <StatCard 
-            title="Paiements en attente" 
-            value={stats.pendingPaymentsCount.toString()} 
-            description="Paiements à recevoir" 
-            icon={FileText} 
-          />
-        </div>
-
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         ) : (
-          <Tabs defaultValue="properties" className="w-full">
-            <TabsList className="mb-4">
-              <TabsTrigger value="properties">Propriétés</TabsTrigger>
-              <TabsTrigger value="property-managers">Gestionnaires</TabsTrigger>
-              <TabsTrigger value="messages">Messages</TabsTrigger>
-              <TabsTrigger value="payments">Paiements</TabsTrigger>
-              <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
-            </TabsList>
-            <TabsContent value="properties">
-              <PropertiesTab properties={properties} />
-            </TabsContent>
-            <TabsContent value="property-managers">
-              <PropertyManagerTab properties={properties} maintenanceRequests={maintenanceRequests} />
-            </TabsContent>
-            <TabsContent value="messages">
-              <MessagesTab messages={messages} />
-            </TabsContent>
-            <TabsContent value="payments">
-              <PaymentsTab payments={payments} />
-            </TabsContent>
-            <TabsContent value="maintenance">
-              <MaintenanceTab maintenanceRequests={maintenanceRequests} />
-            </TabsContent>
-          </Tabs>
+          isTenant ? (
+            <TenantDashboard 
+              properties={properties} 
+              maintenanceRequests={maintenanceRequests} 
+              payments={payments} 
+              messages={messages} 
+            />
+          ) : (
+            <ManagerDashboard 
+              properties={properties} 
+              maintenanceRequests={maintenanceRequests} 
+              payments={payments} 
+              messages={messages} 
+              stats={stats} 
+            />
+          )
         )}
       </div>
     </Layout>
