@@ -49,7 +49,7 @@ const TenantQrCode: React.FC<TenantQrCodeProps> = ({ userId, firstName, lastName
       setQrDataUrl(dataUrl);
       
       // Store the QR code in Supabase Storage
-      const fileName = `tenant-qr-${userId}.png`;
+      const fileName = `${userId}/tenant-qr-${userId}.png`;
       const fetchResponse = await fetch(dataUrl);
       const blob = await fetchResponse.blob();
       
