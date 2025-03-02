@@ -22,6 +22,7 @@ import Leases from "./pages/Leases";
 import Communities from "./pages/Communities";
 import CommunityDetails from "./pages/CommunityDetails";
 import Vendors from "./pages/Vendors";
+import AgentDashboard from "./pages/AgentDashboard";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -58,6 +59,10 @@ const App = () => (
             <Route path="/leases" element={<AuthGuard><Leases /></AuthGuard>} />
             <Route path="/vendors" element={<AuthGuard><Vendors /></AuthGuard>} />
             <Route path="/property-management" element={<AuthGuard><PropertyManagement /></AuthGuard>} />
+            
+            {/* Agent Routes */}
+            <Route path="/agent" element={<AuthGuard><AgentDashboard /></AuthGuard>} />
+            <Route path="/agent/dashboard" element={<AuthGuard><AgentDashboard /></AuthGuard>} />
             
             {/* Catch-all Route */}
             <Route path="*" element={<NotFound />} />
