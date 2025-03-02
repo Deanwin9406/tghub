@@ -103,7 +103,7 @@ export interface Profile {
 }
 
 export interface AuthContextType {
-  user: User | null;
+  user: Profile | null;
   profile: Profile | null;
   roles: string[];
   hasCompletedKyc: boolean;
