@@ -17,7 +17,6 @@ const Leases = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Fetch leases for the current user
   const { data: leases, isLoading, error } = useQuery({
     queryKey: ['leases', user?.id],
     queryFn: async () => {
@@ -47,7 +46,6 @@ const Leases = () => {
     enabled: !!user,
   });
 
-  // Filter leases based on search query
   const filteredLeases = leases?.filter(lease => {
     const propertyTitle = lease.property?.title || '';
     const propertyAddress = lease.property?.address || '';
@@ -60,9 +58,7 @@ const Leases = () => {
     );
   });
 
-  // Function to render tenant information safely
   const renderTenantInfo = (tenant: any) => {
-    // Check if tenant exists and is an error object by looking for an 'error' property
     const isTenantError = tenant && typeof tenant === 'object' && 'error' in tenant;
     
     if (!tenant || isTenantError) {
@@ -72,9 +68,17 @@ const Leases = () => {
       </div>;
     }
 
-    // Now we know tenant is not an error object and exists
-    const firstName = 'first_name' in tenant ? tenant.first_name : 'Unknown';
-    const lastName = 'last_name' in tenant ? tenant.last_name : '';
+    let firstName = 'Unknown';
+    let lastName = '';
+    
+    if (tenant && typeof tenant === 'object') {
+      if ('first_name' in tenant && tenant.first_name !== null) {
+        firstName = tenant.first_name;
+      }
+      if ('last_name' in tenant && tenant.last_name !== null) {
+        lastName = tenant.last_name;
+      }
+    }
 
     return (
       <div className="flex items-center">
@@ -105,7 +109,6 @@ const Leases = () => {
             <TabsTrigger value="all">All Leases</TabsTrigger>
             <TabsTrigger value="active">Active</TabsTrigger>
             <TabsTrigger value="expired">Expired</TabsTrigger>
-            {/* Add more tabs as needed */}
           </TabsList>
 
           <TabsContent value="all">
@@ -176,12 +179,10 @@ const Leases = () => {
           </TabsContent>
 
           <TabsContent value="active">
-            {/* Add content for active leases */}
             <p>Content for active leases goes here.</p>
           </TabsContent>
 
           <TabsContent value="expired">
-            {/* Add content for expired leases */}
             <p>Content for expired leases goes here.</p>
           </TabsContent>
         </Tabs>
