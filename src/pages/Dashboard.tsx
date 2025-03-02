@@ -226,17 +226,14 @@ const Dashboard = () => {
 
   const fetchMessages = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch messages where the user is the recipient
+      const { data: messagesData, error } = await supabase
         .from('messages')
         .select(`
           id,
           content,
           created_at,
-          sender_id,
-          profiles:sender_id (
-            first_name,
-            last_name
-          )
+          sender_id
         `)
         .eq('recipient_id', user?.id)
         .order('created_at', { ascending: false })
@@ -244,18 +241,42 @@ const Dashboard = () => {
       
       if (error) throw error;
       
-      // Transform the data to match our component's expected format
-      const formattedMessages = data.map(msg => ({
-        id: msg.id,
-        content: msg.content,
-        created_at: msg.created_at,
-        sender: {
-          first_name: msg.profiles?.first_name || 'Unknown',
-          last_name: msg.profiles?.last_name || 'User'
-        }
-      }));
-      
-      setMessages(formattedMessages);
+      // If we have messages, fetch the sender profiles separately
+      if (messagesData && messagesData.length > 0) {
+        const senderIds = messagesData.map(msg => msg.sender_id);
+        
+        // Fetch profiles for the sender IDs
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id, first_name, last_name')
+          .in('id', senderIds);
+        
+        if (profilesError) throw profilesError;
+        
+        // Create a map of profile data by ID for easier lookup
+        const profilesMap = new Map();
+        profilesData?.forEach(profile => {
+          profilesMap.set(profile.id, profile);
+        });
+        
+        // Transform the data to match our component's expected format
+        const formattedMessages = messagesData.map(msg => {
+          const senderProfile = profilesMap.get(msg.sender_id);
+          return {
+            id: msg.id,
+            content: msg.content,
+            created_at: msg.created_at,
+            sender: {
+              first_name: senderProfile?.first_name || 'Unknown',
+              last_name: senderProfile?.last_name || 'User'
+            }
+          };
+        });
+        
+        setMessages(formattedMessages);
+      } else {
+        setMessages([]);
+      }
     } catch (error) {
       console.error('Error fetching messages:', error);
       toast({
