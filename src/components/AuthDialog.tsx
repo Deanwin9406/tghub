@@ -33,6 +33,7 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
   const [activeTab, setActiveTab] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [userRole, setUserRole] = useState('tenant');
@@ -97,6 +98,16 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
         toast({
           title: 'Informations manquantes',
           description: 'Veuillez fournir votre prénom et nom',
+          variant: 'destructive',
+        });
+        setIsSubmitting(false);
+        return;
+      }
+      
+      if (password !== confirmPassword) {
+        toast({
+          title: 'Mots de passe non identiques',
+          description: 'Les mots de passe ne correspondent pas',
           variant: 'destructive',
         });
         setIsSubmitting(false);
@@ -327,6 +338,17 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
                     placeholder="••••••••" 
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+                  <Input 
+                    id="confirmPassword" 
+                    type="password" 
+                    placeholder="••••••••" 
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                   />
                 </div>
