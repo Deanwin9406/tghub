@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { Community, CommunityPost, CommunityEvent, CommunityPoll, MarketplaceItem } from "@/types/community";
 
@@ -297,6 +296,7 @@ export const createCommunity = async (data: {
   location: string;
   image_url?: string;
   created_by: string;
+  tags?: string[];
 }): Promise<string> => {
   try {
     const { data: community, error } = await supabase
@@ -306,7 +306,8 @@ export const createCommunity = async (data: {
         description: data.description,
         location: data.location,
         image_url: data.image_url,
-        created_by: data.created_by
+        created_by: data.created_by,
+        tags: data.tags || []
       })
       .select()
       .single();
