@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,10 +18,23 @@ const AddTenant = () => {
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Debug route params
+  // Enhanced debugging for route params and component mounting
   useEffect(() => {
+    console.log("AddTenant component mounted");
     console.log("AddTenant - propertyId from params:", propertyId);
-  }, [propertyId]);
+    console.log("AddTenant - current user:", user?.id);
+    
+    // Return early and show error if no propertyId
+    if (!propertyId) {
+      console.error("No propertyId provided in route params");
+      toast({
+        title: "Erreur",
+        description: "Identifiant de propriété manquant",
+        variant: "destructive"
+      });
+      setLoading(false);
+    }
+  }, [propertyId, user, toast]);
 
   // Check if user has the necessary role
   const [roles, setRoles] = useState<string[]>([]);
@@ -38,7 +50,9 @@ const AddTenant = () => {
           .eq('user_id', user.id);
           
         if (error) throw error;
-        setRoles(data.map(r => r.role));
+        const rolesList = data.map(r => r.role);
+        console.log("AddTenant - user roles:", rolesList);
+        setRoles(rolesList);
       } catch (error: any) {
         console.error('Error fetching user roles:', error);
       }
@@ -49,13 +63,7 @@ const AddTenant = () => {
 
   useEffect(() => {
     if (!propertyId) {
-      console.error("No propertyId provided in route params");
-      toast({
-        title: "Erreur",
-        description: "Identifiant de propriété manquant",
-        variant: "destructive"
-      });
-      return;
+      return; // Exit early if no propertyId
     }
     
     const fetchProperty = async () => {
@@ -68,7 +76,11 @@ const AddTenant = () => {
           .eq('id', propertyId)
           .single();
           
-        if (error) throw error;
+        if (error) {
+          console.error('Error fetching property:', error);
+          throw error;
+        }
+        
         console.log("Property data retrieved:", data);
         setProperty(data);
       } catch (error: any) {
@@ -146,6 +158,11 @@ const AddTenant = () => {
     navigate(`/property/${propertyId}`);
   };
 
+  const handleGoBack = () => {
+    console.log("Navigating back from AddTenant");
+    navigate(-1); // Go back to previous page instead of a hardcoded route
+  };
+
   const isAllowed = () => {
     return roles.includes('admin') || roles.includes('owner') || roles.includes('property_manager');
   };
@@ -162,7 +179,7 @@ const AddTenant = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={() => navigate(-1)}>
+              <Button onClick={handleGoBack}>
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Retour
               </Button>
@@ -177,7 +194,7 @@ const AddTenant = () => {
     <Layout>
       <div className="container mx-auto py-8">
         <div className="mb-6">
-          <Button variant="outline" onClick={() => navigate(-1)}>
+          <Button variant="outline" onClick={handleGoBack}>
             <ArrowLeft className="mr-2 h-4 w-4" />
             Retour
           </Button>

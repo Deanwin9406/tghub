@@ -8,6 +8,11 @@ const AuthGuard = () => {
   const location = useLocation();
   const [isReady, setIsReady] = useState(false);
 
+  // Add debugging for current path
+  useEffect(() => {
+    console.log("AuthGuard - current location path:", location.pathname);
+  }, [location.pathname]);
+
   useEffect(() => {
     // Only set isReady once loading is complete
     if (!loading) {
@@ -17,8 +22,12 @@ const AuthGuard = () => {
 
   // Enhanced logging for debugging
   useEffect(() => {
-    console.log("AuthGuard - current location:", location.pathname);
-    console.log("AuthGuard - authentication status:", { session, loading, isReady });
+    console.log("AuthGuard - authentication status:", { 
+      session: session ? "exists" : "null", 
+      loading, 
+      isReady,
+      currentPath: location.pathname 
+    });
   }, [location.pathname, session, loading, isReady]);
 
   // Show nothing while checking authentication
@@ -36,8 +45,7 @@ const AuthGuard = () => {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  // If user is authenticated, render the protected route
-  // No redirection to dashboard here - just render the requested route
+  // User is authenticated, render the protected route WITHOUT any redirection
   console.log("User authenticated, rendering protected route:", location.pathname);
   return <Outlet />;
 };

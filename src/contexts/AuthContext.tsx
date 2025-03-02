@@ -36,13 +36,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [hasCompletedKyc, setHasCompletedKyc] = useState<boolean>(false);
 
   useEffect(() => {
+    console.log("AuthContext - Authentication state updated:", { 
+      hasUser: user ? true : false,
+      hasSession: session ? true : false,
+      loading
+    });
+  }, [user, session, loading]);
+
+  useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log("AuthContext - Initial session check:", session ? "Session exists" : "No session");
       setSession(session);
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("AuthContext - Auth state change event:", _event);
       setSession(session);
       setUser(session?.user ?? null);
     });
