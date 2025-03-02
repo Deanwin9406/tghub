@@ -1,342 +1,182 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Layout } from '@/components/Layout';
+import Layout from '@/components/Layout';
+import { useAuth } from '@/contexts/AuthContext';
+import KycRequirementCard from '@/components/kyc/KycRequirementCard';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/contexts/AuthContext';
+import { Loader2, Upload, Check } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { KycRequirementCard } from '@/components/kyc/KycRequirementCard';
 
 const KycVerification = () => {
-  const { user, roles, hasCompletedKyc } = useAuth();
-  const navigate = useNavigate();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [idType, setIdType] = useState('national_id');
-  const [idNumber, setIdNumber] = useState('');
-  const [idProofFile, setIdProofFile] = useState<File | null>(null);
-  const [addressProofFile, setAddressProofFile] = useState<File | null>(null);
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('identity');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [identityFile, setIdentityFile] = useState<File | null>(null);
+  const [proofOfAddressFile, setProofOfAddressFile] = useState<File | null>(null);
   const [kycStatus, setKycStatus] = useState<'pending' | 'approved' | 'rejected' | null>(null);
-  const [kycNotes, setKycNotes] = useState<string | null>(null);
 
-  // Requirements based on the user's role
-  const getUserRequirements = () => {
-    // Base requirements for all users
-    const baseRequirements = [
-      { title: "Valid ID", description: "National ID, Passport, or Driver's License" },
-      { title: "Proof of Address", description: "Utility bill, bank statement or official document (less than 3 months old)" }
-    ];
-
-    // Additional requirements based on role
-    if (roles.includes('landlord')) {
-      return [
-        ...baseRequirements,
-        { title: "Property Ownership Documents", description: "Title deed or property registration" }
-      ];
-    } else if (roles.includes('agent')) {
-      return [
-        ...baseRequirements,
-        { title: "Business License", description: "Real estate license or business registration" }
-      ];
-    } else if (roles.includes('manager')) {
-      return [
-        ...baseRequirements,
-        { title: "Professional Credentials", description: "Management certification or employment verification" }
-      ];
-    } else if (roles.includes('vendor')) {
-      return [
-        ...baseRequirements,
-        { title: "Business Registration", description: "Business registration or trade license" }
-      ];
+  const handleIdentityUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
+      return;
     }
-
-    return baseRequirements;
+    const file = event.target.files[0];
+    setIdentityFile(file);
   };
 
-  useEffect(() => {
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "You need to be logged in to complete KYC verification",
-        variant: "destructive",
-      });
-      navigate('/auth');
+  const handleAddressUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files || event.target.files.length === 0) {
       return;
     }
-
-    // Check if user already has a KYC verification
-    const fetchKycStatus = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('kyc_verifications')
-          .select('status, notes')
-          .eq('user_id', user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          console.error("Error fetching KYC status:", error);
-          return;
-        }
-
-        if (data) {
-          setKycStatus(data.status as 'pending' | 'approved' | 'rejected');
-          setKycNotes(data.notes);
-        }
-      } catch (error) {
-        console.error("Error:", error);
-      }
-    };
-
-    fetchKycStatus();
-  }, [user, navigate, toast]);
-
-  const uploadFile = async (file: File, path: string) => {
-    try {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-      const filePath = `${user!.id}/${path}/${fileName}`;
-
-      const { error: uploadError, data } = await supabase.storage
-        .from('kyc-documents')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      // Get the public URL for the uploaded file
-      const { data: { publicUrl } } = supabase.storage
-        .from('kyc-documents')
-        .getPublicUrl(filePath);
-
-      return publicUrl;
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      throw error;
-    }
+    const file = event.target.files[0];
+    setProofOfAddressFile(file);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
+  const handleSubmit = async () => {
     if (!user) {
       toast({
-        title: "Authentication required",
-        description: "You need to be logged in to complete KYC verification",
+        title: "Non authentifié",
+        description: "Vous devez être connecté pour soumettre la vérification KYC.",
         variant: "destructive",
       });
       return;
     }
 
-    if (!idProofFile || !addressProofFile) {
+    if (!identityFile || !proofOfAddressFile) {
       toast({
-        title: "Missing documents",
-        description: "Please upload all required documents",
+        title: "Fichiers manquants",
+        description: "Veuillez télécharger à la fois une pièce d'identité et un justificatif de domicile.",
         variant: "destructive",
       });
       return;
     }
 
+    setIsSubmitting(true);
     try {
-      setLoading(true);
-      setUploading(true);
+      // Upload identity file
+      const identityFileExt = identityFile.name.split('.').pop();
+      const identityFileName = `identity_${user.id}_${Date.now()}.${identityFileExt}`;
+      const { error: identityError } = await supabase.storage
+        .from('kyc')
+        .upload(identityFileName, identityFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      // Upload files and get URLs
-      const idImageUrl = await uploadFile(idProofFile, 'id');
-      const addressProofUrl = await uploadFile(addressProofFile, 'address');
+      if (identityError) {
+        throw new Error(`Erreur lors du téléchargement de la pièce d'identité: ${identityError.message}`);
+      }
 
-      setUploading(false);
+      // Upload proof of address file
+      const addressFileExt = proofOfAddressFile.name.split('.').pop();
+      const addressFileName = `address_${user.id}_${Date.now()}.${addressFileExt}`;
+      const { error: addressError } = await supabase.storage
+        .from('kyc')
+        .upload(addressFileName, proofOfAddressFile, {
+          cacheControl: '3600',
+          upsert: false
+        });
 
-      // First check if the user already has a KYC verification
-      const { data: existingKyc } = await supabase
+      if (addressError) {
+        throw new Error(`Erreur lors du téléchargement du justificatif de domicile: ${addressError.message}`);
+      }
+
+      // Save KYC verification request
+      const { data, error: dbError } = await supabase
         .from('kyc_verifications')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (existingKyc) {
-        // Update existing KYC verification
-        const { error: updateError } = await supabase
-          .from('kyc_verifications')
-          .update({
-            id_type: idType,
-            id_number: idNumber,
-            id_image_url: idImageUrl,
-            address_proof_url: addressProofUrl,
-            status: 'pending' as 'pending' | 'approved' | 'rejected',
-            notes: 'Resubmitted documents for verification'
-          })
-          .eq('id', existingKyc.id);
-
-        if (updateError) {
-          throw updateError;
-        }
-      } else {
-        // Create new KYC verification
-        const { error: insertError } = await supabase
-          .from('kyc_verifications')
-          .insert({
+        .insert([
+          {
             user_id: user.id,
-            id_type: idType,
-            id_number: idNumber,
-            id_image_url: idImageUrl,
-            address_proof_url: addressProofUrl,
-            status: 'pending' as 'pending' | 'approved' | 'rejected',
-            notes: 'Documents submitted for verification'
-          });
+            identity_file_path: identityFileName,
+            address_file_path: addressFileName,
+            status: 'pending',
+            submitted_at: new Date().toISOString(),
+          },
+        ])
+        .select();
 
-        if (insertError) {
-          throw insertError;
-        }
+      if (dbError) {
+        throw new Error(`Erreur lors de la sauvegarde de la demande KYC: ${dbError.message}`);
       }
 
-      toast({
-        title: "Verification submitted",
-        description: "Your documents have been submitted for verification",
-      });
-
-      // Update local state
       setKycStatus('pending');
-    } catch (error: any) {
-      console.error("Error submitting KYC:", error);
       toast({
-        title: "Submission failed",
-        description: error.message || "There was an error submitting your verification",
+        title: "Demande soumise",
+        description: "Votre demande de vérification KYC a été soumise avec succès et est en attente d'approbation.",
+      });
+      navigate('/profile');
+
+    } catch (error: any) {
+      console.error("KYC Verification Error:", error);
+      toast({
+        title: "Erreur de soumission",
+        description: error.message || "Une erreur s'est produite lors de la soumission de votre demande. Veuillez réessayer.",
         variant: "destructive",
       });
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
-
-  const getStatusMessage = () => {
-    switch (kycStatus) {
-      case 'pending':
-        return {
-          title: "Verification in progress",
-          description: "Your documents are being reviewed. This typically takes 1-3 business days.",
-          variant: "default" as const
-        };
-      case 'approved':
-        return {
-          title: "Verification complete",
-          description: "You have been successfully verified.",
-          variant: "default" as const
-        };
-      case 'rejected':
-        return {
-          title: "Verification rejected",
-          description: kycNotes || "Your verification was rejected. Please resubmit with the correct documents.",
-          variant: "destructive" as const
-        };
-      default:
-        return null;
-    }
-  };
-
-  const statusMessage = getStatusMessage();
 
   return (
     <Layout>
-      <div className="container max-w-4xl py-8">
-        <h1 className="text-3xl font-bold mb-6">KYC Verification</h1>
-        
-        {statusMessage && (
-          <Card className={`mb-8 ${kycStatus === 'rejected' ? 'border-red-400' : kycStatus === 'approved' ? 'border-green-400' : ''}`}>
-            <CardHeader>
-              <CardTitle>{statusMessage.title}</CardTitle>
-              <CardDescription>{statusMessage.description}</CardDescription>
-            </CardHeader>
-          </Card>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-          {getUserRequirements().map((req, index) => (
-            <KycRequirementCard 
-              key={index}
-              title={req.title}
-              description={req.description}
-            />
-          ))}
+      <div className="container mx-auto py-12 px-4 md:px-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+          <h1 className="text-3xl font-bold">Vérification KYC</h1>
         </div>
 
-        {(kycStatus !== 'approved' && kycStatus !== 'pending') && (
-          <Card>
-            <CardHeader>
-              <CardTitle>Submit Verification Documents</CardTitle>
-              <CardDescription>
-                Please upload clear and valid documents to complete your verification.
-              </CardDescription>
-            </CardHeader>
-            <form onSubmit={handleSubmit}>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="idType">ID Type</Label>
-                  <Select 
-                    value={idType} 
-                    onValueChange={setIdType}
-                  >
-                    <SelectTrigger id="idType" className="w-full">
-                      <SelectValue placeholder="Select ID Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="national_id">National ID</SelectItem>
-                      <SelectItem value="passport">Passport</SelectItem>
-                      <SelectItem value="drivers_license">Driver's License</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="idNumber">ID Number</Label>
-                  <Input
-                    id="idNumber"
-                    placeholder="Enter your ID number"
-                    value={idNumber}
-                    onChange={(e) => setIdNumber(e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="idProof">ID Document (Photo or Scan)</Label>
-                  <Input
-                    id="idProof"
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setIdProofFile(e.target.files?.[0] || null)}
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="addressProof">Proof of Address</Label>
-                  <Input
-                    id="addressProof"
-                    type="file"
-                    accept="image/*,.pdf"
-                    onChange={(e) => setAddressProofFile(e.target.files?.[0] || null)}
-                    required
-                  />
-                  <p className="text-sm text-muted-foreground">
-                    Utility bill, bank statement or official document (less than 3 months old)
-                  </p>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button type="submit" disabled={loading || uploading}>
-                  {loading ? (uploading ? 'Uploading...' : 'Submitting...') : 'Submit Verification'}
-                </Button>
-              </CardFooter>
-            </form>
-          </Card>
-        )}
+        <Card>
+          <CardHeader>
+            <CardTitle>Soumettre votre vérification KYC</CardTitle>
+            <CardDescription>
+              Veuillez soumettre les documents requis pour vérifier votre identité.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="identity">Pièce d'identité</TabsTrigger>
+                <TabsTrigger value="address">Justificatif de domicile</TabsTrigger>
+              </TabsList>
+              <TabsContent value="identity">
+                <KycRequirementCard
+                  title="Pièce d'identité"
+                  description="Veuillez télécharger une copie claire de votre pièce d'identité (carte d'identité, passeport, permis de conduire)."
+                  uploadButtonText="Télécharger la pièce d'identité"
+                  onChange={handleIdentityUpload}
+                  fileName={identityFile?.name}
+                />
+              </TabsContent>
+              <TabsContent value="address">
+                <KycRequirementCard
+                  title="Justificatif de domicile"
+                  description="Veuillez télécharger une copie d'un justificatif de domicile récent (facture d'électricité, facture d'eau, relevé bancaire)."
+                  uploadButtonText="Télécharger le justificatif de domicile"
+                  onChange={handleAddressUpload}
+                  fileName={proofOfAddressFile?.name}
+                />
+              </TabsContent>
+            </Tabs>
+          </CardContent>
+          <CardFooter>
+            <Button className="w-full" onClick={handleSubmit} disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Envoi en cours...
+                </>
+              ) : (
+                'Soumettre la vérification'
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
       </div>
     </Layout>
   );

@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -50,7 +49,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     });
   }, []);
 
-  // Fetch user profile and roles when auth state changes
   useEffect(() => {
     if (user) {
       fetchUserProfile();
@@ -104,12 +102,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // Check if user has completed KYC
   const checkKycStatus = async () => {
     if (!user) return;
 
     try {
-      // First check if the user has an approved KYC verification
       const { data, error } = await supabase
         .from('kyc_verifications')
         .select('status')
@@ -175,7 +171,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error };
       }
 
-      // Create a user profile immediately after sign-up
       if (data.user?.id) {
         const { error: profileError } = await supabase
           .from('profiles')
@@ -208,7 +203,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error };
       }
 
-      // Optimistically update the local profile state
       setProfile(prevProfile => ({ ...prevProfile, ...updates } as Profile));
 
       return { error: null };
@@ -235,7 +229,6 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  // Alias for sendPasswordResetEmail for components that expect resetPassword
   const resetPassword = sendPasswordResetEmail;
 
   return (
@@ -252,7 +245,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         sendPasswordResetEmail,
         resetPassword,
         loading,
-        isLoading: loading, // Alias for components using isLoading instead of loading
+        isLoading: loading,
         session,
       }}
     >

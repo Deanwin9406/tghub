@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -44,13 +43,11 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
   const location = useLocation();
   
   useEffect(() => {
-    // Check URL for reset parameter
     const params = new URLSearchParams(location.search);
     if (params.get('reset') === 'true') {
       setShowResetForm(true);
     }
     
-    // Close dialog if authenticated
     if (session && !isLoading) {
       onOpenChange(false);
       navigate('/dashboard');
@@ -114,13 +111,7 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
         return;
       }
       
-      const userData = {
-        first_name: firstName,
-        last_name: lastName,
-        role: userRole
-      };
-      
-      const { error } = await signUp(email, password, userData);
+      const { error } = await signUp(email, password, firstName, lastName);
       
       if (error) {
         toast({

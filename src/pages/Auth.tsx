@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -24,13 +23,11 @@ const Auth = () => {
   const location = useLocation();
 
   useEffect(() => {
-    // Check URL for reset parameter
     const params = new URLSearchParams(location.search);
     if (params.get('reset') === 'true') {
       setShowResetForm(true);
     }
     
-    // Redirect if already authenticated
     if (session && !isLoading) {
       navigate('/dashboard');
     }
@@ -82,12 +79,7 @@ const Auth = () => {
         return;
       }
       
-      const userData = {
-        first_name: firstName,
-        last_name: lastName
-      };
-      
-      const { error } = await signUp(email, password, userData);
+      const { error } = await signUp(email, password, firstName, lastName);
       
       if (error) {
         toast({
