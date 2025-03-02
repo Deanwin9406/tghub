@@ -65,16 +65,25 @@ interface ExtendedPropertyType {
 
 const PropertyManagement = () => {
   const navigate = useNavigate();
-  const { user, session } = useAuth();
+  const { user, session, roles } = useAuth();
   const { toast } = useToast();
   const [properties, setProperties] = useState<PropertyType[]>([]);
   const [loading, setLoading] = useState(true);
+  const [canCreateListings, setCanCreateListings] = useState(false);
 
   useEffect(() => {
     if (user && session) {
       fetchProperties();
+      checkUserPermissions();
     }
-  }, [user, session]);
+  }, [user, session, roles]);
+
+  const checkUserPermissions = () => {
+    // Check if user has any of the authorized roles for creating listings
+    const authorizedRoles = ['landlord', 'agent', 'manager', 'admin'];
+    const hasPermission = roles.some(role => authorizedRoles.includes(role));
+    setCanCreateListings(hasPermission);
+  };
 
   const checkIfHasRole = async (role: UserRole): Promise<RoleCheckResult> => {
     const { data, error } = await supabase.rpc('has_role', {
@@ -95,10 +104,45 @@ const PropertyManagement = () => {
     if (!session) return;
 
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('properties')
-        .select('*')
-        .eq('owner_id', session.user.id);
+        .select('*');
+
+      // For agents and managers, fetch properties they're assigned to manage or sell
+      if (roles.includes('agent')) {
+        const { data: agentProperties, error: agentError } = await supabase
+          .from('agent_properties')
+          .select('property_id')
+          .eq('agent_id', session.user.id);
+
+        if (agentError) throw agentError;
+        
+        if (agentProperties && agentProperties.length > 0) {
+          const propertyIds = agentProperties.map(ap => ap.property_id);
+          query = query.or(`id.in.(${propertyIds.join(',')}),owner_id.eq.${session.user.id}`);
+        } else {
+          query = query.eq('owner_id', session.user.id);
+        }
+      } else if (roles.includes('manager')) {
+        const { data: managedProperties, error: managerError } = await supabase
+          .from('property_managers')
+          .select('property_id')
+          .eq('manager_id', session.user.id);
+
+        if (managerError) throw managerError;
+        
+        if (managedProperties && managedProperties.length > 0) {
+          const propertyIds = managedProperties.map(mp => mp.property_id);
+          query = query.or(`id.in.(${propertyIds.join(',')}),owner_id.eq.${session.user.id}`);
+        } else {
+          query = query.eq('owner_id', session.user.id);
+        }
+      } else {
+        // For landlords or other roles, show only properties they own
+        query = query.eq('owner_id', session.user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       
@@ -129,13 +173,19 @@ const PropertyManagement = () => {
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Property Management</h1>
-          <Button onClick={() => navigate('/property/add')}>Add Property</Button>
+          {canCreateListings && (
+            <Button onClick={() => navigate('/add-property')}>Add Property</Button>
+          )}
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle>Your Properties</CardTitle>
-            <CardDescription>Manage your listed properties here.</CardDescription>
+            <CardDescription>
+              {canCreateListings 
+                ? "Manage your listed properties here."
+                : "View properties assigned to you."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -144,10 +194,16 @@ const PropertyManagement = () => {
               </div>
             ) : properties.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-lg text-muted-foreground mb-4">You don't have any properties listed yet.</p>
-                <Button onClick={() => navigate('/property/add')}>
-                  List a Property
-                </Button>
+                <p className="text-lg text-muted-foreground mb-4">
+                  {canCreateListings
+                    ? "You don't have any properties listed yet."
+                    : "You don't have any properties assigned to you yet."}
+                </p>
+                {canCreateListings && (
+                  <Button onClick={() => navigate('/add-property')}>
+                    List a Property
+                  </Button>
+                )}
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

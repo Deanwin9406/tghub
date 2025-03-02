@@ -1,5 +1,3 @@
-
-// Fix the Badge import in Dashboard.tsx
 import React, { useEffect, useState } from 'react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -103,6 +101,11 @@ const Dashboard = () => {
     return null;
   }
 
+  // Check if user can create property listings
+  const canCreateListings = roles.some(role => 
+    ['landlord', 'agent', 'manager', 'admin'].includes(role)
+  );
+
   return (
     <Layout>
       <div className="container mx-auto py-8 px-4 md:px-6">
@@ -113,6 +116,11 @@ const Dashboard = () => {
               Bienvenue, {profile.first_name} {profile.last_name}
             </p>
           </div>
+          {canCreateListings && (
+            <Button onClick={() => navigate('/add-property')}>
+              Add Property
+            </Button>
+          )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

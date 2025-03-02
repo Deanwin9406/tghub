@@ -1,23 +1,96 @@
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/contexts/AuthContext';
 import PropertyForm from '@/components/PropertyForm';
+import { supabase } from '@/integrations/supabase/client';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle, Loader2 } from 'lucide-react';
 
 const EditProperty = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
+  const { user, roles } = useAuth();
+  const navigate = useNavigate();
   const [property, setProperty] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [hasPermission, setHasPermission] = useState(false);
 
   useEffect(() => {
-    // Simulate fetching property data
-    setTimeout(() => {
-      setProperty({ title: 'Sample Property', /* other props */ });
+    if (id && user) {
+      fetchPropertyData();
+    }
+  }, [id, user]);
+
+  const fetchPropertyData = async () => {
+    setLoading(true);
+    try {
+      // Fetch the property data
+      const { data: propertyData, error: propertyError } = await supabase
+        .from('properties')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (propertyError) throw propertyError;
+      
+      // Check permission
+      const authorizedRoles = ['landlord', 'agent', 'manager', 'admin'];
+      let permitted = roles.some(role => authorizedRoles.includes(role));
+      
+      // Only the owner, assigned agents, or property managers can edit
+      if (propertyData.owner_id !== user.id) {
+        // Check if user is an assigned agent for this property
+        if (roles.includes('agent')) {
+          const { data: agentAssignment, error: agentError } = await supabase
+            .from('agent_properties')
+            .select('*')
+            .eq('agent_id', user.id)
+            .eq('property_id', id)
+            .single();
+            
+          permitted = permitted && !!agentAssignment;
+        }
+        
+        // Check if user is a property manager for this property
+        if (roles.includes('manager')) {
+          const { data: managerAssignment, error: managerError } = await supabase
+            .from('property_managers')
+            .select('*')
+            .eq('manager_id', user.id)
+            .eq('property_id', id)
+            .single();
+            
+          permitted = permitted && !!managerAssignment;
+        }
+        
+        // If not owner, agent, or manager, deny permission
+        if (!permitted) {
+          toast({
+            title: 'Permission denied',
+            description: 'You do not have permission to edit this property.',
+            variant: 'destructive',
+          });
+          setTimeout(() => navigate('/property-management'), 2000);
+          return;
+        }
+      }
+      
+      setProperty(propertyData);
+      setHasPermission(permitted);
+    } catch (error) {
+      console.error('Error fetching property:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to load property data',
+        variant: 'destructive',
+      });
+    } finally {
       setLoading(false);
-    }, 1000);
-  }, [id]);
+    }
+  };
 
   const handleSubmit = (propertyData: any) => {
     console.log('Updated property data:', propertyData);
@@ -25,13 +98,30 @@ const EditProperty = () => {
       title: 'Propriété mise à jour',
       description: 'La propriété a été mise à jour avec succès.',
     });
+    navigate('/property-management');
   };
 
   if (loading) {
     return (
       <Layout>
+        <div className="container mx-auto py-8 flex justify-center items-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </Layout>
+    );
+  }
+
+  if (!hasPermission) {
+    return (
+      <Layout>
         <div className="container mx-auto py-8">
-          <p>Chargement...</p>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Access Denied</AlertTitle>
+            <AlertDescription>
+              You don't have permission to edit this property.
+            </AlertDescription>
+          </Alert>
         </div>
       </Layout>
     );
