@@ -1,133 +1,90 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, PlusCircle, Edit, Trash2, Eye, UserCog } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import AssignManagerModal from '@/components/dashboard/AssignManagerModal';
+import { Loader2, Building, Bed, Bath, MapPin, CreditCard } from 'lucide-react';
+import PropertyCard from '@/components/PropertyCard';
 
-interface Property {
+interface PropertyType {
   id: string;
   title: string;
   address: string;
   city: string;
   price: number;
-  status: string;
   property_type: string;
   bedrooms: number | null;
   bathrooms: number | null;
   main_image_url: string | null;
-  has_manager: boolean;
+  status: string;
 }
 
 const PropertyManagement = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   const { toast } = useToast();
-  const [properties, setProperties] = useState<Property[]>([]);
+  const [properties, setProperties] = useState<PropertyType[]>([]);
   const [loading, setLoading] = useState(true);
-  const [managerModalOpen, setManagerModalOpen] = useState(false);
-  const [selectedPropertyId, setSelectedPropertyId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (user && session) {
       fetchProperties();
     }
-  }, [user]);
+  }, [user, session]);
 
   const fetchProperties = async () => {
     setLoading(true);
     try {
-      // First check if the property_managers table exists
-      const { data: tableCheck, error: tableCheckError } = await supabase
-        .from('property_managers')
-        .select('id')
-        .limit(1);
-      
-      let data;
-      let error;
-      
-      if (tableCheck) {
-        // If the table exists, use a query that includes manager info
-        const result = await supabase
-          .rpc('get_properties_with_manager_info', { owner_id_param: user?.id });
-        data = result.data;
-        error = result.error;
-      } else {
-        // Fallback to basic query
-        const result = await supabase
-          .from('properties')
-          .select('*')
-          .eq('owner_id', user?.id)
-          .order('created_at', { ascending: false });
-        data = result.data;
-        error = result.error;
+      // Check if the user has the 'manager' role
+      const { data: hasRoleResponse, error: hasRoleError } = await supabase.rpc('has_role', {
+        role_name: 'manager'
+      });
+
+      if (hasRoleError) {
+        throw hasRoleError;
       }
 
+      let query = supabase
+        .from('properties')
+        .select('*');
+
+      // If the user doesn't have the 'manager' role, only fetch their own properties
+      if (!hasRoleResponse) {
+        query = query.eq('owner_id', user?.id);
+      }
+
+      const { data, error } = await query;
+
       if (error) throw error;
-      setProperties(data || []);
+
+      // Ensure the data conforms to PropertyType
+      const propertiesData: PropertyType[] = data.map(item => ({
+        id: item.id,
+        title: item.title,
+        address: item.address,
+        city: item.city,
+        price: item.price,
+        property_type: item.property_type,
+        bedrooms: item.bedrooms,
+        bathrooms: item.bathrooms,
+        main_image_url: item.main_image_url,
+        status: item.status,
+      }));
+
+      setProperties(propertiesData);
     } catch (error) {
       console.error('Error fetching properties:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to load properties. Please try again.',
+        description: 'Failed to fetch properties. Please try again.',
       });
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleDeleteProperty = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this property?')) return;
-
-    try {
-      const { error } = await supabase
-        .from('properties')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      toast({
-        title: 'Success',
-        description: 'Property deleted successfully.',
-      });
-      
-      // Update the properties list
-      setProperties(prev => prev.filter(property => property.id !== id));
-    } catch (error) {
-      console.error('Error deleting property:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to delete property. Please try again.',
-      });
-    }
-  };
-  
-  const openManagerModal = (propertyId: string) => {
-    setSelectedPropertyId(propertyId);
-    setManagerModalOpen(true);
-  };
-
-  const getStatusBadgeVariant = (status: string) => {
-    switch (status) {
-      case 'available':
-        return 'default';
-      case 'rented':
-        return 'secondary';
-      case 'sold':
-        return 'destructive';
-      case 'under_maintenance':
-        return 'outline';
-      default:
-        return 'default';
     }
   };
 
@@ -136,15 +93,13 @@ const PropertyManagement = () => {
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Property Management</h1>
-          <Button onClick={() => navigate('/property/add')}>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Add New Property
-          </Button>
+          <Button onClick={() => navigate('/property/add')}>Add Property</Button>
         </div>
 
         <Card>
           <CardHeader>
             <CardTitle>Your Properties</CardTitle>
+            <CardDescription>Manage your listed properties here.</CardDescription>
           </CardHeader>
           <CardContent>
             {loading ? (
@@ -153,124 +108,26 @@ const PropertyManagement = () => {
               </div>
             ) : properties.length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-lg text-muted-foreground mb-4">You don't have any properties yet.</p>
+                <p className="text-lg text-muted-foreground mb-4">You don't have any properties listed yet.</p>
                 <Button onClick={() => navigate('/property/add')}>
-                  <PlusCircle className="mr-2 h-4 w-4" />
-                  Add Your First Property
+                  List a Property
                 </Button>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="px-4 py-3 text-left">Property</th>
-                      <th className="px-4 py-3 text-left">Location</th>
-                      <th className="px-4 py-3 text-right">Price</th>
-                      <th className="px-4 py-3 text-center">Type</th>
-                      <th className="px-4 py-3 text-center">Status</th>
-                      <th className="px-4 py-3 text-center">Manager</th>
-                      <th className="px-4 py-3 text-center">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {properties.map((property) => (
-                      <tr key={property.id} className="border-b">
-                        <td className="px-4 py-4">
-                          <div className="flex items-center">
-                            <div className="h-10 w-10 rounded bg-gray-200 mr-3 overflow-hidden">
-                              {property.main_image_url ? (
-                                <img 
-                                  src={property.main_image_url} 
-                                  alt={property.title} 
-                                  className="h-full w-full object-cover"
-                                />
-                              ) : null}
-                            </div>
-                            <div className="font-medium">{property.title}</div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-4 text-sm text-gray-600">
-                          {property.address}, {property.city}
-                        </td>
-                        <td className="px-4 py-4 text-right font-medium">
-                          {property.price.toLocaleString()} XOF
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <span className="capitalize">{property.property_type}</span>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          <Badge variant={getStatusBadgeVariant(property.status)}>
-                            {property.status.replace('_', ' ')}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-4 text-center">
-                          {property.has_manager ? (
-                            <Badge variant="secondary">
-                              Assigned
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline">
-                              Not Assigned
-                            </Badge>
-                          )}
-                        </td>
-                        <td className="px-4 py-4">
-                          <div className="flex justify-center space-x-2">
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => navigate(`/property/${property.id}`)}
-                              title="View Property"
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => navigate(`/property/edit/${property.id}`)}
-                              title="Edit Property"
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => openManagerModal(property.id)}
-                              title="Assign Manager"
-                            >
-                              <UserCog className="h-4 w-4 text-blue-600" />
-                            </Button>
-                            <Button 
-                              variant="ghost" 
-                              size="icon"
-                              onClick={() => handleDeleteProperty(property.id)}
-                              title="Delete Property"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {properties.map((property) => (
+                  <PropertyCard
+                    key={property.id}
+                    property={property}
+                    showFavoriteButton={false}
+                    showCompareButton={false}
+                  />
+                ))}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
-      
-      {selectedPropertyId && (
-        <AssignManagerModal 
-          isOpen={managerModalOpen}
-          onClose={() => {
-            setManagerModalOpen(false);
-            fetchProperties(); // Refresh the properties list with updated manager info
-          }}
-          propertyId={selectedPropertyId}
-        />
-      )}
     </Layout>
   );
 };

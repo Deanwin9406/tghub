@@ -1,5 +1,4 @@
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, lazy, Suspense } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -38,9 +37,9 @@ import { useComparison } from '@/contexts/ComparisonContext';
 import { supabase } from '@/integrations/supabase/client';
 import PropertyOwnershipInfo from '@/components/PropertyOwnershipInfo';
 import { PropertyType } from '@/components/PropertyCard';
+import 'react-responsive-carousel/lib/styles/carousel.min.css';
 
-// Install react-responsive-carousel
-<lov-add-dependency>react-responsive-carousel@latest</lov-add-dependency>
+const Carousel = lazy(() => import('react-responsive-carousel').then(module => ({ default: module.Carousel })));
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();
@@ -86,12 +85,12 @@ const PropertyDetails = () => {
         property_type: data.property_type,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
-        square_footage: data.square_footage,
-        year_built: data.year_built,
-        amenities: data.amenities,
+        square_footage: data.square_footage || null,
+        year_built: data.year_built || null,
+        amenities: data.amenities || null,
         main_image_url: data.main_image_url,
-        image_urls: data.image_urls,
-        availability_date: data.availability_date,
+        image_urls: data.image_urls || null,
+        availability_date: data.availability_date || null,
         status: data.status,
         owner_id: data.owner_id,
       };
@@ -189,11 +188,6 @@ const PropertyDetails = () => {
     );
   }
 
-  // Dynamically import the Carousel component when needed
-  const CarouselComponent = React.lazy(() => import('react-responsive-carousel').then(module => ({
-    default: module.Carousel
-  })));
-
   return (
     <Layout>
       <div className="container mx-auto py-8">
@@ -206,8 +200,8 @@ const PropertyDetails = () => {
           <div className="lg:col-span-2">
             <Card className="overflow-hidden">
               <div className="relative">
-                <React.Suspense fallback={<div className="h-96 bg-muted flex items-center justify-center"><Loader2 className="animate-spin" /></div>}>
-                  <CarouselComponent
+                <Suspense fallback={<div className="h-96 bg-muted flex items-center justify-center"><Loader2 className="animate-spin" /></div>}>
+                  <Carousel
                     showThumbs={false}
                     showStatus={false}
                     infiniteLoop
@@ -225,8 +219,8 @@ const PropertyDetails = () => {
                         <img src={property.main_image_url || ''} alt={property.title} className="object-cover w-full h-96" />
                       </div>
                     )}
-                  </CarouselComponent>
-                </React.Suspense>
+                  </Carousel>
+                </Suspense>
                 <div className="absolute top-2 left-2">
                   <Badge variant={getStatusBadgeVariant(property.status)}>
                     {property.status.replace('_', ' ')}

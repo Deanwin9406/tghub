@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, X, Bed, Bath, Square, Trash2 } from 'lucide-react';
@@ -12,11 +11,8 @@ const ComparisonPage = () => {
   const { comparisonList, removeFromComparison, clearComparison } = useComparison();
   const navigate = useNavigate();
 
-  const formatPrice = (price: number, currency: string) => {
-    if (currency === 'XOF') {
-      return `${price.toLocaleString()} ${currency}`;
-    }
-    return `${currency} ${price.toLocaleString()}`;
+  const formatPrice = (price: number) => {
+    return `${price.toLocaleString()} XOF`;
   };
 
   const propertyTypeLabel = (type: string) => {
@@ -65,12 +61,12 @@ const ComparisonPage = () => {
                       <X size={16} />
                     </Button>
                     <img 
-                      src={property.image} 
+                      src={property.image || property.main_image_url || ''} 
                       alt={property.title} 
                       className="w-full h-48 object-cover rounded-lg mb-4"
                     />
                     <h3 className="font-semibold text-lg mb-1">{property.title}</h3>
-                    <p className="text-muted-foreground text-sm mb-2">{property.location}</p>
+                    <p className="text-muted-foreground text-sm mb-2">{property.location || `${property.address}, ${property.city}`}</p>
                     <Button 
                       variant="outline" 
                       size="sm" 
@@ -90,7 +86,7 @@ const ComparisonPage = () => {
               {comparisonList.map(property => (
                 <td key={`${property.id}-price`} className="p-4 text-center">
                   <span className="font-semibold text-primary">
-                    {formatPrice(property.price, property.priceUnit)}
+                    {formatPrice(property.price)}
                   </span>
                   {property.purpose === 'rent' && (
                     <span className="text-sm text-muted-foreground">/mois</span>
@@ -102,7 +98,7 @@ const ComparisonPage = () => {
               <td className="p-4 font-medium">Type</td>
               {comparisonList.map(property => (
                 <td key={`${property.id}-type`} className="p-4 text-center">
-                  {propertyTypeLabel(property.type)}
+                  {propertyTypeLabel(property.type || property.property_type)}
                 </td>
               ))}
             </tr>
@@ -120,7 +116,7 @@ const ComparisonPage = () => {
                 <td key={`${property.id}-beds`} className="p-4 text-center">
                   <div className="flex items-center justify-center">
                     <Bed size={16} className="mr-2 text-muted-foreground" />
-                    {property.beds ?? 'N/A'}
+                    {property.beds ?? property.bedrooms ?? 'N/A'}
                   </div>
                 </td>
               ))}
@@ -131,7 +127,7 @@ const ComparisonPage = () => {
                 <td key={`${property.id}-baths`} className="p-4 text-center">
                   <div className="flex items-center justify-center">
                     <Bath size={16} className="mr-2 text-muted-foreground" />
-                    {property.baths ?? 'N/A'}
+                    {property.baths ?? property.bathrooms ?? 'N/A'}
                   </div>
                 </td>
               ))}
@@ -142,7 +138,7 @@ const ComparisonPage = () => {
                 <td key={`${property.id}-area`} className="p-4 text-center">
                   <div className="flex items-center justify-center">
                     <Square size={16} className="mr-2 text-muted-foreground" />
-                    {property.area ? `${property.area} m²` : 'N/A'}
+                    {property.area ? `${property.area} m²` : property.square_footage ? `${property.square_footage} m²` : 'N/A'}
                   </div>
                 </td>
               ))}

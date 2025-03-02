@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from '@/components/ui/button';
 import { ModeToggle } from '@/components/ModeToggle';
 import { useComparison } from '@/contexts/ComparisonContext';
-import { ShoppingBag, Home, User, Gear, Plus, LogOut, LayoutDashboard, ChevronsUpDown, Scale, X } from 'lucide-react';
+import { ShoppingBag, Home, User, Settings, Plus, LogOut, LayoutDashboard, ChevronsUpDown, Scale, X } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from '@/components/ui/badge';
@@ -77,14 +77,14 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 </li>
                 <li>
                   <Link to="/settings" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                    <Gear className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
+                    <Settings className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
                     <span className="ml-3">Settings</span>
                   </Link>
                 </li>
                 {user?.user_metadata?.role === 'admin' && (
                   <li>
                     <Link to="/admin" className="flex items-center p-2 text-gray-900 rounded-lg dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 group">
-                      <Gear className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
+                      <Settings className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-primary" />
                       <span className="ml-3">Admin</span>
                     </Link>
                   </li>
@@ -145,7 +145,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                       Profile
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => navigate('/settings')}>
-                      <Gear className="h-4 w-4 mr-2" />
+                      <Settings className="h-4 w-4 mr-2" />
                       Settings
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />

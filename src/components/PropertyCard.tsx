@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -26,6 +25,16 @@ export interface PropertyType {
   availability_date: string | null;
   status: string;
   owner_id?: string;
+  featured?: boolean;
+  new?: boolean;
+  location?: string;
+  type?: string;
+  purpose?: string;
+  beds?: number;
+  baths?: number;
+  area?: number;
+  image?: string;
+  priceUnit?: string;
 }
 
 interface PropertyCardProps {

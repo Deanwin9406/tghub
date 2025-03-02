@@ -52,7 +52,7 @@ const Search = () => {
       
       if (searchLocation) {
         filtered = filtered.filter(p => 
-          p.location.toLowerCase().includes(searchLocation.toLowerCase())
+          (p.location || p.address || p.city).toLowerCase().includes(searchLocation.toLowerCase())
         );
       }
       
@@ -78,19 +78,19 @@ const Search = () => {
     
     // Filter by property type
     if (propertyTypes.length > 0) {
-      filtered = filtered.filter(p => propertyTypes.includes(p.type));
+      filtered = filtered.filter(p => propertyTypes.includes(p.type || p.property_type));
       activeFilterCount++;
     }
     
     // Filter by beds
     if (beds !== null) {
-      filtered = filtered.filter(p => p.beds !== undefined && p.beds >= beds);
+      filtered = filtered.filter(p => (p.beds !== undefined ? p.beds : p.bedrooms) !== undefined && (p.beds || p.bedrooms || 0) >= beds);
       activeFilterCount++;
     }
     
     // Filter by baths
     if (baths !== null) {
-      filtered = filtered.filter(p => p.baths !== undefined && p.baths >= baths);
+      filtered = filtered.filter(p => (p.baths !== undefined ? p.baths : p.bathrooms) !== undefined && (p.baths || p.bathrooms || 0) >= baths);
       activeFilterCount++;
     }
     

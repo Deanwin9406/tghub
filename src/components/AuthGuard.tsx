@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface AuthGuardProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
 const AuthGuard: React.FC<AuthGuardProps> = ({ children }: AuthGuardProps) => {
@@ -24,7 +24,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }: AuthGuardProps) => {
     return <Navigate to="/auth" state={{ from: location }} replace />;
   }
 
-  return <>{children}</>;
+  return <>{children || <Outlet />}</>;
 };
 
 export default AuthGuard;
