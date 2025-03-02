@@ -55,7 +55,6 @@ const KycVerification = () => {
     setUploading(true);
 
     try {
-      // Upload ID Image
       const idImagePath = `kyc/${user?.id}/id_${Date.now()}.${idImage.name.split('.').pop()}`;
       const { error: idImageError } = await supabase.storage
         .from('avatars')
@@ -70,7 +69,6 @@ const KycVerification = () => {
 
       const idImageUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${idImagePath}`;
 
-      // Upload Address Proof
       const addressProofPath = `kyc/${user?.id}/address_${Date.now()}.${addressProof.name.split('.').pop()}`;
       const { error: addressProofError } = await supabase.storage
         .from('avatars')
@@ -85,7 +83,6 @@ const KycVerification = () => {
 
       const addressProofUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/avatars/${addressProofPath}`;
 
-      // Save to DB
       const { error: dbError } = await supabase
         .from('kyc_verifications')
         .insert({
@@ -137,11 +134,7 @@ const KycVerification = () => {
         return;
       }
 
-      let statusValue = data?.status || null;
-      if (statusValue === 'approved') {
-        statusValue = 'verified';
-      }
-      
+      const statusValue = data?.status === 'approved' ? 'verified' : data?.status;
       setVerificationStatus(statusValue as 'pending' | 'verified' | 'rejected' | null);
       setNotes(data?.notes || '');
     } catch (error) {

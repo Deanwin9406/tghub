@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -62,7 +63,10 @@ const Leases = () => {
 
   // Function to render tenant information safely
   const renderTenantInfo = (tenant: any) => {
-    if (!tenant || tenant.error) {
+    // Check if tenant data is an error object or missing
+    const isTenantError = tenant && 'error' in tenant;
+    
+    if (!tenant || isTenantError) {
       return <div className="flex items-center">
         <User className="h-4 w-4 mr-2 text-muted-foreground" />
         <span>No tenant information</span>

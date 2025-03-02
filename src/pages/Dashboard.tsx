@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -43,7 +42,6 @@ import {
   Upload
 } from 'lucide-react';
 
-// Updated interfaces to match the actual data structure
 interface Property {
   id: string;
   title: string;
@@ -62,7 +60,7 @@ interface MaintenanceRequest {
   id: string;
   title: string;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  priority: string; // Changed from number to string to match actual data
+  priority: string;
   created_at: string;
   property: {
     title: string;
@@ -101,7 +99,6 @@ const Dashboard = () => {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [recentMessages, setRecentMessages] = useState<Message[]>([]);
 
-  // Fix property query to handle errors
   const { data: propertyData } = useQuery({
     queryKey: ['user-properties', user?.id],
     queryFn: async () => {
@@ -122,17 +119,14 @@ const Dashboard = () => {
     enabled: !!user && roles.includes('landlord'),
   });
 
-  // Update properties data safely
   useEffect(() => {
     if (propertyData) {
-      // Only set if the data is valid (not an error)
       if (Array.isArray(propertyData) && !('error' in propertyData[0] || {}) && propertyData.length > 0) {
         setProperties(propertyData as Property[]);
       }
     }
   }, [propertyData]);
 
-  // Fix maintenance requests query
   const { data: maintenanceData } = useQuery({
     queryKey: ['user-maintenance', user?.id],
     queryFn: async () => {
@@ -161,14 +155,12 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
-  // Update maintenance requests safely
   useEffect(() => {
     if (maintenanceData) {
       setMaintenanceRequests(maintenanceData as MaintenanceRequest[]);
     }
   }, [maintenanceData]);
 
-  // Fix payments query
   const { data: paymentData } = useQuery({
     queryKey: ['user-payments', user?.id],
     queryFn: async () => {
@@ -189,7 +181,6 @@ const Dashboard = () => {
     enabled: !!user && roles.includes('tenant'),
   });
 
-  // Update payments safely
   useEffect(() => {
     if (paymentData) {
       if (Array.isArray(paymentData) && paymentData.length > 0) {
@@ -198,7 +189,6 @@ const Dashboard = () => {
     }
   }, [paymentData]);
 
-  // Fix messages query
   const { data: messageData } = useQuery({
     queryKey: ['recent-messages', user?.id],
     queryFn: async () => {
@@ -221,19 +211,21 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
-  // Update messages safely
   useEffect(() => {
     if (messageData) {
-      // Create a safe version of messages with default values for missing properties
-      const safeMessages = messageData.map(msg => ({
-        id: msg.id || 'unknown',
-        content: msg.content || 'No content',
-        created_at: msg.created_at || new Date().toISOString(),
-        sender: {
-          first_name: msg.sender?.first_name || 'Unknown',
-          last_name: msg.sender?.last_name || 'User'
-        }
-      }));
+      const safeMessages = messageData.map(msg => {
+        const senderIsError = msg.sender && 'error' in msg.sender;
+        
+        return {
+          id: msg.id || 'unknown',
+          content: msg.content || 'No content',
+          created_at: msg.created_at || new Date().toISOString(),
+          sender: {
+            first_name: senderIsError ? 'Unknown' : (msg.sender?.first_name || 'Unknown'),
+            last_name: senderIsError ? 'User' : (msg.sender?.last_name || '')
+          }
+        };
+      });
       
       setRecentMessages(safeMessages as Message[]);
     }
