@@ -215,15 +215,15 @@ const Dashboard = () => {
     if (messageData) {
       const safeMessages = messageData.map(msg => {
         const sender = msg.sender || null;
-        const senderIsError = sender && typeof sender === 'object' && 'error' in sender;
+        const senderIsError = sender !== null && typeof sender === 'object' && 'error' in sender;
         
         return {
           id: msg.id || 'unknown',
           content: msg.content || 'No content',
           created_at: msg.created_at || new Date().toISOString(),
           sender: {
-            first_name: senderIsError ? 'Unknown' : (sender && sender !== null && 'first_name' in sender ? sender.first_name : 'Unknown'),
-            last_name: senderIsError ? 'User' : (sender && sender !== null && 'last_name' in sender ? sender.last_name : '')
+            first_name: senderIsError ? 'Unknown' : (sender && typeof sender === 'object' && 'first_name' in sender ? sender.first_name || 'Unknown' : 'Unknown'),
+            last_name: senderIsError ? 'User' : (sender && typeof sender === 'object' && 'last_name' in sender ? sender.last_name || '' : '')
           }
         };
       });
