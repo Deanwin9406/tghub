@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,11 @@ interface PropertyManagerTabProps {
 const PropertyManagerTab = ({ properties, maintenanceRequests }: PropertyManagerTabProps) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('tenants');
-  
+
+  useEffect(() => {
+    console.log("PropertyManagerTab - properties data:", properties);
+  }, [properties]);
+
   const mockTenants: Tenant[] = [
     {
       id: '1',
@@ -96,7 +100,20 @@ const PropertyManagerTab = ({ properties, maintenanceRequests }: PropertyManager
     })
     .sort((a, b) => new Date(a.leaseEnd).getTime() - new Date(b.leaseEnd).getTime());
 
-  console.log("Available properties in PropertyManagerTab:", properties); // Debug properties
+  const handleAddTenantClick = () => {
+    console.log("Add tenant button clicked with properties:", properties); 
+    
+    if (properties && properties.length > 0) {
+      const propertyId = properties[0].id;
+      const targetUrl = `/property/${propertyId}/add-tenant`;
+      console.log("Navigating to:", targetUrl);
+      
+      navigate(targetUrl, { replace: true });
+    } else {
+      console.log("No properties available, redirecting to property management");
+      navigate('/property-management', { replace: true });
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -165,18 +182,7 @@ const PropertyManagerTab = ({ properties, maintenanceRequests }: PropertyManager
                 <CardTitle>Gestion des Locataires</CardTitle>
                 <Button 
                   size="sm" 
-                  onClick={() => {
-                    console.log("Add tenant button clicked"); // Debug click event
-                    
-                    if (properties && properties.length > 0) {
-                      const targetUrl = `/property/${properties[0].id}/add-tenant`;
-                      console.log("Navigating to:", targetUrl); // Debug navigation
-                      navigate(targetUrl);
-                    } else {
-                      console.log("No properties available, redirecting to property management"); // Debug fallback
-                      navigate('/property-management');
-                    }
-                  }}
+                  onClick={handleAddTenantClick}
                 >
                   Ajouter un Locataire
                 </Button>

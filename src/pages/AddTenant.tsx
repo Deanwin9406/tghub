@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,6 +17,11 @@ const AddTenant = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { user } = useAuth();
+
+  // Debug route params
+  useEffect(() => {
+    console.log("AddTenant - propertyId from params:", propertyId);
+  }, [propertyId]);
 
   // Check if user has the necessary role
   const [roles, setRoles] = useState<string[]>([]);
@@ -43,11 +47,20 @@ const AddTenant = () => {
   }, [user]);
 
   useEffect(() => {
-    if (!propertyId) return;
+    if (!propertyId) {
+      console.error("No propertyId provided in route params");
+      toast({
+        title: "Erreur",
+        description: "Identifiant de propriété manquant",
+        variant: "destructive"
+      });
+      return;
+    }
     
     const fetchProperty = async () => {
       setLoading(true);
       try {
+        console.log("Fetching property with ID:", propertyId);
         const { data, error } = await supabase
           .from('properties')
           .select('id, title, address')
@@ -55,6 +68,7 @@ const AddTenant = () => {
           .single();
           
         if (error) throw error;
+        console.log("Property data retrieved:", data);
         setProperty(data);
       } catch (error: any) {
         console.error('Error fetching property:', error);

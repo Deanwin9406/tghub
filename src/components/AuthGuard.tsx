@@ -15,8 +15,11 @@ const AuthGuard = () => {
     }
   }, [loading]);
 
-  console.log("AuthGuard - current location:", location.pathname); // Debug current route
-  console.log("AuthGuard - authentication status:", { session, loading, isReady }); // Debug auth status
+  // Enhanced logging for debugging
+  useEffect(() => {
+    console.log("AuthGuard - current location:", location.pathname);
+    console.log("AuthGuard - authentication status:", { session, loading, isReady });
+  }, [location.pathname, session, loading, isReady]);
 
   // Show nothing while checking authentication
   if (!isReady) {
@@ -29,12 +32,12 @@ const AuthGuard = () => {
 
   // If user is not authenticated, redirect to home with the intended location
   if (!session) {
-    console.log("User not authenticated, redirecting to home"); // Debug redirect
+    console.log("User not authenticated, redirecting to home");
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
   // If user is authenticated, render the protected route
-  console.log("User authenticated, rendering protected route"); // Debug auth success
+  console.log("User authenticated, rendering protected route:", location.pathname);
   return <Outlet />;
 };
 
