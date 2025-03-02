@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -215,16 +214,16 @@ const Dashboard = () => {
   useEffect(() => {
     if (messageData) {
       const safeMessages = messageData.map(msg => {
-        // Check if sender is an error object by looking for an 'error' property
-        const senderIsError = msg.sender && typeof msg.sender === 'object' && 'error' in msg.sender;
+        const sender = msg.sender || null;
+        const senderIsError = sender && typeof sender === 'object' && 'error' in sender;
         
         return {
           id: msg.id || 'unknown',
           content: msg.content || 'No content',
           created_at: msg.created_at || new Date().toISOString(),
           sender: {
-            first_name: senderIsError ? 'Unknown' : (msg.sender?.first_name || 'Unknown'),
-            last_name: senderIsError ? 'User' : (msg.sender?.last_name || '')
+            first_name: senderIsError ? 'Unknown' : (sender && 'first_name' in sender ? sender.first_name : 'Unknown'),
+            last_name: senderIsError ? 'User' : (sender && 'last_name' in sender ? sender.last_name : '')
           }
         };
       });

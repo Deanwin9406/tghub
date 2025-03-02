@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -63,7 +62,7 @@ const Leases = () => {
 
   // Function to render tenant information safely
   const renderTenantInfo = (tenant: any) => {
-    // Check if tenant data is an error object by looking for an 'error' property
+    // Check if tenant exists and is an error object by looking for an 'error' property
     const isTenantError = tenant && typeof tenant === 'object' && 'error' in tenant;
     
     if (!tenant || isTenantError) {
@@ -73,10 +72,14 @@ const Leases = () => {
       </div>;
     }
 
+    // Now we know tenant is not an error object and exists
+    const firstName = 'first_name' in tenant ? tenant.first_name : 'Unknown';
+    const lastName = 'last_name' in tenant ? tenant.last_name : '';
+
     return (
       <div className="flex items-center">
         <User className="h-4 w-4 mr-2 text-muted-foreground" />
-        <span>{tenant.first_name || 'Unknown'} {tenant.last_name || ''}</span>
+        <span>{firstName} {lastName}</span>
       </div>
     );
   };
