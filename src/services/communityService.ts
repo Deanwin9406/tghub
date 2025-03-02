@@ -18,8 +18,8 @@ export async function fetchCommunities(): Promise<Community[]> {
   
   return data.map(community => ({
     ...community,
-    member_count: community.community_members?.[0]?.count || 0,
-    property_count: community.properties?.[0]?.count || 0
+    member_count: community.community_members?.[0]?.count ?? 0,
+    property_count: community.properties?.[0]?.count ?? 0
   }));
 }
 
@@ -41,8 +41,8 @@ export async function fetchCommunityDetails(id: string): Promise<Community> {
   
   return {
     ...data,
-    member_count: data.community_members?.[0]?.count || 0,
-    property_count: data.properties?.[0]?.count || 0
+    member_count: data.community_members?.[0]?.count ?? 0,
+    property_count: data.properties?.[0]?.count ?? 0
   };
 }
 
@@ -108,78 +108,107 @@ export async function createCommunity(communityData: Partial<Community>, userId:
   return data[0].id;
 }
 
-// This function is a placeholder as community_events table doesn't exist yet
 export async function fetchCommunityEvents(communityId: string): Promise<CommunityEvent[]> {
-  // Mock response until the table is created
-  return [
-    {
-      id: "mock-event-1",
-      community_id: communityId,
-      created_by: "user-id",
-      title: "Community Meetup",
-      description: "Let's meet and discuss community matters",
-      location: "Community Center",
-      start_time: new Date().toISOString(),
-      end_time: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
-      image_url: null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      attendees_count: 0
-    }
-  ];
+  const { data, error } = await supabase
+    .from('community_events')
+    .select(`
+      *,
+      event_attendees(count)
+    `)
+    .eq('community_id', communityId)
+    .order('start_time', { ascending: true });
+  
+  if (error) {
+    console.error("Error fetching community events:", error);
+    throw error;
+  }
+  
+  if (data.length === 0) {
+    // Return empty array if no events
+    return [];
+  }
+  
+  return data.map(event => ({
+    ...event,
+    attendees_count: event.event_attendees?.[0]?.count ?? 0
+  }));
 }
 
-// This function is a placeholder as community_polls table doesn't exist yet
 export async function fetchCommunityPolls(communityId: string): Promise<CommunityPoll[]> {
-  // Mock response until the table is created
-  return [
-    {
-      id: "mock-poll-1",
-      community_id: communityId,
-      created_by: "user-id",
-      question: "What should we discuss at our next meeting?",
-      description: "Please vote on the topic for our upcoming community meeting",
-      end_date: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString(),
-      is_multiple_choice: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      options: [
-        {
-          id: "option-1",
-          poll_id: "mock-poll-1",
-          option_text: "Community safety",
-          votes_count: 0
-        },
-        {
-          id: "option-2",
-          poll_id: "mock-poll-1",
-          option_text: "Landscaping improvements",
-          votes_count: 0
-        }
-      ],
-      votes_count: 0
+  const { data: pollsData, error: pollsError } = await supabase
+    .from('community_polls')
+    .select(`
+      *,
+      poll_votes(count)
+    `)
+    .eq('community_id', communityId)
+    .order('created_at', { ascending: false });
+  
+  if (pollsError) {
+    console.error("Error fetching community polls:", pollsError);
+    throw pollsError;
+  }
+  
+  if (pollsData.length === 0) {
+    // Return empty array if no polls
+    return [];
+  }
+  
+  const polls = await Promise.all(pollsData.map(async (poll) => {
+    const { data: optionsData, error: optionsError } = await supabase
+      .from('poll_options')
+      .select(`
+        *,
+        poll_votes(count)
+      `)
+      .eq('poll_id', poll.id);
+    
+    if (optionsError) {
+      console.error("Error fetching poll options:", optionsError);
+      throw optionsError;
     }
-  ];
+    
+    const options = optionsData.map(option => ({
+      id: option.id,
+      poll_id: option.poll_id,
+      option_text: option.option_text,
+      votes_count: option.poll_votes?.[0]?.count ?? 0
+    }));
+    
+    return {
+      ...poll,
+      options,
+      votes_count: poll.poll_votes?.[0]?.count ?? 0
+    };
+  }));
+  
+  return polls;
 }
 
-// This function is a placeholder as marketplace_items table doesn't exist yet
 export async function fetchMarketplaceItems(communityId: string): Promise<MarketplaceItem[]> {
-  // Mock response until the table is created
-  return [
-    {
-      id: "mock-item-1",
-      community_id: communityId,
-      seller_id: "user-id",
-      title: "Used Furniture",
-      description: "Gently used couch, good condition",
-      price: 150,
-      image_url: null,
-      status: "available",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      category: "Furniture"
-    }
-  ];
+  const { data, error } = await supabase
+    .from('marketplace_items')
+    .select(`
+      *,
+      profiles:seller_id(first_name, last_name, avatar_url)
+    `)
+    .eq('community_id', communityId)
+    .order('created_at', { ascending: false });
+  
+  if (error) {
+    console.error("Error fetching marketplace items:", error);
+    throw error;
+  }
+  
+  if (data.length === 0) {
+    // Return empty array if no items
+    return [];
+  }
+  
+  return data.map(item => ({
+    ...item,
+    seller: item.profiles
+  }));
 }
 
 export async function fetchCommunityPosts(communityId: string): Promise<CommunityPost[]> {
@@ -188,8 +217,8 @@ export async function fetchCommunityPosts(communityId: string): Promise<Communit
     .select(`
       *,
       profiles:user_id(first_name, last_name, avatar_url),
-      comments:community_comments(count),
-      reactions:post_reactions(count)
+      community_comments(count),
+      post_reactions(count)
     `)
     .eq('community_id', communityId)
     .order('created_at', { ascending: false });
@@ -202,8 +231,8 @@ export async function fetchCommunityPosts(communityId: string): Promise<Communit
   return data.map(post => ({
     ...post,
     author: post.profiles,
-    comments_count: post.comments?.[0]?.count || 0,
-    reactions_count: post.reactions?.[0]?.count || 0
+    comments_count: post.community_comments?.[0]?.count ?? 0,
+    reactions_count: post.post_reactions?.[0]?.count ?? 0
   }));
 }
 
@@ -219,4 +248,145 @@ export async function createCommunityPost(postData: { community_id: string; user
   }
   
   return data[0].id;
+}
+
+export async function createCommunityEvent(eventData: { 
+  community_id: string; 
+  created_by: string; 
+  title: string; 
+  description: string; 
+  location?: string; 
+  start_time: string; 
+  end_time: string; 
+  image_url?: string | null 
+}): Promise<string> {
+  const { data, error } = await supabase
+    .from('community_events')
+    .insert(eventData)
+    .select();
+  
+  if (error) {
+    console.error("Error creating event:", error);
+    throw error;
+  }
+  
+  return data[0].id;
+}
+
+export async function attendEvent(eventId: string, userId: string, status: 'going' | 'maybe' | 'not_going' = 'going'): Promise<void> {
+  const { error } = await supabase
+    .from('event_attendees')
+    .upsert({
+      event_id: eventId,
+      user_id: userId,
+      status
+    }, {
+      onConflict: 'event_id,user_id'
+    });
+  
+  if (error) {
+    console.error("Error attending event:", error);
+    throw error;
+  }
+}
+
+export async function createCommunityPoll(pollData: { 
+  community_id: string; 
+  created_by: string; 
+  question: string; 
+  description?: string; 
+  end_date?: string; 
+  is_multiple_choice: boolean;
+  options: string[] 
+}): Promise<string> {
+  // First create the poll
+  const { data: pollData, error: pollError } = await supabase
+    .from('community_polls')
+    .insert({
+      community_id: pollData.community_id,
+      created_by: pollData.created_by,
+      question: pollData.question,
+      description: pollData.description,
+      end_date: pollData.end_date,
+      is_multiple_choice: pollData.is_multiple_choice
+    })
+    .select();
+  
+  if (pollError) {
+    console.error("Error creating poll:", pollError);
+    throw pollError;
+  }
+  
+  const pollId = pollData[0].id;
+  
+  // Then create the options
+  const optionsToInsert = pollData.options.map(optionText => ({
+    poll_id: pollId,
+    option_text: optionText
+  }));
+  
+  const { error: optionsError } = await supabase
+    .from('poll_options')
+    .insert(optionsToInsert);
+  
+  if (optionsError) {
+    console.error("Error creating poll options:", optionsError);
+    throw optionsError;
+  }
+  
+  return pollId;
+}
+
+export async function voteOnPoll(pollId: string, optionId: string, userId: string): Promise<void> {
+  const { error } = await supabase
+    .from('poll_votes')
+    .insert({
+      poll_id: pollId,
+      option_id: optionId,
+      user_id: userId
+    });
+  
+  if (error) {
+    console.error("Error voting on poll:", error);
+    throw error;
+  }
+}
+
+export async function createMarketplaceItem(itemData: { 
+  community_id: string; 
+  seller_id: string; 
+  title: string; 
+  description: string; 
+  price?: number; 
+  image_url?: string | null;
+  category?: string | null 
+}): Promise<string> {
+  const { data, error } = await supabase
+    .from('marketplace_items')
+    .insert(itemData)
+    .select();
+  
+  if (error) {
+    console.error("Error creating marketplace item:", error);
+    throw error;
+  }
+  
+  return data[0].id;
+}
+
+export async function reactToPost(postId: string, userId: string, reactionType: 'like' | 'love' | 'laugh' | 'sad' | 'angry' = 'like'): Promise<void> {
+  const { error } = await supabase
+    .from('post_reactions')
+    .upsert({
+      post_id: postId,
+      user_id: userId,
+      reaction_type: reactionType
+    }, {
+      onConflict: 'post_id,user_id'
+    });
+  
+  if (error) {
+    console.error("Error reacting to post:", error);
+    throw error;
+  }
 }
