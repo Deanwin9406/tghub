@@ -1,411 +1,232 @@
 
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Loader2, Building, CheckCircle, XCircle, Clock, BarChart, UserCog, Wrench, MessageSquare } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { formatDistanceToNow } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { 
+  Tabs, TabsContent, TabsList, TabsTrigger 
+} from '@/components/ui/tabs';
+import { 
+  Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle 
+} from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue 
+} from '@/components/ui/select';
+import { 
+  Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, 
+  DialogHeader, DialogTitle, DialogTrigger 
+} from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { Loader2, AlertTriangle, Check, X, MessageSquare, Clock, Wrench } from 'lucide-react';
 
 const PropertyAssignments = () => {
-  const { user, roles } = useAuth();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<string>('incoming');
-  
-  const isLandlord = roles.includes('landlord');
-  const isManager = roles.includes('manager');
-  const isVendor = roles.includes('vendor');
-  const isTenant = roles.includes('tenant');
-  
-  const { data: incomingRequests, isLoading: loadingIncoming, refetch: refetchIncoming } = useQuery({
-    queryKey: ['management-requests-incoming', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
+  const [activeTab, setActiveTab] = useState('pending');
+  const [loading, setLoading] = useState(true);
+  const [requestsData, setRequestsData] = useState<any[]>([]);
+  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [replyMessage, setReplyMessage] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    async function checkUserRole() {
+      if (!user) return;
       
-      const { data, error } = await supabase
-        .from('management_requests')
-        .select(`
-          id,
-          property_id,
-          requester_id,
-          recipient_id,
-          status,
-          commission_percentage,
-          message,
-          created_at,
-          properties(id, title, address, city, main_image_url)
-        `)
-        .eq('recipient_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      // Fetch requester profiles separately
-      const requestsWithProfiles = await Promise.all(
-        (data || []).map(async (request) => {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', request.requester_id)
-            .single();
-            
-          if (profileError) {
-            console.error('Error fetching requester profile:', profileError);
-            return {
-              ...request,
-              requester_profile: { first_name: 'Unknown', last_name: 'User' }
-            };
-          }
-          
-          return {
-            ...request,
-            requester_profile: profileData
-          };
-        })
-      );
-      
-      return requestsWithProfiles || [];
-    },
-    enabled: !!user
-  });
-  
-  const { data: outgoingRequests, isLoading: loadingOutgoing, refetch: refetchOutgoing } = useQuery({
-    queryKey: ['management-requests-outgoing', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      const { data, error } = await supabase
-        .from('management_requests')
-        .select(`
-          id,
-          property_id,
-          requester_id,
-          recipient_id,
-          status,
-          commission_percentage,
-          message,
-          created_at,
-          properties(id, title, address, city, main_image_url)
-        `)
-        .eq('requester_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      // Fetch recipient profiles separately
-      const requestsWithProfiles = await Promise.all(
-        (data || []).map(async (request) => {
-          const { data: profileData, error: profileError } = await supabase
-            .from('profiles')
-            .select('first_name, last_name')
-            .eq('id', request.recipient_id)
-            .single();
-            
-          if (profileError) {
-            console.error('Error fetching recipient profile:', profileError);
-            return {
-              ...request,
-              recipient_profile: { first_name: 'Unknown', last_name: 'User' }
-            };
-          }
-          
-          return {
-            ...request,
-            recipient_profile: profileData
-          };
-        })
-      );
-      
-      return requestsWithProfiles || [];
-    },
-    enabled: !!user
-  });
-  
-  const { data: managedProperties, isLoading: loadingManaged } = useQuery({
-    queryKey: ['managed-properties', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      const { data, error } = await supabase
-        .from('property_managers')
-        .select(`
-          id,
-          property_id,
-          manager_id,
-          assigned_at,
-          properties(id, title, address, city, main_image_url, owner_id)
-        `)
-        .eq('manager_id', user.id);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user && isManager
-  });
-  
-  // New query for maintenance requests
-  const { data: maintenanceRequests, isLoading: loadingMaintenance, refetch: refetchMaintenance } = useQuery({
-    queryKey: ['maintenance-requests', user?.id, roles],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      let query = supabase
-        .from('maintenance_requests')
-        .select(`
-          id,
-          title,
-          description,
-          status,
-          priority,
-          created_at,
-          property_id,
-          tenant_id,
-          assigned_to,
-          needs_approval,
-          properties(id, title, address, city, main_image_url, owner_id),
-          profiles!maintenance_requests_tenant_id_fkey(first_name, last_name)
-        `);
-      
-      if (isTenant) {
-        query = query.eq('tenant_id', user.id);
-      } else if (isVendor) {
-        query = query.eq('assigned_to', user.id);
-      } else if (isLandlord) {
-        // For landlords, get requests for properties they own
-        const { data: ownedProperties, error: propError } = await supabase
-          .from('properties')
-          .select('id')
-          .eq('owner_id', user.id);
+      try {
+        const { data, error } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .single();
         
-        if (propError) throw propError;
+        if (error) throw error;
         
-        if (ownedProperties && ownedProperties.length > 0) {
-          const propertyIds = ownedProperties.map(p => p.id);
-          query = query.in('property_id', propertyIds);
-        } else {
-          return [];
-        }
-      } else if (isManager) {
-        // For managers, get requests for properties they manage
-        const { data: managedProps, error: manageError } = await supabase
-          .from('property_managers')
-          .select('property_id')
-          .eq('manager_id', user.id);
-        
-        if (manageError) throw manageError;
-        
-        if (managedProps && managedProps.length > 0) {
-          const propertyIds = managedProps.map(p => p.property_id);
-          query = query.in('property_id', propertyIds);
-        } else {
-          return [];
-        }
+        setUserRole(data.role as UserRole);
+      } catch (error) {
+        console.error('Error checking user role:', error);
+      }
+    }
+    
+    checkUserRole();
+  }, [user]);
+
+  useEffect(() => {
+    if (!user || !userRole) return;
+    
+    fetchRequests();
+  }, [user, userRole, activeTab]);
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    
+    try {
+      let query;
+      
+      if (userRole === 'vendor') {
+        // Vendors see requests assigned to them or pending approval for them
+        query = supabase
+          .from('maintenance_requests')
+          .select(`
+            *,
+            property:properties(title, address, city),
+            tenant:profiles!tenant_id(first_name, last_name)
+          `)
+          .or(`assigned_to.eq.${user?.id},and(needs_approval.eq.true,assigned_to.is.null)`)
+          .order('created_at', { ascending: false });
+      } else if (userRole === 'landlord' || userRole === 'manager') {
+        // Landlords and managers see requests for properties they own or manage
+        query = supabase
+          .from('maintenance_requests')
+          .select(`
+            *,
+            property:properties(title, address, city),
+            tenant:profiles!tenant_id(first_name, last_name)
+          `)
+          .order('created_at', { ascending: false });
+      } else {
+        // Tenants see their own requests
+        query = supabase
+          .from('maintenance_requests')
+          .select(`
+            *,
+            property:properties(title, address, city)
+          `)
+          .eq('tenant_id', user?.id)
+          .order('created_at', { ascending: false });
       }
       
-      const { data, error } = await query.order('created_at', { ascending: false });
+      // Apply status filter based on active tab
+      if (activeTab !== 'all') {
+        query = query.eq('status', activeTab);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       
-      // Fetch vendor profiles if assigned
-      const requestsWithProfiles = await Promise.all(
-        (data || []).map(async (request) => {
-          if (request.assigned_to) {
-            const { data: vendorData, error: vendorError } = await supabase
-              .from('profiles')
-              .select('first_name, last_name')
-              .eq('id', request.assigned_to)
-              .single();
-              
-            if (!vendorError && vendorData) {
-              return {
-                ...request,
-                assigned_to_profile: vendorData
-              };
-            }
-          }
-          
-          return request;
-        })
-      );
-      
-      return requestsWithProfiles || [];
-    },
-    enabled: !!user
-  });
-  
-  const handleAcceptRequest = async (requestId: string) => {
-    try {
-      const request = incomingRequests?.find(r => r.id === requestId);
-      if (!request) return;
-      
-      // Update request status
-      await supabase
-        .from('management_requests')
-        .update({ status: 'accepted' })
-        .eq('id', requestId);
-      
-      // Create property manager relationship
-      await supabase
-        .from('property_managers')
-        .upsert({
-          property_id: request.property_id,
-          manager_id: user?.id,
-        });
-      
-      toast({
-        title: 'Demande acceptée',
-        description: 'Vous avez accepté la demande de gestion.',
-      });
-      
-      refetchIncoming();
+      setRequestsData(data || []);
     } catch (error) {
-      console.error('Error accepting request:', error);
+      console.error('Error fetching requests:', error);
       toast({
-        variant: 'destructive',
         title: 'Erreur',
-        description: 'Échec de l\'acceptation de la demande. Veuillez réessayer.',
-      });
-    }
-  };
-  
-  const handleRejectRequest = async (requestId: string) => {
-    try {
-      await supabase
-        .from('management_requests')
-        .update({ status: 'rejected' })
-        .eq('id', requestId);
-      
-      toast({
-        title: 'Demande rejetée',
-        description: 'Vous avez rejeté la demande de gestion.',
-      });
-      
-      refetchIncoming();
-    } catch (error) {
-      console.error('Error rejecting request:', error);
-      toast({
+        description: 'Impossible de charger les demandes',
         variant: 'destructive',
-        title: 'Erreur',
-        description: 'Échec du rejet de la demande. Veuillez réessayer.',
       });
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Handle maintenance request actions
-  const handleApproveMaintenanceRequest = async (requestId: string) => {
+  const handleApproveRequest = async (requestId: string) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('maintenance_requests')
-        .update({ 
-          needs_approval: false,
-          status: 'in_progress'
-        })
+        .update({ needs_approval: false, status: 'in_progress' })
         .eq('id', requestId);
+      
+      if (error) throw error;
       
       toast({
         title: 'Demande approuvée',
-        description: 'La demande de maintenance a été approuvée.',
+        description: 'La demande a été approuvée avec succès',
       });
       
-      refetchMaintenance();
+      fetchRequests();
     } catch (error) {
-      console.error('Error approving maintenance request:', error);
+      console.error('Error approving request:', error);
       toast({
-        variant: 'destructive',
         title: 'Erreur',
-        description: 'Échec de l\'approbation de la demande. Veuillez réessayer.',
+        description: 'Impossible d\'approuver la demande',
+        variant: 'destructive',
       });
     }
   };
-  
-  const handleRejectMaintenanceRequest = async (requestId: string) => {
+
+  const handleRejectRequest = async (requestId: string) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('maintenance_requests')
-        .update({ 
-          needs_approval: false,
-          status: 'cancelled',
-          assigned_to: null
-        })
+        .update({ status: 'cancelled' })
         .eq('id', requestId);
+      
+      if (error) throw error;
       
       toast({
         title: 'Demande rejetée',
-        description: 'La demande de maintenance a été rejetée.',
+        description: 'La demande a été rejetée',
       });
       
-      refetchMaintenance();
+      fetchRequests();
     } catch (error) {
-      console.error('Error rejecting maintenance request:', error);
+      console.error('Error rejecting request:', error);
       toast({
-        variant: 'destructive',
         title: 'Erreur',
-        description: 'Échec du rejet de la demande. Veuillez réessayer.',
+        description: 'Impossible de rejeter la demande',
+        variant: 'destructive',
       });
     }
   };
-  
-  const handleAcceptMaintenanceJob = async (requestId: string) => {
+
+  const handleAssignToVendor = async (requestId: string, vendorId: string) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('maintenance_requests')
         .update({ 
+          assigned_to: vendorId,
           status: 'in_progress'
         })
         .eq('id', requestId);
       
+      if (error) throw error;
+      
       toast({
-        title: 'Travail accepté',
-        description: 'Vous avez accepté ce travail de maintenance.',
+        title: 'Prestataire assigné',
+        description: 'Le prestataire a été assigné à cette demande',
       });
       
-      refetchMaintenance();
+      fetchRequests();
     } catch (error) {
-      console.error('Error accepting maintenance job:', error);
+      console.error('Error assigning vendor:', error);
       toast({
-        variant: 'destructive',
         title: 'Erreur',
-        description: 'Échec de l\'acceptation du travail. Veuillez réessayer.',
+        description: 'Impossible d\'assigner le prestataire',
+        variant: 'destructive',
       });
     }
   };
-  
-  const handleRejectMaintenanceJob = async (requestId: string) => {
+
+  const handleAcceptAssignment = async (requestId: string) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('maintenance_requests')
-        .update({ 
-          status: 'pending',
-          assigned_to: null
-        })
+        .update({ status: 'in_progress' })
         .eq('id', requestId);
       
+      if (error) throw error;
+      
       toast({
-        title: 'Travail rejeté',
-        description: 'Vous avez rejeté ce travail de maintenance.',
+        title: 'Mission acceptée',
+        description: 'Vous avez accepté cette mission',
       });
       
-      refetchMaintenance();
+      fetchRequests();
     } catch (error) {
-      console.error('Error rejecting maintenance job:', error);
+      console.error('Error accepting assignment:', error);
       toast({
-        variant: 'destructive',
         title: 'Erreur',
-        description: 'Échec du rejet du travail. Veuillez réessayer.',
+        description: 'Impossible d\'accepter la mission',
+        variant: 'destructive',
       });
     }
   };
-  
-  const handleCompleteMaintenanceJob = async (requestId: string) => {
+
+  const handleCompleteRequest = async (requestId: string) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from('maintenance_requests')
         .update({ 
           status: 'completed',
@@ -413,476 +234,337 @@ const PropertyAssignments = () => {
         })
         .eq('id', requestId);
       
+      if (error) throw error;
+      
       toast({
         title: 'Travail terminé',
-        description: 'Vous avez marqué ce travail comme terminé.',
+        description: 'La demande a été marquée comme terminée',
       });
       
-      refetchMaintenance();
+      fetchRequests();
     } catch (error) {
-      console.error('Error completing maintenance job:', error);
+      console.error('Error completing request:', error);
       toast({
-        variant: 'destructive',
         title: 'Erreur',
-        description: 'Échec de la complétion du travail. Veuillez réessayer.',
+        description: 'Impossible de marquer comme terminé',
+        variant: 'destructive',
       });
     }
   };
-  
-  const isLoading = loadingIncoming || loadingOutgoing || loadingManaged || loadingMaintenance;
-  
-  const renderMaintenanceTab = () => {
-    if (isLoading) {
-      return (
-        <div className="flex justify-center py-8">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      );
-    }
+
+  const handleSendReply = async (requestId: string) => {
+    if (!replyMessage.trim()) return;
     
-    if (!maintenanceRequests || maintenanceRequests.length === 0) {
-      return (
-        <div className="text-center py-8 text-muted-foreground">
-          Aucune demande de maintenance
-        </div>
-      );
-    }
+    setIsSubmitting(true);
     
-    return (
-      <div className="space-y-4">
-        {maintenanceRequests.map((request) => (
-          <div key={request.id} className="border rounded-lg p-4">
-            <div className="flex flex-col md:flex-row justify-between gap-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-2 mb-2">
-                  <Wrench className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold">{request.title}</h3>
-                  <Badge variant={
-                    request.status === 'pending' ? 'outline' :
-                    request.status === 'in_progress' ? 'default' :
-                    request.status === 'completed' ? 'secondary' :
-                    'destructive'
-                  }>
-                    {request.status === 'in_progress' ? 'En cours' : 
-                     request.status === 'completed' ? 'Terminé' :
-                     request.status === 'cancelled' ? 'Annulé' : 'En attente'}
-                  </Badge>
-                  {request.needs_approval && (
-                    <Badge variant="outline" className="bg-yellow-50 text-yellow-700">
-                      Approbation requise
-                    </Badge>
-                  )}
-                </div>
-                
-                <p className="text-sm text-muted-foreground mb-2">
-                  {request.properties.address}, {request.properties.city}
-                </p>
-                
-                <div className="flex items-center gap-2 mb-2">
-                  <UserCog className="h-4 w-4 text-muted-foreground" />
-                  <span>
-                    Demandé par: {request.profiles.first_name} {request.profiles.last_name}
-                  </span>
-                </div>
-                
-                {request.assigned_to && request.assigned_to_profile && (
-                  <div className="flex items-center gap-2 mb-2">
-                    <UserCog className="h-4 w-4 text-muted-foreground" />
-                    <span>
-                      Assigné à: {request.assigned_to_profile.first_name} {request.assigned_to_profile.last_name}
-                    </span>
-                  </div>
-                )}
-                
-                <div className="mt-2">
-                  <p className="text-sm">{request.description}</p>
-                </div>
-                
-                <div className="text-xs text-muted-foreground mt-2">
-                  Demandé {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
-                </div>
-              </div>
-              
-              <div className="flex flex-col gap-2 self-end">
-                {/* Landlord/Manager approval buttons for direct-to-vendor requests */}
-                {(isLandlord || isManager) && request.needs_approval && (
-                  <>
-                    <Button size="sm" onClick={() => handleApproveMaintenanceRequest(request.id)}>
-                      <CheckCircle className="h-4 w-4 mr-1" />
-                      Approuver
-                    </Button>
-                    <Button size="sm" variant="outline" onClick={() => handleRejectMaintenanceRequest(request.id)}>
-                      <XCircle className="h-4 w-4 mr-1" />
-                      Rejeter
-                    </Button>
-                  </>
-                )}
-                
-                {/* Vendor action buttons */}
-                {isVendor && request.assigned_to === user?.id && (
-                  <>
-                    {request.status === 'pending' && (
-                      <>
-                        <Button size="sm" onClick={() => handleAcceptMaintenanceJob(request.id)}>
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Accepter
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={() => handleRejectMaintenanceJob(request.id)}>
-                          <XCircle className="h-4 w-4 mr-1" />
-                          Rejeter
-                        </Button>
-                      </>
-                    )}
-                    
-                    {request.status === 'in_progress' && (
-                      <Button size="sm" onClick={() => handleCompleteMaintenanceJob(request.id)}>
-                        <CheckCircle className="h-4 w-4 mr-1" />
-                        Marquer comme terminé
-                      </Button>
-                    )}
-                    
-                    {request.status === 'in_progress' && (
-                      <Button size="sm" variant="outline" onClick={() => navigate(`/messages?request=${request.id}`)}>
-                        <MessageSquare className="h-4 w-4 mr-1" />
-                        Messages
-                      </Button>
-                    )}
-                  </>
-                )}
-                
-                {/* Tenant view message button - only if request is accepted and in progress */}
-                {isTenant && request.status === 'in_progress' && !request.needs_approval && (
-                  <Button size="sm" variant="outline" onClick={() => navigate(`/messages?request=${request.id}`)}>
-                    <MessageSquare className="h-4 w-4 mr-1" />
-                    Messages
-                  </Button>
-                )}
-                
-                {/* View details button for all roles */}
-                <Button size="sm" variant="outline" onClick={() => navigate(`/maintenance/${request.id}`)}>
-                  Voir les détails
-                </Button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    try {
+      // In a real application, you would create a message in the messages table
+      // For now, we'll just show a toast
+      toast({
+        title: 'Message envoyé',
+        description: 'Votre message a été envoyé',
+      });
+      
+      setReplyMessage('');
+      // fetchRequests(); // Refresh data if needed
+    } catch (error) {
+      console.error('Error sending reply:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible d\'envoyer le message',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-  
-  // Define tabs based on user role
-  const getTabs = () => {
-    if (isVendor) {
-      return [
-        {value: 'maintenance', label: 'Demandes de Maintenance'}
-      ];
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return <Badge variant="outline" className="bg-yellow-100 text-yellow-800">En attente</Badge>;
+      case 'in_progress':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800">En cours</Badge>;
+      case 'completed':
+        return <Badge variant="outline" className="bg-green-100 text-green-800">Terminé</Badge>;
+      case 'cancelled':
+        return <Badge variant="outline" className="bg-red-100 text-red-800">Annulé</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
-    
-    if (isTenant) {
-      return [
-        {value: 'maintenance', label: 'Mes Demandes de Maintenance'}
-      ];
-    }
-    
-    // For landlords and property managers
-    return [
-      {value: 'incoming', label: 'Demandes Entrantes'},
-      {value: 'outgoing', label: 'Demandes Sortantes'},
-      {value: 'managed', label: 'Propriétés Gérées'},
-      {value: 'maintenance', label: 'Demandes de Maintenance'}
-    ];
   };
-  
-  const currentTabs = getTabs();
-  const defaultTab = currentTabs[0]?.value || 'incoming';
-  
+
   return (
     <Layout>
       <div className="container mx-auto py-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold">Gestion des Propriétés</h1>
-            <p className="text-muted-foreground">Gérez vos assignations et demandes de propriétés</p>
-          </div>
-          
-          {isTenant && (
-            <Button
-              onClick={() => navigate('/maintenance/new')}
-              className="mt-4 md:mt-0"
-            >
-              <Wrench className="mr-2 h-4 w-4" />
-              Nouvelle Demande de Maintenance
-            </Button>
-          )}
-        </div>
+        <h1 className="text-3xl font-bold mb-6">
+          {userRole === 'vendor' ? 'Mes Missions de Réparation' : 'Demandes de Maintenance'}
+        </h1>
         
-        <Tabs defaultValue={defaultTab} value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className={`grid grid-cols-${currentTabs.length}`}>
-            {currentTabs.map(tab => (
-              <TabsTrigger key={tab.value} value={tab.value}>
-                {tab.label}
-                {tab.value === 'incoming' && incomingRequests?.filter(r => r.status === 'pending').length > 0 && (
-                  <Badge variant="default" className="ml-2">
-                    {incomingRequests.filter(r => r.status === 'pending').length}
-                  </Badge>
-                )}
-                {tab.value === 'maintenance' && maintenanceRequests?.filter(r => r.needs_approval).length > 0 && (isLandlord || isManager) && (
-                  <Badge variant="default" className="ml-2">
-                    {maintenanceRequests.filter(r => r.needs_approval).length}
-                  </Badge>
-                )}
-              </TabsTrigger>
-            ))}
+        <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="mb-6">
+            <TabsTrigger value="pending">En attente</TabsTrigger>
+            <TabsTrigger value="in_progress">En cours</TabsTrigger>
+            <TabsTrigger value="completed">Terminés</TabsTrigger>
+            <TabsTrigger value="cancelled">Annulés</TabsTrigger>
+            <TabsTrigger value="all">Tous</TabsTrigger>
           </TabsList>
           
-          {(isLandlord || isManager) && (
-            <>
-              <TabsContent value="incoming" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Demandes de Gestion Entrantes</CardTitle>
-                    <CardDescription>
-                      Demandes des agents et des gestionnaires immobiliers qui souhaitent gérer vos propriétés
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <TabsContent value={activeTab} className="space-y-6">
+            {loading ? (
+              <div className="flex justify-center items-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : requestsData.length === 0 ? (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-12">
+                  <AlertTriangle className="h-12 w-12 text-muted-foreground mb-4" />
+                  <p className="text-xl font-medium mb-2">Aucune demande trouvée</p>
+                  <p className="text-muted-foreground">
+                    Aucune demande de maintenance n'a été trouvée pour cette catégorie.
+                  </p>
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {requestsData.map((request) => (
+                  <Card key={request.id} className="overflow-hidden">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <CardTitle>{request.title}</CardTitle>
+                          <CardDescription>{request.property?.title}</CardDescription>
+                        </div>
+                        {getStatusBadge(request.status)}
                       </div>
-                    ) : incomingRequests?.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Aucune demande de gestion entrante
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {incomingRequests?.map((request) => (
-                          <div key={request.id} className="border rounded-lg p-4">
-                            <div className="flex flex-col md:flex-row justify-between gap-4">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Building className="h-4 w-4 text-primary" />
-                                  <h3 className="font-semibold">{request.properties.title}</h3>
-                                  <Badge variant={
-                                    request.status === 'pending' ? 'outline' :
-                                    request.status === 'accepted' ? 'default' : 'secondary'
-                                  }>
-                                    {request.status === 'pending' ? 'En attente' : 
-                                     request.status === 'accepted' ? 'Acceptée' : 'Rejetée'}
-                                  </Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground mb-2">
-                                  {request.properties.address}, {request.properties.city}
-                                </p>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <UserCog className="h-4 w-4 text-muted-foreground" />
-                                  <span>
-                                    Demande de: {request.requester_profile.first_name} {request.requester_profile.last_name}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <BarChart className="h-4 w-4 text-muted-foreground" />
-                                  <span>Commission: {request.commission_percentage}%</span>
-                                </div>
-                                {request.message && (
-                                  <div className="mt-2">
-                                    <p className="text-sm italic">"{request.message}"</p>
-                                  </div>
-                                )}
-                                <div className="text-xs text-muted-foreground mt-2">
-                                  Demandé {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
-                                </div>
-                              </div>
-                              
-                              {request.status === 'pending' && (
-                                <div className="flex gap-2 self-end">
-                                  <Button size="sm" onClick={() => handleAcceptRequest(request.id)}>
-                                    <CheckCircle className="h-4 w-4 mr-1" />
-                                    Accepter
-                                  </Button>
-                                  <Button size="sm" variant="outline" onClick={() => handleRejectRequest(request.id)}>
-                                    <XCircle className="h-4 w-4 mr-1" />
-                                    Rejeter
-                                  </Button>
-                                </div>
-                              )}
-                              
-                              {request.status === 'accepted' && (
-                                <div className="flex items-center gap-2 text-green-600">
-                                  <CheckCircle className="h-4 w-4" />
-                                  <span>Acceptée</span>
-                                </div>
-                              )}
-                              
-                              {request.status === 'rejected' && (
-                                <div className="flex items-center gap-2 text-red-600">
-                                  <XCircle className="h-4 w-4" />
-                                  <span>Rejetée</span>
-                                </div>
-                              )}
-                            </div>
+                    </CardHeader>
+                    
+                    <CardContent className="pb-4">
+                      <p className="text-sm mb-4">{request.description}</p>
+                      
+                      <div className="grid grid-cols-2 gap-y-2 text-sm">
+                        <div>
+                          <span className="text-muted-foreground">Adresse:</span>
+                          <p>{request.property?.address}, {request.property?.city}</p>
+                        </div>
+                        
+                        <div>
+                          <span className="text-muted-foreground">Priorité:</span>
+                          <p className="capitalize">{request.priority || 'Moyenne'}</p>
+                        </div>
+                        
+                        {request.tenant && (
+                          <div>
+                            <span className="text-muted-foreground">Demandeur:</span>
+                            <p>{request.tenant.first_name} {request.tenant.last_name}</p>
                           </div>
-                        ))}
+                        )}
+                        
+                        <div>
+                          <span className="text-muted-foreground">Date:</span>
+                          <p>{new Date(request.created_at).toLocaleDateString()}</p>
+                        </div>
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="outgoing" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Demandes de Gestion Sortantes</CardTitle>
-                    <CardDescription>
-                      Demandes que vous avez envoyées pour gérer des propriétés
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                    ) : outgoingRequests?.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Aucune demande de gestion sortante
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        {outgoingRequests?.map((request) => (
-                          <div 
-                            key={request.id} 
-                            className={`border rounded-lg p-4 ${
-                              request.status === 'pending' ? 'border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20' :
-                              request.status === 'accepted' ? 'border-green-300 bg-green-50 dark:bg-green-950/20' :
-                              'border-red-300 bg-red-50 dark:bg-red-950/20'
-                            }`}
-                          >
-                            <div className="flex items-start justify-between gap-4">
-                              <div>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Building className="h-4 w-4 text-primary" />
-                                  <h3 className="font-semibold">{request.properties.title}</h3>
-                                </div>
-                                <p className="text-sm text-muted-foreground mb-2">
-                                  {request.properties.address}, {request.properties.city}
-                                </p>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <span>Envoyé à: {request.recipient_profile.first_name} {request.recipient_profile.last_name}</span>
-                                </div>
-                                <div className="flex items-center gap-2 mb-2">
-                                  <BarChart className="h-4 w-4 text-muted-foreground" />
-                                  <span>Commission: {request.commission_percentage}%</span>
-                                </div>
-                                <div className="text-xs text-muted-foreground mt-2">
-                                  Envoyé {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
-                                </div>
-                              </div>
-                              
-                              <div>
-                                {request.status === 'pending' && (
-                                  <div className="flex items-center gap-2 text-yellow-600">
-                                    <Clock className="h-4 w-4" />
-                                    <span>En attente</span>
-                                  </div>
-                                )}
-                                
-                                {request.status === 'accepted' && (
-                                  <div className="flex items-center gap-2 text-green-600">
-                                    <CheckCircle className="h-4 w-4" />
-                                    <span>Acceptée</span>
-                                  </div>
-                                )}
-                                
-                                {request.status === 'rejected' && (
-                                  <div className="flex items-center gap-2 text-red-600">
-                                    <XCircle className="h-4 w-4" />
-                                    <span>Rejetée</span>
-                                  </div>
-                                )}
-                              </div>
+                      
+                      {request.needs_approval && userRole !== 'vendor' && (
+                        <div className="mt-4 p-2 bg-yellow-50 border border-yellow-200 rounded-md text-sm">
+                          <p className="flex items-center text-yellow-800">
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Cette demande nécessite votre approbation
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                    
+                    <CardFooter className="flex flex-col gap-2 pt-0">
+                      {/* Action buttons based on role and request status */}
+                      {userRole === 'landlord' || userRole === 'manager' ? (
+                        <>
+                          {request.needs_approval && (
+                            <div className="flex gap-2 w-full">
+                              <Button 
+                                variant="outline" 
+                                className="flex-1" 
+                                onClick={() => handleApproveRequest(request.id)}
+                              >
+                                <Check className="h-4 w-4 mr-2" />
+                                Approuver
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                className="flex-1 border-red-200 text-red-700 hover:bg-red-50" 
+                                onClick={() => handleRejectRequest(request.id)}
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Rejeter
+                              </Button>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-              
-              <TabsContent value="managed" className="mt-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Propriétés Gérées</CardTitle>
-                    <CardDescription>
-                      Propriétés que vous gérez actuellement
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {isLoading ? (
-                      <div className="flex justify-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                    ) : managedProperties?.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Vous ne gérez aucune propriété pour le moment
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {managedProperties?.map((item) => (
-                          <div key={item.id} className="border rounded-lg overflow-hidden">
-                            <div className="h-40 bg-muted">
-                              {item.properties.main_image_url ? (
-                                <img 
-                                  src={item.properties.main_image_url} 
-                                  alt={item.properties.title} 
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full flex items-center justify-center bg-muted">
-                                  <Building className="h-8 w-8 text-muted-foreground" />
-                                </div>
-                              )}
-                            </div>
-                            <div className="p-4">
-                              <h3 className="font-semibold">{item.properties.title}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                {item.properties.address}, {item.properties.city}
-                              </p>
-                              <div className="mt-4">
-                                <Button 
-                                  size="sm" 
-                                  onClick={() => navigate(`/property/${item.property_id}`)}
-                                >
-                                  Voir la Propriété
+                          )}
+                          
+                          {request.status === 'pending' && !request.needs_approval && (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" className="w-full">
+                                  <Wrench className="h-4 w-4 mr-2" />
+                                  Assigner à un prestataire
                                 </Button>
-                              </div>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Assigner un prestataire</DialogTitle>
+                                  <DialogDescription>
+                                    Sélectionnez un prestataire pour cette tâche
+                                  </DialogDescription>
+                                </DialogHeader>
+                                <Select onValueChange={(value) => handleAssignToVendor(request.id, value)}>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Sélectionner un prestataire" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="vendor-id-1">Jean Dupont (Plombier)</SelectItem>
+                                    <SelectItem value="vendor-id-2">Marie Martin (Électricienne)</SelectItem>
+                                    <SelectItem value="vendor-id-3">Paul Bernard (Peintre)</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <DialogFooter>
+                                  <DialogClose asChild>
+                                    <Button variant="outline">Annuler</Button>
+                                  </DialogClose>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          )}
+                          
+                          {(request.status === 'in_progress' || request.status === 'completed') && (
+                            <Dialog>
+                              <DialogTrigger asChild>
+                                <Button variant="outline" className="w-full">
+                                  <MessageSquare className="h-4 w-4 mr-2" />
+                                  Communiquer
+                                </Button>
+                              </DialogTrigger>
+                              <DialogContent>
+                                <DialogHeader>
+                                  <DialogTitle>Communiquer avec le prestataire</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4">
+                                  <div className="max-h-[300px] overflow-y-auto space-y-4 border rounded-md p-4">
+                                    {/* Messages would go here */}
+                                    <p className="text-sm text-muted-foreground text-center">Début de la conversation</p>
+                                  </div>
+                                  <Textarea 
+                                    placeholder="Écrivez votre message..." 
+                                    value={replyMessage}
+                                    onChange={(e) => setReplyMessage(e.target.value)}
+                                  />
+                                </div>
+                                <DialogFooter>
+                                  <Button 
+                                    disabled={!replyMessage.trim() || isSubmitting} 
+                                    onClick={() => handleSendReply(request.id)}
+                                  >
+                                    {isSubmitting ? (
+                                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    ) : (
+                                      <MessageSquare className="h-4 w-4 mr-2" />
+                                    )}
+                                    Envoyer
+                                  </Button>
+                                </DialogFooter>
+                              </DialogContent>
+                            </Dialog>
+                          )}
+                        </>
+                      ) : userRole === 'vendor' ? (
+                        <>
+                          {request.status === 'pending' && request.assigned_to === user?.id && (
+                            <div className="flex gap-2 w-full">
+                              <Button 
+                                variant="outline" 
+                                className="flex-1" 
+                                onClick={() => handleAcceptAssignment(request.id)}
+                              >
+                                <Check className="h-4 w-4 mr-2" />
+                                Accepter
+                              </Button>
+                              <Button 
+                                variant="outline"
+                                className="flex-1 border-red-200 text-red-700 hover:bg-red-50" 
+                                onClick={() => handleRejectRequest(request.id)}
+                              >
+                                <X className="h-4 w-4 mr-2" />
+                                Refuser
+                              </Button>
                             </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </TabsContent>
-            </>
-          )}
-          
-          <TabsContent value="maintenance" className="mt-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Demandes de Maintenance</CardTitle>
-                <CardDescription>
-                  {isTenant 
-                    ? "Demandes de maintenance que vous avez soumises"
-                    : isVendor 
-                      ? "Demandes de maintenance qui vous sont assignées"
-                      : "Demandes de maintenance pour vos propriétés"}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {renderMaintenanceTab()}
-              </CardContent>
-            </Card>
+                          )}
+                          
+                          {request.status === 'in_progress' && request.assigned_to === user?.id && (
+                            <div className="space-y-2 w-full">
+                              <Button 
+                                variant="outline" 
+                                className="w-full"
+                                onClick={() => handleCompleteRequest(request.id)}
+                              >
+                                <Check className="h-4 w-4 mr-2" />
+                                Marquer comme terminé
+                              </Button>
+                              
+                              <Dialog>
+                                <DialogTrigger asChild>
+                                  <Button variant="outline" className="w-full">
+                                    <MessageSquare className="h-4 w-4 mr-2" />
+                                    Communiquer
+                                  </Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                  <DialogHeader>
+                                    <DialogTitle>Communiquer avec le client</DialogTitle>
+                                  </DialogHeader>
+                                  <div className="space-y-4">
+                                    <div className="max-h-[300px] overflow-y-auto space-y-4 border rounded-md p-4">
+                                      {/* Messages would go here */}
+                                      <p className="text-sm text-muted-foreground text-center">Début de la conversation</p>
+                                    </div>
+                                    <Textarea 
+                                      placeholder="Écrivez votre message..." 
+                                      value={replyMessage}
+                                      onChange={(e) => setReplyMessage(e.target.value)}
+                                    />
+                                  </div>
+                                  <DialogFooter>
+                                    <Button 
+                                      disabled={!replyMessage.trim() || isSubmitting} 
+                                      onClick={() => handleSendReply(request.id)}
+                                    >
+                                      {isSubmitting ? (
+                                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                      ) : (
+                                        <MessageSquare className="h-4 w-4 mr-2" />
+                                      )}
+                                      Envoyer
+                                    </Button>
+                                  </DialogFooter>
+                                </DialogContent>
+                              </Dialog>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        // Tenant view
+                        <div>
+                          {request.status === 'in_progress' && (
+                            <p className="text-sm text-blue-600">
+                              <Clock className="h-4 w-4 inline mr-1" />
+                              En cours de traitement
+                            </p>
+                          )}
+                        </div>
+                      )}
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </div>

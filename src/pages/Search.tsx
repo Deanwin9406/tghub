@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -78,19 +77,19 @@ const Search = () => {
     
     // Filter by property type
     if (propertyTypes.length > 0) {
-      filtered = filtered.filter(p => propertyTypes.includes(p.type || p.property_type));
+      filtered = filtered.filter(p => propertyTypes.includes(p.property_type));
       activeFilterCount++;
     }
     
     // Filter by beds
     if (beds !== null) {
-      filtered = filtered.filter(p => (p.beds !== undefined ? p.beds : p.bedrooms) !== undefined && (p.beds || p.bedrooms || 0) >= beds);
+      filtered = filtered.filter(p => (p.bedrooms !== undefined ? p.bedrooms : p.beds) !== undefined && (p.bedrooms || p.beds || 0) >= beds);
       activeFilterCount++;
     }
     
     // Filter by baths
     if (baths !== null) {
-      filtered = filtered.filter(p => (p.baths !== undefined ? p.baths : p.bathrooms) !== undefined && (p.baths || p.bathrooms || 0) >= baths);
+      filtered = filtered.filter(p => (p.bathrooms !== undefined ? p.bathrooms : p.baths) !== undefined && (p.bathrooms || p.baths || 0) >= baths);
       activeFilterCount++;
     }
     

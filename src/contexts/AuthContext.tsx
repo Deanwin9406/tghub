@@ -12,7 +12,7 @@ type Profile = {
   avatar_url?: string;
 };
 
-type UserRole = 'tenant' | 'landlord' | 'manager' | 'admin' | 'agent';
+type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor';
 
 type AuthContextType = {
   session: Session | null;
@@ -40,7 +40,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const { toast } = useToast();
 
   useEffect(() => {
-    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -54,7 +53,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       }
     });
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
@@ -127,7 +125,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         .limit(1)
         .single();
 
-      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned" error code
+      if (error && error.code !== 'PGRST116') {
         throw error;
       }
 
@@ -141,7 +139,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       
-      // After successful login, we'll fetch the user's roles
       if (!error) {
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
@@ -153,7 +150,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           if (userRoles && userRoles.length > 0) {
             const roles = userRoles.map(r => r.role);
             
-            // Set the right redirect URL based on user role
             let redirectUrl = '/dashboard';
             
             if (roles.includes('vendor')) {
@@ -164,7 +160,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
               redirectUrl = '/property-management';
             }
             
-            // Store redirect URL in local storage to be used after auth state change
             localStorage.setItem('authRedirectUrl', redirectUrl);
           }
         }
@@ -189,8 +184,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           },
         },
       });
-      
-      // Note: Role is assigned by database trigger automatically based on user_role metadata
       
       return { error };
     } catch (error) {
@@ -253,10 +246,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-// Export the context and the hook, but don't redeclare useAuth
 export { AuthContext };
 
-// Define and export useAuth hook only once
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {

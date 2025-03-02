@@ -340,6 +340,7 @@ export type Database = {
           description: string
           id: string
           image_url: string | null
+          needs_approval: boolean | null
           notes: string | null
           priority: string | null
           property_id: string
@@ -355,6 +356,7 @@ export type Database = {
           description: string
           id?: string
           image_url?: string | null
+          needs_approval?: boolean | null
           notes?: string | null
           priority?: string | null
           property_id: string
@@ -370,6 +372,7 @@ export type Database = {
           description?: string
           id?: string
           image_url?: string | null
+          needs_approval?: boolean | null
           notes?: string | null
           priority?: string | null
           property_id?: string
@@ -808,7 +811,13 @@ export type Database = {
         | "office"
         | "land"
         | "other"
-      user_role: "tenant" | "landlord" | "agent" | "admin" | "manager"
+      user_role:
+        | "tenant"
+        | "landlord"
+        | "agent"
+        | "admin"
+        | "manager"
+        | "vendor"
     }
     CompositeTypes: {
       [_ in never]: never

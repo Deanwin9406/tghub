@@ -23,14 +23,15 @@ interface PropertyType {
   main_image_url: string | null;
   status: string;
   description: string;
-  square_footage: number;
-  year_built: number;
-  amenities: string[];
-  image_urls: string[];
-  availability_date: string;
+  square_footage?: number;
+  size_sqm?: number;
+  year_built?: number;
+  amenities?: string[];
+  image_urls?: string[];
+  availability_date?: string;
 }
 
-type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager';
+type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor';
 
 type RoleCheckResult = {
   user_id: string;
@@ -75,7 +76,7 @@ const PropertyManagement = () => {
     }
   }, [user, session]);
 
-  const checkIfHasRole = async (role: string): Promise<RoleCheckResult> => {
+  const checkIfHasRole = async (role: UserRole): Promise<RoleCheckResult> => {
     const { data, error } = await supabase.rpc('has_role', {
       user_id: session?.user.id || '',
       role: role

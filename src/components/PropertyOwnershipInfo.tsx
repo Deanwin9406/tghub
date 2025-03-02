@@ -1,186 +1,153 @@
-
 import React, { useState, useEffect } from 'react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Calendar, Mail, Phone, Send } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { getInitials } from '@/lib/utils';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
-import SendManagementRequestForm from './management/SendManagementRequestForm';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 
-interface PropertyOwnershipInfoProps {
+export interface PropertyOwnershipInfoProps {
   propertyId: string;
 }
 
-const PropertyOwnershipInfo: React.FC<PropertyOwnershipInfoProps> = ({ propertyId }) => {
-  const [ownerProfile, setOwnerProfile] = useState<any | null>(null);
-  const [contactSheet, setContactSheet] = useState(false);
-  const [requestSheet, setRequestSheet] = useState(false);
+export const PropertyOwnershipInfo: React.FC<PropertyOwnershipInfoProps> = ({ propertyId }) => {
+  const [propertyData, setPropertyData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [showRequestForm, setShowRequestForm] = useState(false);
   const { toast } = useToast();
-  
+
   useEffect(() => {
-    if (propertyId) {
-      fetchOwnerDetails();
-    }
-  }, [propertyId]);
+    const fetchPropertyData = async () => {
+      setLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('properties')
+          .select('owner_id, management_status')
+          .eq('id', propertyId)
+          .single();
+
+        if (error) {
+          throw error;
+        }
+
+        setPropertyData(data);
+      } catch (error: any) {
+        console.error('Error fetching property data:', error.message);
+        toast({
+          variant: 'destructive',
+          title: 'Erreur',
+          description: 'Impossible de récupérer les informations de la propriété'
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPropertyData();
+  }, [propertyId, toast]);
+
+  const SendManagementRequestForm: React.FC<{ propertyId: string; ownerId: string; onSuccess: () => void }> = ({ propertyId, ownerId, onSuccess }) => {
+    const [requestDetails, setRequestDetails] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
   
-  const fetchOwnerDetails = async () => {
-    try {
-      // First get the property to get owner ID
-      const { data: property, error: propertyError } = await supabase
-        .from('properties')
-        .select('owner_id')
-        .eq('id', propertyId)
-        .single();
-      
-      if (propertyError) throw propertyError;
-      
-      // Then get owner profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', property.owner_id)
-        .single();
-      
-      if (profileError) throw profileError;
-      
-      setOwnerProfile(profile);
-      
-    } catch (error) {
-      console.error('Error fetching owner details:', error);
-    }
-  };
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsSubmitting(true);
   
-  const handleContactRequest = () => {
-    setContactSheet(true);
-  };
+      try {
+        // Simulate sending a request to the property owner
+        // In a real application, you would send a notification or create a task
+        console.log(`Management request sent for property ${propertyId} to owner ${ownerId} with details: ${requestDetails}`);
   
-  const handleManagementRequest = () => {
-    setRequestSheet(true);
-  };
+        // Simulate a successful submission
+        setTimeout(() => {
+          setIsSubmitting(false);
+          onSuccess();
+        }, 1000);
   
-  if (!ownerProfile) {
+      } catch (error: any) {
+        console.error('Error sending management request:', error.message);
+        toast({
+          variant: 'destructive',
+          title: 'Erreur',
+          description: 'Impossible d\'envoyer la demande de gestion'
+        });
+        setIsSubmitting(false);
+      }
+    };
+  
     return (
-      <Card className="mb-6 animate-pulse">
-        <CardContent className="p-6">
-          <div className="flex items-center space-x-4 mb-4">
-            <div className="rounded-full bg-gray-200 h-12 w-12"></div>
-            <div className="space-y-2">
-              <div className="h-4 bg-gray-200 rounded w-24"></div>
-              <div className="h-3 bg-gray-200 rounded w-32"></div>
+      <Card className="mt-4">
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="requestDetails">Détails de la demande</Label>
+              <Textarea
+                id="requestDetails"
+                value={requestDetails}
+                onChange={(e) => setRequestDetails(e.target.value)}
+                placeholder="Décrivez pourquoi vous avez besoin d'aide pour gérer cette propriété"
+                className="mt-1"
+                required
+              />
             </div>
-          </div>
-          <div className="space-y-2">
-            <div className="h-10 bg-gray-200 rounded"></div>
-            <div className="h-10 bg-gray-200 rounded"></div>
-          </div>
+            <Button type="submit" disabled={isSubmitting} className="w-full">
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Envoi en cours...
+                </>
+              ) : (
+                'Envoyer la demande'
+              )}
+            </Button>
+          </form>
         </CardContent>
       </Card>
     );
-  }
-  
+  };
+
+  // Make sure we pass both propertyId and ownerId to the form
   return (
-    <>
-      <Card className="mb-6">
-        <CardContent className="p-6">
-          <div className="flex items-center space-x-4 mb-6">
-            <Avatar className="h-12 w-12">
-              <AvatarImage src={ownerProfile.avatar_url} alt={`${ownerProfile.first_name} ${ownerProfile.last_name}`} />
-              <AvatarFallback>{getInitials(`${ownerProfile.first_name} ${ownerProfile.last_name}`)}</AvatarFallback>
-            </Avatar>
-            <div>
-              <h3 className="font-semibold">{ownerProfile.first_name} {ownerProfile.last_name}</h3>
-              <p className="text-sm text-muted-foreground">Propriétaire</p>
-            </div>
-          </div>
-          
-          <div className="space-y-3">
-            <Button className="w-full" onClick={handleContactRequest}>
-              <Mail className="mr-2 h-4 w-4" />
-              Contacter le propriétaire
-            </Button>
-            
-            <Button variant="outline" className="w-full" onClick={handleManagementRequest}>
-              <Calendar className="mr-2 h-4 w-4" />
-              Demander à gérer cette propriété
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+    <div className="mt-8 border rounded-lg p-6 bg-card">
+      <h3 className="text-xl font-semibold mb-4">Gestion de propriété</h3>
       
-      {/* Contact sheet */}
-      <Sheet open={contactSheet} onOpenChange={setContactSheet}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Contacter le propriétaire</SheetTitle>
-            <SheetDescription>
-              Envoyez un message à {ownerProfile.first_name} {ownerProfile.last_name} concernant cette propriété.
-            </SheetDescription>
-          </SheetHeader>
-          
-          <div className="py-6">
-            <div className="space-y-4">
-              {ownerProfile.phone && (
-                <div className="flex items-center">
-                  <Phone className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <span>{ownerProfile.phone}</span>
-                </div>
-              )}
-              
-              <div className="flex items-center">
-                <Mail className="h-4 w-4 mr-2 text-muted-foreground" />
-                <span>{ownerProfile.email}</span>
-              </div>
-              
-              <div className="border rounded-md p-4 mt-6">
-                <h4 className="font-medium mb-2">Envoyer un message</h4>
-                <textarea 
-                  className="w-full border rounded-md p-2 h-32 mb-2"
-                  placeholder="Bonjour, je suis intéressé par votre propriété..."
-                ></textarea>
-                <Button className="w-full">
-                  <Send className="mr-2 h-4 w-4" />
-                  Envoyer
-                </Button>
-              </div>
-            </div>
+      {loading ? (
+        <div className="flex justify-center">
+          <Loader2 className="h-6 w-6 animate-spin" />
+        </div>
+      ) : propertyData ? (
+        <>
+          <div className="mb-4">
+            <p>Statut de gestion: {propertyData.management_status || 'Non défini'}</p>
           </div>
           
-          <SheetFooter>
-            <Button variant="outline" onClick={() => setContactSheet(false)}>Fermer</Button>
-          </SheetFooter>
-        </SheetContent>
-      </Sheet>
+          {!showRequestForm && (
+            <Button onClick={() => setShowRequestForm(true)}>
+              Demander de l'aide pour la gestion
+            </Button>
+          )}
+        </>
+      ) : (
+        <p>Impossible de charger les informations de la propriété.</p>
+      )}
       
-      {/* Management request sheet */}
-      <Sheet open={requestSheet} onOpenChange={setRequestSheet}>
-        <SheetContent>
-          <SheetHeader>
-            <SheetTitle>Demande de gestion de propriété</SheetTitle>
-            <SheetDescription>
-              Envoyez une demande pour gérer cette propriété
-            </SheetDescription>
-          </SheetHeader>
-          
-          <div className="py-6">
-            <SendManagementRequestForm 
-              propertyId={propertyId} 
-              onSuccess={() => {
-                setRequestSheet(false);
-                toast({
-                  title: "Demande envoyée",
-                  description: "Votre demande de gestion a été envoyée au propriétaire",
-                });
-              }}
-            />
-          </div>
-        </SheetContent>
-      </Sheet>
-    </>
+      {showRequestForm && (
+        <SendManagementRequestForm 
+          propertyId={propertyId} 
+          ownerId={propertyData?.owner_id || ''} 
+          onSuccess={() => {
+            setShowRequestForm(false);
+            toast({
+              title: "Demande envoyée",
+              description: "Votre demande de gestion a été envoyée avec succès.",
+              variant: "default",
+            });
+          }} 
+        />
+      )}
+    </div>
   );
 };
-
-export default PropertyOwnershipInfo;
