@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -159,6 +158,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const signUp = async (email: string, password: string, firstName: string, lastName: string): Promise<{ error: any | null }> => {
     setLoading(true);
     try {
+      console.log("Sign up data:", { email, firstName, lastName }); // Debug log
+      
       const { data, error } = await supabase.auth.signUp({
         email: email,
         password: password,
@@ -176,17 +177,28 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
 
       if (data.user?.id) {
+        // Explicitly create profile with first and last name
         const { error: profileError } = await supabase
           .from('profiles')
-          .insert([{ id: data.user.id, email: email, first_name: firstName, last_name: lastName }]);
+          .insert([{ 
+            id: data.user.id, 
+            email: email, 
+            first_name: firstName, 
+            last_name: lastName 
+          }]);
 
         if (profileError) {
           console.error('Error creating profile:', profileError);
           return { error: profileError };
         }
+        
+        console.log("Profile created successfully with name:", firstName, lastName);
       }
 
       return { error: null };
+    } catch (error) {
+      console.error("Unexpected error during signup:", error);
+      return { error };
     } finally {
       setLoading(false);
     }

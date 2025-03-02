@@ -111,6 +111,8 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
         return;
       }
       
+      console.log("Signing up with:", { email, firstName, lastName, userRole }); // Debug log
+      
       const { error } = await signUp(email, password, firstName, lastName);
       
       if (error) {
@@ -120,6 +122,12 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
           variant: 'destructive',
         });
       } else {
+        // Add user role if signup was successful
+        if (userRole) {
+          // We will handle adding user role in a separate step if needed
+          console.log("User role selected:", userRole);
+        }
+        
         toast({
           title: 'Compte créé',
           description: 'Veuillez vérifier votre email pour confirmation.',
