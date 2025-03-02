@@ -1,203 +1,323 @@
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { FileText, Users, Calendar, DollarSign, CheckCircle2, Clock, ClipboardList, Building, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Calendar, FileText, AlertTriangle, Download, Home, CreditCard, User } from 'lucide-react';
+
+interface Lease {
+  id: string;
+  start_date: string;
+  end_date: string;
+  rent_amount: number;
+  status: string;
+  property: {
+    title: string;
+    address: string;
+    city: string;
+  };
+  tenant: {
+    first_name?: string;
+    last_name?: string;
+    email?: string;
+    error?: string;
+  } | null;
+}
+
+// Function to safely get tenant name
+const getTenantName = (lease: Lease): string => {
+  let tenantName = 'Tenant inconnu';
+  
+  if (lease.tenant) {
+    // Check if tenant is an error object
+    const isTenantError = typeof lease.tenant === 'object' && 'error' in lease.tenant;
+    
+    if (!isTenantError) {
+      const firstName = lease.tenant && typeof lease.tenant === 'object' && 'first_name' in lease.tenant ? 
+        lease.tenant.first_name || '' : '';
+      const lastName = lease.tenant && typeof lease.tenant === 'object' && 'last_name' in lease.tenant ? 
+        lease.tenant.last_name || '' : '';
+      
+      tenantName = `${firstName} ${lastName}`.trim() || 'Tenant inconnu';
+    }
+  }
+  
+  return tenantName;
+};
 
 const Leases = () => {
-  const { user } = useAuth();
+  const { user, roles } = useAuth();
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [leases, setLeases] = useState<Lease[]>([]);
 
-  const { data: leases, isLoading, error } = useQuery({
-    queryKey: ['leases', user?.id],
+  const isLandlord = roles.includes('landlord');
+  const isTenant = roles.includes('tenant');
+
+  const { data, error, isLoading } = useQuery({
+    queryKey: ['user-leases', user?.id],
     queryFn: async () => {
       if (!user) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('leases')
         .select(`
-          *,
-          property:properties(title, address),
-          tenant:profiles(first_name, last_name)
+          id,
+          start_date,
+          end_date,
+          rent_amount,
+          status,
+          property:properties (
+            title,
+            address,
+            city
+          ),
+          tenant:profiles (
+            first_name,
+            last_name,
+            email
+          )
         `)
-        .or(`tenant_id.eq.${user.id},property.owner_id.eq.${user.id}`)
         .order('start_date', { ascending: false });
 
-      if (error) {
-        toast({
-          title: 'Error',
-          description: 'Failed to load leases',
-          variant: 'destructive',
-        });
-        throw error;
+      if (isTenant) {
+        query = query.eq('tenant_id', user.id);
+      } else if (isLandlord) {
+        query = query.eq('landlord_id', user.id);
       }
 
-      return data || [];
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Error fetching leases:", error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de récupérer les baux. Veuillez réessayer.",
+        });
+        return [];
+      }
+
+      return data as Lease[];
     },
     enabled: !!user,
   });
 
-  const filteredLeases = leases?.filter(lease => {
-    const propertyTitle = lease.property?.title || '';
-    const propertyAddress = lease.property?.address || '';
-    
-    // Safe access to tenant properties with null checks and error handling
-    let tenantName = '';
-    if (lease.tenant) {
-      // Check if tenant is an error object (has 'error' property)
-      const isTenantError = typeof lease.tenant === 'object' && 'error' in lease.tenant;
-      if (!isTenantError && lease.tenant !== null) {
-        // Use proper null checking with optional chaining to prevent errors
-        const firstName = typeof lease.tenant === 'object' && 'first_name' in lease.tenant ? 
-          lease.tenant?.first_name ?? '' : '';
-        const lastName = typeof lease.tenant === 'object' && 'last_name' in lease.tenant ? 
-          lease.tenant?.last_name ?? '' : '';
-        tenantName = `${firstName} ${lastName}`.trim();
-      }
+  useEffect(() => {
+    if (data) {
+      setLeases(data);
     }
+  }, [data]);
 
+  if (isLoading) {
     return (
-      propertyTitle.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      propertyAddress.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tenantName.toLowerCase().includes(searchQuery.toLowerCase())
+      <Layout>
+        <div className="container mx-auto py-6">
+          <h1 className="text-3xl font-bold mb-4">Baux</h1>
+          <p>Chargement des baux...</p>
+        </div>
+      </Layout>
     );
-  });
+  }
 
-  const renderTenantInfo = (tenant: any) => {
-    const isTenantError = tenant && typeof tenant === 'object' && 'error' in tenant;
-    
-    if (!tenant || isTenantError) {
-      return <div className="flex items-center">
-        <User className="h-4 w-4 mr-2 text-muted-foreground" />
-        <span>No tenant information</span>
-      </div>;
-    }
-
-    let firstName = 'Unknown';
-    let lastName = '';
-    
-    if (tenant && typeof tenant === 'object') {
-      if ('first_name' in tenant && tenant.first_name !== null) {
-        firstName = tenant.first_name;
-      }
-      if ('last_name' in tenant && tenant.last_name !== null) {
-        lastName = tenant.last_name;
-      }
-    }
-
+  if (error) {
     return (
-      <div className="flex items-center">
-        <User className="h-4 w-4 mr-2 text-muted-foreground" />
-        <span>{firstName} {lastName}</span>
-      </div>
+      <Layout>
+        <div className="container mx-auto py-6">
+          <h1 className="text-3xl font-bold mb-4">Baux</h1>
+          <p>Erreur lors du chargement des baux.</p>
+        </div>
+      </Layout>
     );
-  };
+  }
 
   return (
     <Layout>
       <div className="container mx-auto py-6">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
-          <h1 className="text-3xl font-bold">Leases</h1>
-          <div className="mt-4 md:mt-0 w-full md:w-auto">
-            <Input
-              type="text"
-              placeholder="Search leases..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full md:w-80"
-            />
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-3xl font-bold">Baux</h1>
+            <p className="text-muted-foreground">
+              Aperçu de vos contrats de location
+            </p>
+          </div>
+          <div className="space-x-2">
+            <Button variant="outline" size="sm">
+              <FileText className="mr-2 h-4 w-4" />
+              Exporter
+            </Button>
+            <Button size="sm">
+              <Users className="mr-2 h-4 w-4" />
+              Gérer les locataires
+            </Button>
           </div>
         </div>
 
-        <Tabs defaultValue="all" onValueChange={setActiveTab} className="space-y-4">
+        <Tabs defaultValue="all" className="space-y-4">
           <TabsList>
-            <TabsTrigger value="all">All Leases</TabsTrigger>
-            <TabsTrigger value="active">Active</TabsTrigger>
-            <TabsTrigger value="expired">Expired</TabsTrigger>
+            <TabsTrigger value="all">
+              <ClipboardList className="mr-2 h-4 w-4" />
+              Tous les baux
+            </TabsTrigger>
+            <TabsTrigger value="active">
+              <CheckCircle2 className="mr-2 h-4 w-4" />
+              Actif
+            </TabsTrigger>
+            <TabsTrigger value="pending">
+              <Clock className="mr-2 h-4 w-4" />
+              En attente
+            </TabsTrigger>
           </TabsList>
-
           <TabsContent value="all">
-            {isLoading ? (
-              <div className="flex justify-center p-6">
-                <p>Loading leases...</p>
-              </div>
-            ) : error ? (
-              <div className="flex justify-center p-6">
-                <AlertTriangle className="h-6 w-6 mr-2 text-destructive" />
-                <p className="text-destructive">Error: {error.message}</p>
-              </div>
-            ) : filteredLeases?.length === 0 ? (
-              <Card>
-                <CardContent className="flex flex-col items-center justify-center p-6">
-                  <FileText className="h-10 w-10 text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-medium">No Leases Found</h3>
-                  <p className="text-sm text-muted-foreground">
-                    No leases match your search criteria.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredLeases?.map(lease => (
-                  <Card key={lease.id}>
-                    <CardHeader>
-                      <CardTitle>{lease.property?.title}</CardTitle>
-                      <CardDescription>{lease.property?.address}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Home className="h-4 w-4 text-muted-foreground" />
-                        <span>Property: {lease.property?.title}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {renderTenantInfo(lease.tenant)}
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <span>
-                          {new Date(lease.start_date).toLocaleDateString()} -{' '}
-                          {new Date(lease.end_date).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <CreditCard className="h-4 w-4 text-muted-foreground" />
-                        <span>Monthly Rent: ${lease.monthly_rent}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <CreditCard className="h-4 w-4 text-muted-foreground" />
-                        <span>Deposit: ${lease.deposit_amount}</span>
-                      </div>
-                      <div>
-                        Status: <Badge>{lease.status}</Badge>
-                      </div>
-                    </CardContent>
-                    <CardFooter>
-                      <Button variant="outline">
-                        <Download className="h-4 w-4 mr-2" />
-                        Download Contract
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            )}
+            <Card>
+              <CardHeader>
+                <CardTitle>Tous les baux</CardTitle>
+                <CardDescription>
+                  Aperçu de tous vos contrats de location
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {leases.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
+                    <FileText className="h-8 w-8 mb-2" />
+                    <p>Aucun bail trouvé.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {leases.map((lease) => (
+                      <Card key={lease.id} className="bg-muted">
+                        <CardHeader>
+                          <CardTitle className="text-lg font-semibold">
+                            {lease.property.title}
+                          </CardTitle>
+                          <CardDescription>
+                            {lease.property.address}, {lease.property.city}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm">
+                            <Calendar className="mr-2 inline-block h-4 w-4" />
+                            {format(new Date(lease.start_date), 'dd/MM/yyyy')} -{' '}
+                            {format(new Date(lease.end_date), 'dd/MM/yyyy')}
+                          </p>
+                          <p className="text-sm">
+                            <DollarSign className="mr-2 inline-block h-4 w-4" />
+                            {lease.rent_amount}
+                          </p>
+                          <p className="text-sm">
+                            <Users className="mr-2 inline-block h-4 w-4" />
+                            Locataire: {getTenantName(lease)}
+                          </p>
+                          <Badge variant="secondary">{lease.status}</Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
-
           <TabsContent value="active">
-            <p>Content for active leases goes here.</p>
+            <Card>
+              <CardHeader>
+                <CardTitle>Baux actifs</CardTitle>
+                <CardDescription>
+                  Aperçu de vos contrats de location actifs
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {leases.filter(lease => lease.status === 'active').length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
+                    <CheckCircle2 className="h-8 w-8 mb-2" />
+                    <p>Aucun bail actif trouvé.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {leases.filter(lease => lease.status === 'active').map((lease) => (
+                      <Card key={lease.id} className="bg-muted">
+                        <CardHeader>
+                          <CardTitle className="text-lg font-semibold">
+                            {lease.property.title}
+                          </CardTitle>
+                          <CardDescription>
+                            {lease.property.address}, {lease.property.city}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm">
+                            <Calendar className="mr-2 inline-block h-4 w-4" />
+                            {format(new Date(lease.start_date), 'dd/MM/yyyy')} -{' '}
+                            {format(new Date(lease.end_date), 'dd/MM/yyyy')}
+                          </p>
+                          <p className="text-sm">
+                            <DollarSign className="mr-2 inline-block h-4 w-4" />
+                            {lease.rent_amount}
+                          </p>
+                           <p className="text-sm">
+                            <Users className="mr-2 inline-block h-4 w-4" />
+                            Locataire: {getTenantName(lease)}
+                          </p>
+                          <Badge variant="secondary">{lease.status}</Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
-
-          <TabsContent value="expired">
-            <p>Content for expired leases goes here.</p>
+          <TabsContent value="pending">
+            <Card>
+              <CardHeader>
+                <CardTitle>Baux en attente</CardTitle>
+                <CardDescription>
+                  Aperçu de vos contrats de location en attente
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {leases.filter(lease => lease.status === 'pending').length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
+                    <Clock className="h-8 w-8 mb-2" />
+                    <p>Aucun bail en attente trouvé.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {leases.filter(lease => lease.status === 'pending').map((lease) => (
+                      <Card key={lease.id} className="bg-muted">
+                        <CardHeader>
+                          <CardTitle className="text-lg font-semibold">
+                            {lease.property.title}
+                          </CardTitle>
+                          <CardDescription>
+                            {lease.property.address}, {lease.property.city}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm">
+                            <Calendar className="mr-2 inline-block h-4 w-4" />
+                            {format(new Date(lease.start_date), 'dd/MM/yyyy')} -{' '}
+                            {format(new Date(lease.end_date), 'dd/MM/yyyy')}
+                          </p>
+                          <p className="text-sm">
+                            <DollarSign className="mr-2 inline-block h-4 w-4" />
+                            {lease.rent_amount}
+                          </p>
+                           <p className="text-sm">
+                            <Users className="mr-2 inline-block h-4 w-4" />
+                            Locataire: {getTenantName(lease)}
+                          </p>
+                          <Badge variant="secondary">{lease.status}</Badge>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
       </div>

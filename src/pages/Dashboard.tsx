@@ -1,240 +1,31 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+
+import React, { useState } from 'react';
 import Layout from '@/components/Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Badge } from '@/components/ui/badge';
+import { Building, Wrench, CreditCard, MessageCircle, Upload, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Separator } from '@/components/ui/separator';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import {
-  Home,
-  Building,
-  Users,
-  CreditCard,
-  Wrench,
-  ArrowRight,
-  ClipboardList,
-  CheckCircle2,
-  Clock,
-  DollarSign,
-  Calendar,
-  Hourglass,
-  MoreHorizontal,
-  AlertCircle,
-  User,
-  Bell,
-  MessageCircle,
-  Boxes,
-  FileText,
-  LayoutDashboard,
-  MapPin,
-  Settings,
-  BarChart4,
-  Activity,
-  HandCoins,
-  Construction,
-  Landmark,
-  Upload
-} from 'lucide-react';
 
-interface Property {
-  id: string;
-  title: string;
-  price: number;
-  address: string;
-  city: string;
-  bedrooms: number;
-  bathrooms: number;
-  size_sqm: number;
-  status: string;
-  main_image_url: string;
-  property_type: string;
-}
-
-interface MaintenanceRequest {
-  id: string;
-  title: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  priority: string;
-  created_at: string;
-  property: {
-    title: string;
-  };
-}
-
-interface Payment {
-  id: string;
-  amount: number;
-  status: string;
-  due_date: string;
-  payment_date: string | null;
-  lease: {
-    property: {
-      title: string;
-    };
-  };
-}
-
-interface Message {
-  id: string;
-  content: string;
-  created_at: string;
-  sender: {
-    first_name: string;
-    last_name: string;
-  };
-}
+// Import the custom components we created
+import StatCard from '@/components/dashboard/StatCard';
+import PropertiesTab from '@/components/dashboard/PropertiesTab';
+import MaintenanceTab from '@/components/dashboard/MaintenanceTab';
+import PaymentsTab from '@/components/dashboard/PaymentsTab';
+import MessagesTab from '@/components/dashboard/MessagesTab';
+import { useDashboardData } from '@/hooks/useDashboardData';
 
 const Dashboard = () => {
   const { user, profile, roles } = useAuth();
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
-  const [recentMessages, setRecentMessages] = useState<Message[]>([]);
-
-  const { data: propertyData } = useQuery({
-    queryKey: ['user-properties', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      const { data, error } = await supabase
-        .from('properties')
-        .select('*')
-        .eq('owner_id', user.id);
-      
-      if (error) {
-        console.error("Error fetching properties:", error);
-        return [];
-      }
-      
-      return data || [];
-    },
-    enabled: !!user && roles.includes('landlord'),
-  });
-
-  useEffect(() => {
-    if (propertyData) {
-      if (Array.isArray(propertyData) && !('error' in propertyData[0] || {}) && propertyData.length > 0) {
-        setProperties(propertyData as Property[]);
-      }
-    }
-  }, [propertyData]);
-
-  const { data: maintenanceData } = useQuery({
-    queryKey: ['user-maintenance', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      const query = roles.includes('landlord')
-        ? supabase
-            .from('maintenance_requests')
-            .select('id, title, status, priority, created_at, property:properties(title)')
-            .order('created_at', { ascending: false })
-        : supabase
-            .from('maintenance_requests')
-            .select('id, title, status, priority, created_at, property:properties(title)')
-            .eq('tenant_id', user.id)
-            .order('created_at', { ascending: false });
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error("Error fetching maintenance requests:", error);
-        return [];
-      }
-      
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  useEffect(() => {
-    if (maintenanceData) {
-      setMaintenanceRequests(maintenanceData as MaintenanceRequest[]);
-    }
-  }, [maintenanceData]);
-
-  const { data: paymentData } = useQuery({
-    queryKey: ['user-payments', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      const { data, error } = await supabase
-        .from('payments')
-        .select('id, amount, status, due_date, payment_date, lease:leases(property:properties(title))')
-        .order('due_date', { ascending: false });
-      
-      if (error) {
-        console.error("Error fetching payments:", error);
-        return [];
-      }
-      
-      return data || [];
-    },
-    enabled: !!user && roles.includes('tenant'),
-  });
-
-  useEffect(() => {
-    if (paymentData) {
-      if (Array.isArray(paymentData) && paymentData.length > 0) {
-        setPayments(paymentData as Payment[]);
-      }
-    }
-  }, [paymentData]);
-
-  const { data: messageData } = useQuery({
-    queryKey: ['recent-messages', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      
-      const { data, error } = await supabase
-        .from('messages')
-        .select('id, content, created_at, sender:profiles!sender_id(first_name, last_name)')
-        .eq('recipient_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      
-      if (error) {
-        console.error("Error fetching messages:", error);
-        return [];
-      }
-      
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  useEffect(() => {
-    if (messageData) {
-      const safeMessages = messageData.map(msg => {
-        const sender = msg.sender || null;
-        const senderIsError = sender !== null && typeof sender === 'object' && 'error' in sender;
-        
-        return {
-          id: msg.id || 'unknown',
-          content: msg.content || 'No content',
-          created_at: msg.created_at || new Date().toISOString(),
-          sender: {
-            first_name: senderIsError ? 'Unknown' : 
-              (sender && typeof sender === 'object' && 'first_name' in sender) ? 
-                (sender?.first_name ?? 'Unknown') : 'Unknown',
-            last_name: senderIsError ? 'User' : 
-              (sender && typeof sender === 'object' && 'last_name' in sender) ? 
-                (sender?.last_name ?? '') : ''
-          }
-        };
-      });
-      
-      setRecentMessages(safeMessages as Message[]);
-    }
-  }, [messageData]);
+  
+  // Use our custom hook to fetch and process data
+  const { 
+    properties, 
+    maintenanceRequests, 
+    payments, 
+    recentMessages 
+  } = useDashboardData({ user, roles });
 
   return (
     <Layout>
@@ -257,73 +48,33 @@ const Dashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Propriétés</p>
-                  <div className="flex items-baseline space-x-2">
-                    <p className="text-2xl font-bold">{properties.length}</p>
-                    <span className="text-xs text-green-500 dark:text-green-400">
-                      +20%
-                    </span>
-                  </div>
-                </div>
-                <Building className="h-8 w-8 text-primary/80" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Demandes de maintenance</p>
-                  <div className="flex items-baseline space-x-2">
-                    <p className="text-2xl font-bold">{maintenanceRequests.length}</p>
-                    <span className="text-xs text-red-500 dark:text-red-400">
-                      -5%
-                    </span>
-                  </div>
-                </div>
-                <Wrench className="h-8 w-8 text-primary/80" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Paiements en attente</p>
-                  <div className="flex items-baseline space-x-2">
-                    <p className="text-2xl font-bold">{payments.length}</p>
-                    <span className="text-xs text-green-500 dark:text-green-400">
-                      +12%
-                    </span>
-                  </div>
-                </div>
-                <CreditCard className="h-8 w-8 text-primary/80" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Nouveaux messages</p>
-                  <div className="flex items-baseline space-x-2">
-                    <p className="text-2xl font-bold">{recentMessages.length}</p>
-                    <span className="text-xs text-green-500 dark:text-green-400">
-                      +30%
-                    </span>
-                  </div>
-                </div>
-                <MessageCircle className="h-8 w-8 text-primary/80" />
-              </div>
-            </CardContent>
-          </Card>
+          <StatCard 
+            title="Propriétés" 
+            value={properties.length} 
+            icon={Building} 
+            trend={{ value: "+20%", positive: true }} 
+          />
+          
+          <StatCard 
+            title="Demandes de maintenance" 
+            value={maintenanceRequests.length} 
+            icon={Wrench} 
+            trend={{ value: "-5%", positive: false }} 
+          />
+          
+          <StatCard 
+            title="Paiements en attente" 
+            value={payments.length} 
+            icon={CreditCard} 
+            trend={{ value: "+12%", positive: true }} 
+          />
+          
+          <StatCard 
+            title="Nouveaux messages" 
+            value={recentMessages.length} 
+            icon={MessageCircle} 
+            trend={{ value: "+30%", positive: true }} 
+          />
         </div>
 
         <Tabs defaultValue="properties" className="space-y-4">
@@ -347,161 +98,19 @@ const Dashboard = () => {
           </TabsList>
 
           <TabsContent value="properties">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Vos propriétés</CardTitle>
-                  <Button size="sm" onClick={() => navigate('/property-management')}>
-                    Voir tout
-                  </Button>
-                </div>
-                <CardDescription>Dernières propriétés ajoutées</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {properties.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
-                    <Building className="h-8 w-8 mb-2" />
-                    <p>Aucune propriété ajoutée.</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {properties.map((property) => (
-                      <Card key={property.id} className="bg-muted">
-                        <CardHeader>
-                          <CardTitle className="text-lg font-semibold">{property.title}</CardTitle>
-                          <CardDescription>{property.address}, {property.city}</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          <p className="text-sm">Prix: ${property.price}</p>
-                          <p className="text-sm">Type: {property.property_type}</p>
-                          <Badge variant="secondary">{property.status}</Badge>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <PropertiesTab properties={properties} />
           </TabsContent>
 
           <TabsContent value="maintenance">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Demandes de maintenance</CardTitle>
-                  <Button size="sm" onClick={() => navigate('/maintenance')}>
-                    Voir tout
-                  </Button>
-                </div>
-                <CardDescription>Dernières demandes de maintenance</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {maintenanceRequests.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
-                    <Wrench className="h-8 w-8 mb-2" />
-                    <p>Aucune demande de maintenance.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {maintenanceRequests.map((request) => (
-                      <div key={request.id} className="flex items-center justify-between p-3 rounded-md bg-muted">
-                        <div>
-                          <p className="font-medium">{request.title}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {request.property.title}
-                          </p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="outline">{request.status}</Badge>
-                          <Button variant="ghost" size="icon">
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <MaintenanceTab maintenanceRequests={maintenanceRequests} />
           </TabsContent>
 
           <TabsContent value="payments">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Paiements récents</CardTitle>
-                  <Button size="sm" onClick={() => navigate('/payments')}>
-                    Voir tout
-                  </Button>
-                </div>
-                <CardDescription>Derniers paiements effectués</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {payments.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
-                    <CreditCard className="h-8 w-8 mb-2" />
-                    <p>Aucun paiement récent.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {payments.map((payment) => (
-                      <div key={payment.id} className="flex items-center justify-between p-3 rounded-md bg-muted">
-                        <div>
-                          <p className="font-medium">Paiement: ${payment.amount}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {payment.lease.property.title}
-                          </p>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant="outline">{payment.status}</Badge>
-                          <Button variant="ghost" size="icon">
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <PaymentsTab payments={payments} />
           </TabsContent>
 
           <TabsContent value="messages">
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-center">
-                  <CardTitle>Messages récents</CardTitle>
-                  <Button size="sm" onClick={() => navigate('/messages')}>
-                    Voir tout
-                  </Button>
-                </div>
-                <CardDescription>Vos dernières conversations</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {recentMessages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-48 text-center text-muted-foreground">
-                    <MessageCircle className="h-8 w-8 mb-2" />
-                    <p>Aucun message récent.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {recentMessages.map((message) => (
-                      <div key={message.id} className="flex items-center justify-between p-3 rounded-md bg-muted">
-                        <div>
-                          <p className="font-medium">{message.content}</p>
-                          <p className="text-sm text-muted-foreground">
-                            De: {message.sender.first_name} {message.sender.last_name}
-                          </p>
-                        </div>
-                        <Button variant="ghost" size="icon">
-                          <ArrowRight className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <MessagesTab messages={recentMessages} />
           </TabsContent>
         </Tabs>
       </div>
