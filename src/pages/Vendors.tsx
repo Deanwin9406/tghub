@@ -1,184 +1,168 @@
-
 import React, { useState } from 'react';
-import { Layout } from '@/components/Layout';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
+import Layout from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Star, MapPin, Phone, Mail, Search, Filter, CheckCircle, Clock } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { Star, MapPin, Phone, Mail, MessageCircle, Calendar, Briefcase, Building, Clock } from 'lucide-react';
 
 interface Vendor {
   id: string;
   name: string;
   category: string;
+  location: string;
   rating: number;
-  address: string;
-  phone: string;
-  email: string;
-  verified: boolean;
+  description: string;
+  contact: {
+    phone: string;
+    email: string;
+  };
+  availability: {
+    days: string[];
+    hours: string;
+  };
   image: string;
-  services: string[];
 }
 
 const mockVendors: Vendor[] = [
   {
     id: '1',
-    name: 'Elite Plumbing Solutions',
-    category: 'Plumbing',
-    rating: 4.8,
-    address: 'Accra, Ghana',
-    phone: '+233 20 123 4567',
-    email: 'contact@eliteplumbing.com',
-    verified: true,
-    image: 'https://images.unsplash.com/photo-1621905251189-08b45d6a269e?q=80&w=2069&auto=format&fit=crop',
-    services: ['Pipe Installation', 'Leak Repair', 'Drainage Solutions', 'Water Heater Service']
+    name: 'Bright Stars Electricians',
+    category: 'Electrician',
+    location: 'Accra, Ghana',
+    rating: 4.5,
+    description: 'Reliable and professional electricians for all your electrical needs.',
+    contact: {
+      phone: '+233 555 123 456',
+      email: 'info@brightstars.com'
+    },
+    availability: {
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
+      hours: '8:00 AM - 5:00 PM'
+    },
+    image: 'https://images.unsplash.com/photo-1621905244249-563b19458969?q=80&w=870&auto=format&fit=crop'
   },
   {
     id: '2',
-    name: 'GreenScape Gardens',
-    category: 'Landscaping',
-    rating: 4.6,
-    address: 'Tema, Ghana',
-    phone: '+233 24 987 6543',
-    email: 'info@greenscape.com',
-    verified: true,
-    image: 'https://images.unsplash.com/photo-1599685315640-4b2430af782c?q=80&w=2069&auto=format&fit=crop',
-    services: ['Garden Design', 'Lawn Maintenance', 'Irrigation Systems', 'Tree Trimming']
+    name: 'AquaFlow Plumbing Services',
+    category: 'Plumber',
+    location: 'Kumasi, Ghana',
+    rating: 4.2,
+    description: 'Expert plumbers providing top-notch plumbing services.',
+    contact: {
+      phone: '+233 200 987 654',
+      email: 'aqua@flow.com'
+    },
+    availability: {
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      hours: '9:00 AM - 6:00 PM'
+    },
+    image: 'https://images.unsplash.com/photo-1617838482403-48a924a8557f?q=80&w=870&auto=format&fit=crop'
   },
   {
     id: '3',
-    name: 'PowerTech Electricians',
-    category: 'Electrical',
-    rating: 4.9,
-    address: 'Kumasi, Ghana',
-    phone: '+233 27 345 6789',
-    email: 'service@powertech.com',
-    verified: true,
-    image: 'https://images.unsplash.com/photo-1621905252507-b35492cc74b4?q=80&w=2069&auto=format&fit=crop',
-    services: ['Wiring', 'Lighting Installation', 'Electrical Repairs', 'Safety Inspections']
-  },
-  {
-    id: '4',
-    name: 'Clean Sweep Services',
-    category: 'Cleaning',
-    rating: 4.5,
-    address: 'Accra, Ghana',
-    phone: '+233 23 456 7890',
-    email: 'bookings@cleansweep.com',
-    verified: false,
-    image: 'https://images.unsplash.com/photo-1581578731548-c64695cc6952?q=80&w=2070&auto=format&fit=crop',
-    services: ['Deep Cleaning', 'Regular Housekeeping', 'Move-in/out Cleaning', 'Office Cleaning']
-  },
-  {
-    id: '5',
-    name: 'SecureHome Systems',
-    category: 'Security',
-    rating: 4.7,
-    address: 'Takoradi, Ghana',
-    phone: '+233 26 789 0123',
-    email: 'info@securehome.com',
-    verified: true,
-    image: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=2070&auto=format&fit=crop',
-    services: ['CCTV Installation', 'Alarm Systems', 'Access Control', 'Security Consultation']
+    name: 'Supreme Painters',
+    category: 'Painter',
+    location: 'Takoradi, Ghana',
+    rating: 4.8,
+    description: 'Professional painting services to transform your space.',
+    contact: {
+      phone: '+233 244 333 111',
+      email: 'paint@supreme.com'
+    },
+    availability: {
+      days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
+      hours: '7:00 AM - 7:00 PM'
+    },
+    image: 'https://images.unsplash.com/photo-1574172269172-890559175891?q=80&w=870&auto=format&fit=crop'
   }
 ];
 
 const Vendors = () => {
-  const { toast } = useToast();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
+  const [activeTab, setActiveTab] = useState('all');
 
-  const filteredVendors = mockVendors.filter(vendor => {
-    const matchesSearch = 
-      vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      vendor.services.some(service => service.toLowerCase().includes(searchTerm.toLowerCase()));
-    
-    const matchesCategory = selectedCategory === 'all' || vendor.category === selectedCategory;
-    
-    return matchesSearch && matchesCategory;
-  });
-
-  const categories = ['all', ...Array.from(new Set(mockVendors.map(vendor => vendor.category)))];
-
-  const handleContactVendor = (vendorName: string) => {
-    toast({
-      title: "Contact Request Sent",
-      description: `Your request to contact ${vendorName} has been submitted.`,
-    });
-  };
+  const filteredVendors = mockVendors.filter(vendor => 
+    vendor.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    vendor.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    vendor.location.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <Layout>
       <div className="container mx-auto py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Property Vendors</h1>
+            <h1 className="text-3xl font-bold mb-2">Service Providers</h1>
             <p className="text-muted-foreground">Find trusted service providers for your property needs</p>
           </div>
-          <div className="w-full md:w-auto mt-4 md:mt-0">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search vendors or services..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full md:w-80"
-              />
+          <div className="mt-4 md:mt-0">
+            <Input
+              placeholder="Search vendors..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full md:w-80"
+            />
+          </div>
+        </div>
+
+        <Tabs defaultValue="all" onValueChange={setActiveTab} className="mb-8">
+          <TabsList>
+            <TabsTrigger value="all">All Services</TabsTrigger>
+            <TabsTrigger value="electrician">Electricians</TabsTrigger>
+            <TabsTrigger value="plumber">Plumbers</TabsTrigger>
+            <TabsTrigger value="painter">Painters</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="all" className="mt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredVendors.length > 0 ? (
+                filteredVendors.map((vendor) => (
+                  <VendorCard key={vendor.id} vendor={vendor} />
+                ))
+              ) : (
+                <div className="col-span-3 text-center py-8">
+                  <p className="text-muted-foreground">No service providers found matching your search.</p>
+                </div>
+              )}
             </div>
-          </div>
-        </div>
-
-        <div className="mb-8 overflow-x-auto">
-          <Tabs defaultValue="all" onValueChange={setSelectedCategory}>
-            <TabsList className="flex w-max">
-              {categories.map((category) => (
-                <TabsTrigger key={category} value={category} className="capitalize">
-                  {category}
-                </TabsTrigger>
+          </TabsContent>
+          
+          <TabsContent value="electrician">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredVendors.filter(v => v.category === 'Electrician').map(vendor => (
+                <VendorCard key={vendor.id} vendor={vendor} />
               ))}
-            </TabsList>
-          </Tabs>
-        </div>
-
-        {filteredVendors.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredVendors.map((vendor) => (
-              <VendorCard 
-                key={vendor.id} 
-                vendor={vendor} 
-                onContact={handleContactVendor} 
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-16">
-            <Filter className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Vendors Found</h3>
-            <p className="text-muted-foreground mb-4">
-              We couldn't find any vendors matching your criteria.
-            </p>
-            <Button variant="outline" onClick={() => {
-              setSearchTerm('');
-              setSelectedCategory('all');
-            }}>
-              Clear Filters
-            </Button>
-          </div>
-        )}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="plumber">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredVendors.filter(v => v.category === 'Plumber').map(vendor => (
+                <VendorCard key={vendor.id} vendor={vendor} />
+              ))}
+            </div>
+          </TabsContent>
+          
+          <TabsContent value="painter">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredVendors.filter(v => v.category === 'Painter').map(vendor => (
+                <VendorCard key={vendor.id} vendor={vendor} />
+              ))}
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </Layout>
   );
 };
 
-const VendorCard = ({ 
-  vendor, 
-  onContact 
-}: { 
-  vendor: Vendor, 
-  onContact: (name: string) => void 
-}) => {
+const VendorCard = ({ vendor }: { vendor: Vendor }) => {
+  const navigate = useNavigate();
+
   return (
     <Card className="overflow-hidden h-full flex flex-col">
       <div className="h-48 overflow-hidden">
@@ -188,52 +172,45 @@ const VendorCard = ({
           className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
         />
       </div>
-      <CardHeader className="pb-2">
-        <div className="flex justify-between items-start">
-          <div>
-            <CardTitle className="mb-1">{vendor.name}</CardTitle>
-            <CardDescription className="flex items-center">
-              <MapPin className="h-4 w-4 mr-1" /> {vendor.address}
-            </CardDescription>
-          </div>
-          <Badge variant={vendor.verified ? "default" : "outline"} className="flex items-center">
-            {vendor.verified ? <CheckCircle className="h-3 w-3 mr-1" /> : <Clock className="h-3 w-3 mr-1" />}
-            {vendor.verified ? 'Verified' : 'Pending'}
-          </Badge>
-        </div>
+      <CardHeader>
+        <CardTitle>{vendor.name}</CardTitle>
+        <CardDescription className="flex items-center">
+          <Briefcase className="h-4 w-4 mr-1" /> {vendor.category}
+        </CardDescription>
       </CardHeader>
       <CardContent className="flex-grow">
-        <div className="flex items-center mb-3">
-          <Badge variant="secondary" className="mr-2">{vendor.category}</Badge>
-          <div className="flex items-center text-amber-500">
-            <Star className="fill-current h-4 w-4" />
-            <span className="ml-1 text-sm font-medium">{vendor.rating}</span>
-          </div>
-        </div>
-        
-        <h4 className="text-sm font-semibold mb-2">Services offered:</h4>
-        <div className="flex flex-wrap gap-1 mb-3">
-          {vendor.services.map((service, index) => (
-            <span key={index} className="px-2 py-1 bg-muted text-xs rounded-md">
-              {service}
-            </span>
-          ))}
-        </div>
-        
-        <div className="space-y-1 text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground mb-4">{vendor.description}</p>
+        <div className="grid grid-cols-1 gap-2 text-sm">
           <div className="flex items-center">
-            <Phone className="h-4 w-4 mr-2" />
-            <span>{vendor.phone}</span>
+            <MapPin className="h-4 w-4 mr-1 text-muted-foreground" />
+            <span>{vendor.location}</span>
           </div>
           <div className="flex items-center">
-            <Mail className="h-4 w-4 mr-2" />
-            <span>{vendor.email}</span>
+            <Phone className="h-4 w-4 mr-1 text-muted-foreground" />
+            <span>{vendor.contact.phone}</span>
+          </div>
+          <div className="flex items-center">
+            <Mail className="h-4 w-4 mr-1 text-muted-foreground" />
+            <span>{vendor.contact.email}</span>
+          </div>
+          <div className="flex items-center">
+            <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
+            <span>{vendor.availability.days.join(', ')}</span>
+          </div>
+          <div className="flex items-center">
+            <Clock className="h-4 w-4 mr-1 text-muted-foreground" />
+            <span>{vendor.availability.hours}</span>
           </div>
         </div>
       </CardContent>
-      <CardFooter className="flex justify-between pt-2">
-        <Button variant="outline" className="w-full mr-2">View Profile</Button>
-        <Button className="w-full" onClick={() => onContact(vendor.name)}>Contact</Button>
+      <CardFooter className="flex justify-between">
+        <div className="flex items-center">
+          <Star className="h-4 w-4 mr-1 text-yellow-500" />
+          <span>{vendor.rating}</span>
+        </div>
+        <Button variant="outline" onClick={() => navigate('/contact-vendor')}>
+          Contact
+        </Button>
       </CardFooter>
     </Card>
   );

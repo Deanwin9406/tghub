@@ -15,6 +15,7 @@ import { Loader2, Send, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
+// Update the Contact type to match what the API returns
 type Contact = {
   id: string;
   first_name: string;
@@ -25,13 +26,15 @@ type Contact = {
   last_message_time: string;
 };
 
+// Update the Message type to match what the API returns
 type Message = {
   id: string;
   sender_id: string;
   recipient_id: string;
   content: string;
-  is_read: boolean;
   created_at: string;
+  read_at?: string | null;
+  status: 'sent' | 'delivered' | 'read';
 };
 
 const Messages = () => {
@@ -52,12 +55,28 @@ const Messages = () => {
     if (!user) return;
     
     try {
+      // Use a mock/fallback approach since the RPC function doesn't exist yet
+      // This is a temporary fix until the backend RPC is properly set up
       const { data, error } = await supabase
-        .rpc('get_message_contacts', { current_user_id: user.id });
+        .from('profiles')
+        .select('id, first_name, last_name, avatar_url')
+        .neq('id', user.id)
+        .limit(10);
       
       if (error) throw error;
       
-      setContacts(data || []);
+      // Transform the data to match Contact type
+      const contactsData: Contact[] = (data || []).map(profile => ({
+        id: profile.id,
+        first_name: profile.first_name || '',
+        last_name: profile.last_name || '',
+        avatar_url: profile.avatar_url,
+        unread_count: 0,
+        last_message: 'No messages yet',
+        last_message_time: new Date().toISOString()
+      }));
+      
+      setContacts(contactsData);
     } catch (error) {
       console.error('Error fetching contacts:', error);
       toast({
@@ -84,17 +103,18 @@ const Messages = () => {
       
       if (error) throw error;
       
-      setMessages(data || []);
+      // Cast the data to our Message type
+      setMessages((data || []) as Message[]);
       
-      // Mark messages as read
+      // Mark messages as read by updating status instead of is_read
       const unreadMessages = data?.filter(
-        (msg) => msg.recipient_id === user.id && !msg.is_read && msg.sender_id === contactId
+        (msg) => msg.recipient_id === user.id && msg.status !== 'read' && msg.sender_id === contactId
       );
       
       if (unreadMessages && unreadMessages.length > 0) {
         await supabase
           .from('messages')
-          .update({ is_read: true })
+          .update({ status: 'read', read_at: new Date().toISOString() })
           .in('id', unreadMessages.map(msg => msg.id));
         
         // Update contacts list to reflect read messages
@@ -125,6 +145,7 @@ const Messages = () => {
           sender_id: user.id,
           recipient_id: selectedContact.id,
           content: newMessage.trim(),
+          status: 'sent'
         });
       
       if (error) throw error;

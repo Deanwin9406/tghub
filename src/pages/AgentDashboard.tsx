@@ -1,6 +1,5 @@
-
 import { useState } from 'react';
-import { Layout } from '@/components/Layout';
+import Layout from '@/components/Layout';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useQuery } from '@tanstack/react-query';
@@ -26,7 +25,6 @@ const AgentDashboard = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('properties');
 
-  // Fetch agent properties
   const { data: agentProperties, isLoading: propertiesLoading } = useQuery({
     queryKey: ['agent-properties', user?.id],
     queryFn: async () => {
@@ -54,7 +52,6 @@ const AgentDashboard = () => {
     enabled: !!user,
   });
 
-  // Fetch viewings assigned to the agent
   const { data: viewings, isLoading: viewingsLoading } = useQuery({
     queryKey: ['agent-viewings', user?.id],
     queryFn: async () => {
@@ -84,7 +81,6 @@ const AgentDashboard = () => {
     enabled: !!user,
   });
 
-  // Fetch agent commissions
   const { data: commissions, isLoading: commissionsLoading } = useQuery({
     queryKey: ['agent-commissions', user?.id],
     queryFn: async () => {
@@ -113,12 +109,10 @@ const AgentDashboard = () => {
     enabled: !!user,
   });
 
-  // Calculate total commissions
   const totalCommissions = commissions?.reduce((acc, commission) => {
     return acc + Number(commission.amount);
   }, 0);
 
-  // Filter upcoming viewings (next 7 days)
   const upcomingViewings = viewings?.filter(viewing => {
     const viewingDate = new Date(viewing.viewing_date);
     const today = new Date();
@@ -127,13 +121,40 @@ const AgentDashboard = () => {
     return viewingDate >= today && viewingDate <= nextWeek;
   });
 
-  // Count properties by status
   const propertiesByStatus = agentProperties?.reduce((acc, { property }) => {
     if (property?.status) {
       acc[property.status] = (acc[property.status] || 0) + 1;
     }
     return acc;
   }, {} as Record<string, number>);
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status) {
+      case 'available':
+        return 'default';
+      case 'rented':
+        return 'secondary';
+      case 'sold':
+        return 'destructive';
+      case 'completed':
+        return 'secondary';
+      default:
+        return 'outline';
+    }
+  };
+
+  const renderViewingClientInfo = (client: any) => {
+    if (!client || (client as any).error) {
+      return <div>No client information</div>;
+    }
+    
+    return (
+      <>
+        <div>{client.first_name || ''} {client.last_name || ''}</div>
+        <div className="text-sm text-muted-foreground">{client.email || ''}</div>
+      </>
+    );
+  };
 
   return (
     <Layout>
@@ -150,7 +171,6 @@ const AgentDashboard = () => {
           </div>
         </div>
 
-        {/* Dashboard Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <Card>
             <CardContent className="pt-6">
@@ -203,7 +223,6 @@ const AgentDashboard = () => {
           </Card>
         </div>
 
-        {/* Main Content Tabs */}
         <Tabs defaultValue="properties" value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="mb-6">
             <TabsTrigger value="properties">
@@ -220,7 +239,6 @@ const AgentDashboard = () => {
             </TabsTrigger>
           </TabsList>
 
-          {/* Properties Tab */}
           <TabsContent value="properties">
             <Card>
               <CardHeader>
@@ -261,11 +279,7 @@ const AgentDashboard = () => {
                           </TableCell>
                           <TableCell>{item.property?.property_type}</TableCell>
                           <TableCell>
-                            <Badge variant={
-                              item.property?.status === 'available' ? 'default' :
-                              item.property?.status === 'rented' ? 'secondary' :
-                              item.property?.status === 'sold' ? 'destructive' : 'outline'
-                            }>
+                            <Badge variant={getStatusBadgeVariant(item.property?.status)}>
                               {item.property?.status}
                             </Badge>
                           </TableCell>
@@ -296,7 +310,6 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Viewings Tab */}
           <TabsContent value="viewings">
             <Card>
               <CardHeader>
@@ -335,19 +348,14 @@ const AgentDashboard = () => {
                             <div className="text-sm text-muted-foreground">{viewing.property?.address}</div>
                           </TableCell>
                           <TableCell>
-                            <div>{viewing.client?.first_name} {viewing.client?.last_name}</div>
-                            <div className="text-sm text-muted-foreground">{viewing.client?.email}</div>
+                            {renderViewingClientInfo(viewing.client)}
                           </TableCell>
                           <TableCell>
                             {new Date(viewing.viewing_date).toLocaleDateString()}, {' '}
                             {new Date(viewing.viewing_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </TableCell>
                           <TableCell>
-                            <Badge variant={
-                              viewing.status === 'scheduled' ? 'default' :
-                              viewing.status === 'completed' ? 'success' :
-                              viewing.status === 'cancelled' ? 'destructive' : 'outline'
-                            }>
+                            <Badge variant={getStatusBadgeVariant(viewing.status)}>
                               {viewing.status}
                             </Badge>
                           </TableCell>
@@ -377,7 +385,6 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Commissions Tab */}
           <TabsContent value="commissions">
             <Card>
               <CardHeader>
@@ -417,10 +424,7 @@ const AgentDashboard = () => {
                           <TableCell>{new Date(commission.transaction_date).toLocaleDateString()}</TableCell>
                           <TableCell className="font-medium">${Number(commission.amount).toLocaleString()}</TableCell>
                           <TableCell>
-                            <Badge variant={
-                              commission.status === 'paid' ? 'success' :
-                              commission.status === 'pending' ? 'default' : 'outline'
-                            }>
+                            <Badge variant={getStatusBadgeVariant(commission.status)}>
                               {commission.status}
                             </Badge>
                           </TableCell>
@@ -433,7 +437,6 @@ const AgentDashboard = () => {
             </Card>
           </TabsContent>
 
-          {/* Clients Tab */}
           <TabsContent value="clients">
             <Card>
               <CardHeader>
@@ -444,7 +447,6 @@ const AgentDashboard = () => {
                 <CardDescription>Manage your clients and track interactions</CardDescription>
               </CardHeader>
               <CardContent>
-                {/* Client management will be implemented in the next phase */}
                 <div className="flex flex-col items-center justify-center p-8 text-center">
                   <Users className="h-12 w-12 text-muted-foreground mb-4" />
                   <h3 className="text-lg font-medium">Client Management Coming Soon</h3>
