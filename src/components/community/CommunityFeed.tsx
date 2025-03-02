@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { getCommunityPosts, createCommunityPost } from '@/services/communityService';
+import { getCommunityPosts, createCommunityPost } from '@/services/community';
 import { CommunityPost } from '@/types/community';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
