@@ -389,6 +389,50 @@ export type Database = {
           },
         ]
       }
+      management_requests: {
+        Row: {
+          commission_percentage: number
+          created_at: string
+          id: string
+          message: string
+          property_id: string
+          recipient_id: string
+          requester_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          commission_percentage?: number
+          created_at?: string
+          id?: string
+          message: string
+          property_id: string
+          recipient_id: string
+          requester_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          commission_percentage?: number
+          created_at?: string
+          id?: string
+          message?: string
+          property_id?: string
+          recipient_id?: string
+          requester_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "management_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           content: string
@@ -764,7 +808,7 @@ export type Database = {
         | "office"
         | "land"
         | "other"
-      user_role: "tenant" | "landlord" | "agent" | "admin"
+      user_role: "tenant" | "landlord" | "agent" | "admin" | "manager"
     }
     CompositeTypes: {
       [_ in never]: never
