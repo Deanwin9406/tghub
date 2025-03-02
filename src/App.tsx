@@ -12,6 +12,16 @@ import KycVerification from './pages/KycVerification';
 import Communities from './pages/Communities';
 import CommunityDetails from './pages/CommunityDetails';
 import Favorites from './pages/Favorites';
+import Dashboard from './pages/Dashboard';
+import PropertyDetails from './pages/PropertyDetails';
+import Search from './pages/Search';
+import Agents from './pages/Agents';
+import Vendors from './pages/Vendors';
+import AgentProfile from './pages/AgentProfile';
+import AddProperty from './pages/AddProperty';
+import PropertyManagement from './pages/PropertyManagement';
+import EditProperty from './pages/EditProperty';
+import NotFound from './pages/NotFound';
 
 function App() {
   return (
@@ -33,6 +43,16 @@ function App() {
                 <Route path="/communities" element={<Communities />} />
                 <Route path="/communities/:id" element={<CommunityDetails />} />
                 <Route path="/favorites" element={<Favorites />} />
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/property/:id" element={<PropertyDetails />} />
+                <Route path="/search" element={<Search />} />
+                <Route path="/agents" element={<Agents />} />
+                <Route path="/agents/:id" element={<AgentProfile />} />
+                <Route path="/vendors" element={<Vendors />} />
+                <Route path="/add-property" element={<AddProperty />} />
+                <Route path="/property-management" element={<PropertyManagement />} />
+                <Route path="/property/edit/:id" element={<EditProperty />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </Router>
           </FavoritesProvider>
