@@ -111,8 +111,8 @@ const CommunityFeed = ({ communityId }: CommunityFeedProps) => {
           <CardContent className="pt-6">
             <div className="flex gap-3">
               <Avatar>
-                <AvatarImage src={user.avatar_url || undefined} alt={user.first_name || "User"} />
-                <AvatarFallback>{getInitials(user.first_name, user.last_name)}</AvatarFallback>
+                <AvatarImage src={user.user_metadata?.avatar_url || undefined} alt={user.user_metadata?.first_name || "User"} />
+                <AvatarFallback>{getInitials(user.user_metadata?.first_name, user.user_metadata?.last_name)}</AvatarFallback>
               </Avatar>
               <div className="flex-1">
                 <Textarea
