@@ -13,6 +13,7 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }: AuthGuardProps) => {
   const location = useLocation();
 
   console.log("AuthGuard checking session:", session ? "logged in" : "not logged in");
+  console.log("Current path:", location.pathname);
 
   if (isLoading) {
     return (
@@ -26,8 +27,8 @@ const AuthGuard: React.FC<AuthGuardProps> = ({ children }: AuthGuardProps) => {
     // Show a toast notification that login is required
     toast.error("Connectez-vous pour accéder à cette page");
     
-    // Redirect to the login page, but save the current location
-    return <Navigate to="/auth" state={{ from: location }} replace />;
+    // Redirect to the home page, but save the current location
+    return <Navigate to="/" state={{ from: location }} replace />;
   }
 
   return <>{children || <Outlet />}</>;

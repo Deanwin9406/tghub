@@ -7,7 +7,6 @@ import { ComparisonProvider } from "@/contexts/ComparisonContext";
 import { FavoritesProvider } from "@/contexts/FavoritesContext";
 import AuthGuard from '@/components/AuthGuard';
 import Index from './pages/Index';
-import Auth from './pages/Auth';
 import Profile from './pages/Profile';
 import KycVerification from './pages/KycVerification';
 import Communities from './pages/Communities';
@@ -39,7 +38,6 @@ function App() {
               <Routes>
                 {/* Public routes */}
                 <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
                 <Route path="/communities" element={<Communities />} />
                 <Route path="/communities/:id" element={<CommunityDetails />} />
                 <Route path="/search" element={<Search />} />
