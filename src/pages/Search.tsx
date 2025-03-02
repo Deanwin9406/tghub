@@ -28,6 +28,7 @@ interface PropertyType {
   main_image_url: string | null;
   status: string;
   description: string;
+  // Add these properties to match your interface
   square_footage: number;
   year_built: number;
   amenities: string[];
@@ -50,6 +51,7 @@ const Search = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [mapError, setMapError] = useState<string | null>(null);
   const { toast } = useToast();
   
   console.log("Search page loaded");
@@ -94,8 +96,10 @@ const Search = () => {
       })) as PropertyType[];
 
       setProperties(formattedProperties);
+      console.log("Formatted properties:", formattedProperties);
     } catch (error) {
       console.error('Error fetching properties:', error);
+      setMapError("Failed to load properties data");
     } finally {
       setLoading(false);
     }
@@ -171,6 +175,8 @@ const Search = () => {
     currency: 'XOF',
     type: property.property_type
   }));
+
+  console.log("Map properties:", mapProperties);
 
   return (
     <Layout>

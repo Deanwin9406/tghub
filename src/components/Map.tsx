@@ -42,17 +42,21 @@ const Map = ({
   const [mapLoaded, setMapLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  console.log("Map properties received:", properties);
+  console.log("Map center:", center, "zoom:", zoom);
+
   useEffect(() => {
     if (!mapContainer.current) return;
 
     try {
+      console.log("Initializing map");
       // Initialize map
       map.current = new mapboxgl.Map({
         container: mapContainer.current,
         style: 'mapbox://styles/mapbox/streets-v11',
-        center,
-        zoom,
-        interactive
+        center: center,
+        zoom: zoom,
+        interactive: interactive
       });
 
       // Add navigation controls if interactive
@@ -66,11 +70,15 @@ const Map = ({
       }
 
       map.current.on('load', () => {
+        console.log("Map loaded");
         setMapLoaded(true);
       });
 
       return () => {
-        map.current?.remove();
+        if (map.current) {
+          console.log("Removing map");
+          map.current.remove();
+        }
       };
     } catch (err) {
       console.error('Error initializing map:', err);
@@ -80,7 +88,17 @@ const Map = ({
 
   // Add markers when properties change or when map is loaded
   useEffect(() => {
-    if (!map.current || !mapLoaded || properties.length === 0) return;
+    if (!map.current || !mapLoaded) {
+      console.log("Map or mapLoaded not ready yet");
+      return;
+    }
+    
+    if (properties.length === 0) {
+      console.log("No properties to show on map");
+      return;
+    }
+
+    console.log("Adding markers to map");
 
     // Clear existing markers
     const markers = document.getElementsByClassName('mapboxgl-marker');
@@ -90,7 +108,12 @@ const Map = ({
 
     // Add new markers
     properties.forEach((property) => {
-      if (!property.latitude || !property.longitude) return;
+      if (!property.latitude || !property.longitude) {
+        console.log("Property missing coordinates:", property);
+        return;
+      }
+
+      console.log("Adding marker at:", property.longitude, property.latitude);
 
       const el = document.createElement('div');
       el.className = 'marker';
@@ -110,10 +133,14 @@ const Map = ({
       );
 
       // Add marker to map
-      new mapboxgl.Marker(el)
-        .setLngLat([property.longitude, property.latitude])
-        .setPopup(popup)
-        .addTo(map.current!);
+      try {
+        new mapboxgl.Marker(el)
+          .setLngLat([property.longitude, property.latitude])
+          .setPopup(popup)
+          .addTo(map.current!);
+      } catch (err) {
+        console.error("Error adding marker:", err);
+      }
 
       // Add click handler if provided
       if (onPropertyClick) {
@@ -125,13 +152,17 @@ const Map = ({
 
     // Fit bounds if multiple properties
     if (properties.length > 1) {
-      const bounds = new mapboxgl.LngLatBounds();
-      properties.forEach(property => {
-        if (property.latitude && property.longitude) {
-          bounds.extend([property.longitude, property.latitude]);
-        }
-      });
-      map.current.fitBounds(bounds, { padding: 50 });
+      try {
+        const bounds = new mapboxgl.LngLatBounds();
+        properties.forEach(property => {
+          if (property.latitude && property.longitude) {
+            bounds.extend([property.longitude, property.latitude]);
+          }
+        });
+        map.current.fitBounds(bounds, { padding: 50 });
+      } catch (err) {
+        console.error("Error fitting bounds:", err);
+      }
     }
   }, [properties, mapLoaded, onPropertyClick]);
 
