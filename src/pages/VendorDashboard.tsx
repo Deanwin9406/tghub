@@ -1,114 +1,105 @@
 
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import StatCard from '@/components/dashboard/StatCard';
 import { useToast } from '@/hooks/use-toast';
-import { Clock, MessageCircle, Calendar, Briefcase, CheckCircle, DollarSign, Clock4 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import VendorServiceRequestsTab from '@/components/vendor/VendorServiceRequestsTab';
-import VendorAppointmentsTab from '@/components/vendor/VendorAppointmentsTab';
-import VendorMessagesTab from '@/components/vendor/VendorMessagesTab';
+import { Loader2, BriefcaseBusiness, ClipboardCheck, MessageSquare, Calendar } from 'lucide-react';
 import VendorProfileForm from '@/components/vendor/VendorProfileForm';
+import VendorServiceRequestsTab from '@/components/vendor/VendorServiceRequestsTab';
+import VendorMessagesTab from '@/components/vendor/VendorMessagesTab';
+import VendorAppointmentsTab from '@/components/vendor/VendorAppointmentsTab';
+import { useNavigate } from 'react-router-dom';
+
+interface VendorProfile {
+  id: string;
+  business_name: string;
+  description: string | null;
+  services_offered: string[];
+}
 
 const VendorDashboard = () => {
-  const navigate = useNavigate();
   const { user } = useAuth();
   const { toast } = useToast();
-  const [stats, setStats] = useState({
-    pendingRequests: 0,
-    upcomingAppointments: 0,
-    totalProposals: 0,
-    proposalAcceptanceRate: 0
-  });
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [profileComplete, setProfileComplete] = useState(false);
-  const [activeTab, setActiveTab] = useState('requests');
+  const [vendorProfile, setVendorProfile] = useState<VendorProfile | null>(null);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [stats, setStats] = useState({
+    openRequests: 0,
+    activeAppointments: 0,
+    pendingProposals: 0
+  });
 
   useEffect(() => {
     if (user) {
-      checkProfileStatus();
-      fetchDashboardStats();
+      fetchVendorData();
     }
   }, [user]);
 
-  const checkProfileStatus = async () => {
+  const fetchVendorData = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true);
+      
+      // Fetch vendor profile
+      const { data: profileData, error: profileError } = await supabase
         .from('vendor_profiles')
         .select('*')
         .eq('id', user?.id)
         .single();
+        
+      if (profileError && profileError.code !== 'PGRST116') {
+        throw profileError;
+      }
       
-      if (error) throw error;
+      if (profileData) {
+        setVendorProfile({
+          id: profileData.id,
+          business_name: profileData.business_name,
+          description: profileData.description,
+          services_offered: profileData.services_offered
+        });
+      }
       
-      // Check if profile has essential fields completed
-      setProfileComplete(!!data && 
-        !!data.business_name && 
-        !!data.description && 
-        data.services_offered.length > 0);
-      
-    } catch (error) {
-      console.error('Error checking vendor profile:', error);
-      setProfileComplete(false);
-    }
-  };
-
-  const fetchDashboardStats = async () => {
-    setLoading(true);
-    try {
-      // Get count of open service requests
-      const { count: pendingRequestsCount, error: pendingError } = await supabase
+      // Get open service requests
+      const { data: requestsData, error: requestsError } = await supabase
         .from('service_requests')
-        .select('*', { count: 'exact', head: true })
+        .select('*')
         .eq('status', 'open');
+        
+      if (requestsError) throw requestsError;
       
-      if (pendingError) throw pendingError;
-      
-      // Get count of upcoming appointments
-      const { count: appointmentsCount, error: appointmentsError } = await supabase
+      // Get upcoming appointments
+      const { data: appointmentsData, error: appointmentsError } = await supabase
         .from('service_appointments')
-        .select('*', { count: 'exact', head: true })
-        .eq('vendor_id', user?.id)
-        .eq('status', 'scheduled')
-        .gte('appointment_date', new Date().toISOString());
-      
+        .select('*')
+        .eq('vendor_id', user!.id)
+        .eq('status', 'scheduled');
+        
       if (appointmentsError) throw appointmentsError;
       
-      // Get total proposals and accepted proposals
+      // Get pending proposals
       const { data: proposalsData, error: proposalsError } = await supabase
         .from('service_proposals')
-        .select('status')
-        .eq('vendor_id', user?.id);
-      
+        .select('*')
+        .eq('vendor_id', user!.id)
+        .eq('status', 'pending');
+        
       if (proposalsError) throw proposalsError;
       
-      const totalProposals = proposalsData?.length || 0;
-      const acceptedProposals = proposalsData?.filter(p => p.status === 'accepted').length || 0;
-      const acceptanceRate = totalProposals > 0 
-        ? Math.round((acceptedProposals / totalProposals) * 100) 
-        : 0;
-      
       setStats({
-        pendingRequests: pendingRequestsCount || 0,
-        upcomingAppointments: appointmentsCount || 0,
-        totalProposals: totalProposals,
-        proposalAcceptanceRate: acceptanceRate
+        openRequests: requestsData?.length || 0,
+        activeAppointments: appointmentsData?.length || 0,
+        pendingProposals: proposalsData?.length || 0
       });
-      
     } catch (error) {
-      console.error('Error fetching vendor dashboard stats:', error);
+      console.error('Error fetching vendor data:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load dashboard statistics',
+        title: 'Erreur',
+        description: 'Impossible de charger les données du tableau de bord',
         variant: 'destructive',
       });
     } finally {
@@ -118,96 +109,117 @@ const VendorDashboard = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto py-8">
-        <h1 className="text-3xl font-bold mb-6">Vendor Dashboard</h1>
-        
-        {!profileComplete && (
-          <Card className="mb-6 border-yellow-300 bg-yellow-50 dark:bg-yellow-950/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg font-semibold">Complete Your Profile</CardTitle>
+      <div className="container mx-auto py-12 px-4 md:px-6">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+          <h1 className="text-3xl font-bold">Tableau de bord Prestataire</h1>
+          <Button variant="outline" onClick={() => fetchVendorData()}>
+            Actualiser
+          </Button>
+        </div>
+
+        {loading ? (
+          <div className="flex justify-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          </div>
+        ) : !vendorProfile ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Complétez votre profil</CardTitle>
               <CardDescription>
-                Complete your vendor profile to start receiving service requests and appointments
+                Avant de commencer, vous devez configurer votre profil de prestataire.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <VendorProfileForm onComplete={() => setProfileComplete(true)} />
+              <VendorProfileForm />
             </CardContent>
           </Card>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Demandes de services
+                  </CardTitle>
+                  <BriefcaseBusiness className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.openRequests}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Demandes ouvertes disponibles
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Propositions en attente
+                  </CardTitle>
+                  <ClipboardCheck className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.pendingProposals}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Propositions en attente de réponse
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    Rendez-vous à venir
+                  </CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{stats.activeAppointments}</div>
+                  <p className="text-xs text-muted-foreground">
+                    Rendez-vous programmés
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Tabs
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="space-y-4"
+            >
+              <TabsList className="grid grid-cols-2 md:grid-cols-4 w-full md:w-auto">
+                <TabsTrigger value="overview">Aperçu</TabsTrigger>
+                <TabsTrigger value="requests">Demandes</TabsTrigger>
+                <TabsTrigger value="appointments">Rendez-vous</TabsTrigger>
+                <TabsTrigger value="messages">Messages</TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="overview" className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Mon profil prestataire</CardTitle>
+                    <CardDescription>
+                      {vendorProfile.business_name}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <VendorProfileForm />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+              
+              <TabsContent value="requests">
+                <VendorServiceRequestsTab />
+              </TabsContent>
+              
+              <TabsContent value="appointments">
+                <VendorAppointmentsTab />
+              </TabsContent>
+              
+              <TabsContent value="messages">
+                <VendorMessagesTab />
+              </TabsContent>
+            </Tabs>
+          </>
         )}
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <StatCard 
-            title="Open Requests" 
-            value={stats.pendingRequests.toString()} 
-            description="Available service requests" 
-            icon={Briefcase} 
-          />
-          <StatCard 
-            title="Upcoming Appointments" 
-            value={stats.upcomingAppointments.toString()} 
-            description="Scheduled appointments" 
-            icon={Calendar} 
-          />
-          <StatCard 
-            title="Your Proposals" 
-            value={stats.totalProposals.toString()} 
-            description="Total proposals sent" 
-            icon={CheckCircle} 
-          />
-          <StatCard 
-            title="Acceptance Rate" 
-            value={`${stats.proposalAcceptanceRate}%`} 
-            description="Proposal success rate" 
-            icon={DollarSign} 
-          />
-        </div>
-        
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid grid-cols-4 gap-4 h-auto">
-            <TabsTrigger value="requests" className="py-2">
-              <Briefcase className="mr-2 h-4 w-4" />
-              <span>Service Requests</span>
-            </TabsTrigger>
-            <TabsTrigger value="appointments" className="py-2">
-              <Calendar className="mr-2 h-4 w-4" />
-              <span>Appointments</span>
-            </TabsTrigger>
-            <TabsTrigger value="messages" className="py-2">
-              <MessageCircle className="mr-2 h-4 w-4" />
-              <span>Messages</span>
-            </TabsTrigger>
-            <TabsTrigger value="profile" className="py-2">
-              <Briefcase className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-            </TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="requests" className="space-y-4">
-            <VendorServiceRequestsTab />
-          </TabsContent>
-          
-          <TabsContent value="appointments" className="space-y-4">
-            <VendorAppointmentsTab />
-          </TabsContent>
-          
-          <TabsContent value="messages" className="space-y-4">
-            <VendorMessagesTab />
-          </TabsContent>
-          
-          <TabsContent value="profile" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Vendor Profile</CardTitle>
-                <CardDescription>
-                  Manage your vendor information, services, and availability
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <VendorProfileForm />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
       </div>
     </Layout>
   );

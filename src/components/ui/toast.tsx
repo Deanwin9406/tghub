@@ -17,17 +17,17 @@ export const toast = (props: ToastProps) => {
   const { title, description, variant, ...rest } = props;
   
   // Map variant to sonner's style options
-  const style = variant === "destructive" ? { style: "destructive" } : {};
+  const toastStyle = variant === "destructive" ? { style: { backgroundColor: 'var(--destructive)', color: 'var(--destructive-foreground)' } } : {};
   
   if (title) {
     return toastFunction(title, {
       description,
-      ...style,
+      ...toastStyle,
       ...rest,
     });
   } else {
     return toastFunction(description || "", {
-      ...style,
+      ...toastStyle,
       ...rest,
     });
   }

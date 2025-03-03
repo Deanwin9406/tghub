@@ -1,52 +1,68 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { LogOut, User, Settings } from 'lucide-react';
-import { getInitials } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { User } from '@supabase/supabase-js';
 
-interface UserMenuProps {
-  user: any;
-  onSignOut: () => void;
+export interface UserMenuProps {
+  user: User;
+  onSignOut: () => Promise<void>;
+  isVendor?: boolean;
 }
 
-const UserMenu = ({ user, onSignOut }: UserMenuProps) => {
+const UserMenu = ({ user, onSignOut, isVendor = false }: UserMenuProps) => {
+  const navigate = useNavigate();
+  const email = user?.email || '';
+  const initial = email.charAt(0).toUpperCase();
+
+  const handleSignOut = async () => {
+    await onSignOut();
+    navigate('/');
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-8 w-8 p-0">
+        <Button variant="ghost" className="relative h-8 w-8 rounded-full">
           <Avatar className="h-8 w-8">
-            <AvatarImage src={user?.user_metadata?.avatar_url as string} alt={user?.user_metadata?.full_name as string} />
-            <AvatarFallback>{getInitials(user?.user_metadata?.full_name as string)}</AvatarFallback>
+            <AvatarImage src="" alt={email} />
+            <AvatarFallback>{initial}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
-        <DropdownMenuLabel>Mon Compte</DropdownMenuLabel>
-        <DropdownMenuItem>
-          <Link to="/profile" className="flex items-center w-full">
-            <User className="h-4 w-4 mr-2" />
-            Profil
-          </Link>
-        </DropdownMenuItem>
-        <DropdownMenuItem>
-          <Link to="/settings" className="flex items-center w-full">
-            <Settings className="h-4 w-4 mr-2" />
-            Paramètres
-          </Link>
-        </DropdownMenuItem>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">Mon compte</p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {email}
+            </p>
+          </div>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={onSignOut}>
-          <LogOut className="h-4 w-4 mr-2" />
+        <DropdownMenuItem asChild>
+          <Link to="/profile">Profil</Link>
+        </DropdownMenuItem>
+        {isVendor ? (
+          <DropdownMenuItem asChild>
+            <Link to="/vendor-dashboard">Tableau de bord</Link>
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem asChild>
+            <Link to="/dashboard">Tableau de bord</Link>
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleSignOut}>
           Se déconnecter
         </DropdownMenuItem>
       </DropdownMenuContent>

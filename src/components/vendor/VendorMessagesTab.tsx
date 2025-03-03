@@ -1,47 +1,49 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { format, formatDistanceToNow } from 'date-fns';
-import { MessageCircle, Search, Send } from 'lucide-react';
-
-interface MessageContact {
-  id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  avatar_url: string;
-  last_message: string;
-  last_message_date: string;
-  unread_count: number;
-}
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Loader2, Send, User } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Message {
   id: string;
-  content: string;
-  created_at: string;
   sender_id: string;
   recipient_id: string;
+  content: string;
+  created_at: string;
   read_at: string | null;
+  status: 'sent' | 'delivered' | 'read';
+  sender?: {
+    first_name: string;
+    last_name: string;
+    avatar_url: string | null;
+  };
+}
+
+interface Contact {
+  id: string;
+  first_name: string;
+  last_name: string;
+  avatar_url: string | null;
+  last_message: string;
+  last_message_time: string;
+  unread_count: number;
 }
 
 const VendorMessagesTab = () => {
   const { user } = useAuth();
-  const [contacts, setContacts] = useState<MessageContact[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedContact, setSelectedContact] = useState<MessageContact | null>(null);
-  const [messageText, setMessageText] = useState('');
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [sendingMessage, setSendingMessage] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [sending, setSending] = useState(false);
+  const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [newMessage, setNewMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -53,7 +55,6 @@ const VendorMessagesTab = () => {
   useEffect(() => {
     if (selectedContact) {
       fetchMessages(selectedContact.id);
-      markMessagesAsRead(selectedContact.id);
     }
   }, [selectedContact]);
 
@@ -62,92 +63,92 @@ const VendorMessagesTab = () => {
   }, [messages]);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const fetchContacts = async () => {
-    if (!user) return;
-    
     try {
       setLoading(true);
-      
-      // This query gets unique users who have sent messages to or received messages from the current user
-      const { data: messageParticipants, error } = await supabase
+      if (!user) return;
+
+      // Get all conversations where the user is involved
+      const { data: sentMessages, error: sentError } = await supabase
         .from('messages')
-        .select('sender_id, recipient_id, content, created_at')
-        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .select('recipient_id, content, created_at')
+        .eq('sender_id', user.id)
         .order('created_at', { ascending: false });
+
+      const { data: receivedMessages, error: receivedError } = await supabase
+        .from('messages')
+        .select('sender_id, content, created_at, read_at')
+        .eq('recipient_id', user.id)
+        .order('created_at', { ascending: false });
+
+      if (sentError || receivedError) throw sentError || receivedError;
+
+      // Combine the lists to find unique contacts
+      const contactMap = new Map<string, Contact>();
       
-      if (error) throw error;
-      
-      // Extract unique user IDs from messages
-      const uniqueUserIds = new Set<string>();
-      messageParticipants?.forEach(msg => {
-        if (msg.sender_id !== user.id) uniqueUserIds.add(msg.sender_id);
-        if (msg.recipient_id !== user.id) uniqueUserIds.add(msg.recipient_id);
-      });
-      
-      if (uniqueUserIds.size === 0) {
-        setContacts([]);
-        setLoading(false);
-        return;
+      // Process received messages (from others to user)
+      if (receivedMessages) {
+        for (const msg of receivedMessages) {
+          if (!contactMap.has(msg.sender_id)) {
+            // Fetch the contact's profile
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('first_name, last_name, avatar_url')
+              .eq('id', msg.sender_id)
+              .single();
+              
+            contactMap.set(msg.sender_id, {
+              id: msg.sender_id,
+              first_name: profile?.first_name || 'Unknown',
+              last_name: profile?.last_name || 'User',
+              avatar_url: profile?.avatar_url || null,
+              last_message: msg.content,
+              last_message_time: msg.created_at,
+              unread_count: msg.read_at ? 0 : 1
+            });
+          }
+        }
       }
       
-      // Get profile details for these users
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, email, avatar_url')
-        .in('id', Array.from(uniqueUserIds));
-      
-      if (profilesError) throw profilesError;
-      
-      // Get unread message counts
-      const { data: unreadCounts, error: unreadError } = await supabase
-        .from('messages')
-        .select('sender_id, count(*)')
-        .eq('recipient_id', user.id)
-        .is('read_at', null)
-        .group('sender_id');
-      
-      if (unreadError) throw unreadError;
-      
-      // Create a map of user IDs to unread counts
-      const unreadCountMap = new Map<string, number>();
-      unreadCounts?.forEach(item => {
-        unreadCountMap.set(item.sender_id, parseInt(item.count));
-      });
-      
-      // Create contact objects with last message info
-      const contactsWithLastMessage = profiles?.map(profile => {
-        // Find the most recent message for this contact
-        const lastMessage = messageParticipants?.find(msg => 
-          msg.sender_id === profile.id || msg.recipient_id === profile.id
-        );
-        
-        return {
-          id: profile.id,
-          first_name: profile.first_name || 'Unknown',
-          last_name: profile.last_name || 'User',
-          email: profile.email || '',
-          avatar_url: profile.avatar_url || '',
-          last_message: lastMessage?.content || 'No messages yet',
-          last_message_date: lastMessage?.created_at || new Date().toISOString(),
-          unread_count: unreadCountMap.get(profile.id) || 0
-        };
-      });
-      
-      // Sort contacts by last message date
-      contactsWithLastMessage?.sort((a, b) => 
-        new Date(b.last_message_date).getTime() - new Date(a.last_message_date).getTime()
+      // Process sent messages (from user to others)
+      if (sentMessages) {
+        for (const msg of sentMessages) {
+          if (!contactMap.has(msg.recipient_id)) {
+            // Fetch the contact's profile
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('first_name, last_name, avatar_url')
+              .eq('id', msg.recipient_id)
+              .single();
+              
+            contactMap.set(msg.recipient_id, {
+              id: msg.recipient_id,
+              first_name: profile?.first_name || 'Unknown',
+              last_name: profile?.last_name || 'User',
+              avatar_url: profile?.avatar_url || null,
+              last_message: msg.content,
+              last_message_time: msg.created_at,
+              unread_count: 0
+            });
+          }
+        }
+      }
+
+      // Convert map to array and sort by last message time
+      const contactArray = Array.from(contactMap.values());
+      contactArray.sort((a, b) => 
+        new Date(b.last_message_time).getTime() - new Date(a.last_message_time).getTime()
       );
       
-      setContacts(contactsWithLastMessage || []);
-      
+      setContacts(contactArray);
     } catch (error) {
       console.error('Error fetching contacts:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load message contacts',
+        title: 'Erreur',
+        description: 'Impossible de charger vos contacts',
         variant: 'destructive',
       });
     } finally {
@@ -156,285 +157,275 @@ const VendorMessagesTab = () => {
   };
 
   const fetchMessages = async (contactId: string) => {
-    if (!user || !contactId) return;
-    
     try {
+      if (!user) return;
+      
+      // Get all messages between the user and the selected contact
       const { data, error } = await supabase
         .from('messages')
-        .select('*')
-        .or(`and(sender_id.eq.${user.id},recipient_id.eq.${contactId}),and(sender_id.eq.${contactId},recipient_id.eq.${user.id})`)
+        .select(`
+          id,
+          sender_id,
+          recipient_id,
+          content,
+          created_at,
+          read_at,
+          status
+        `)
+        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
+        .or(`sender_id.eq.${contactId},recipient_id.eq.${contactId}`)
         .order('created_at', { ascending: true });
-      
+        
       if (error) throw error;
       
-      setMessages(data || []);
+      // Filter to only include messages between these two users
+      const filteredMessages = data.filter(msg => 
+        (msg.sender_id === user.id && msg.recipient_id === contactId) || 
+        (msg.sender_id === contactId && msg.recipient_id === user.id)
+      );
       
+      // Mark unread messages as read
+      const unreadMessages = filteredMessages.filter(
+        msg => msg.recipient_id === user.id && !msg.read_at
+      );
+      
+      if (unreadMessages.length > 0) {
+        const unreadIds = unreadMessages.map(msg => msg.id);
+        
+        await supabase
+          .from('messages')
+          .update({ 
+            read_at: new Date().toISOString(),
+            status: 'read' as 'sent' | 'delivered' | 'read'
+          })
+          .in('id', unreadIds);
+          
+        // Update the unread count for the selected contact
+        setContacts(contacts.map(contact => 
+          contact.id === contactId 
+            ? { ...contact, unread_count: 0 }
+            : contact
+        ));
+      }
+      
+      setMessages(filteredMessages as Message[]);
     } catch (error) {
       console.error('Error fetching messages:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load messages',
+        title: 'Erreur',
+        description: 'Impossible de charger les messages',
         variant: 'destructive',
       });
-    }
-  };
-
-  const markMessagesAsRead = async (senderId: string) => {
-    if (!user) return;
-    
-    try {
-      const { error } = await supabase
-        .from('messages')
-        .update({ read_at: new Date().toISOString() })
-        .eq('sender_id', senderId)
-        .eq('recipient_id', user.id)
-        .is('read_at', null);
-      
-      if (error) throw error;
-      
-      // Update the unread count in the contacts list
-      setContacts(prev => prev.map(contact => 
-        contact.id === senderId ? { ...contact, unread_count: 0 } : contact
-      ));
-      
-    } catch (error) {
-      console.error('Error marking messages as read:', error);
     }
   };
 
   const sendMessage = async () => {
-    if (!user || !selectedContact || !messageText.trim()) return;
+    if (!user || !selectedContact || !newMessage.trim()) return;
     
     try {
-      setSendingMessage(true);
+      setSending(true);
       
-      const newMessage = {
+      const messageData = {
         sender_id: user.id,
         recipient_id: selectedContact.id,
-        content: messageText.trim(),
+        content: newMessage,
         created_at: new Date().toISOString(),
         status: 'sent'
       };
       
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('messages')
-        .insert(newMessage)
-        .select();
-      
+        .insert({
+          sender_id: messageData.sender_id,
+          recipient_id: messageData.recipient_id,
+          content: messageData.content,
+          status: messageData.status as 'sent' | 'delivered' | 'read'
+        });
+        
       if (error) throw error;
       
-      // Add the new message to the messages list
-      if (data && data[0]) {
-        setMessages(prev => [...prev, data[0]]);
-      }
+      // Update local messages
+      setMessages([...messages, messageData as Message]);
       
-      // Update the contact's last message
-      setContacts(prev => prev.map(contact => 
-        contact.id === selectedContact.id ? { 
-          ...contact, 
-          last_message: messageText.trim(),
-          last_message_date: new Date().toISOString()
-        } : contact
+      // Update the last message in contacts
+      setContacts(contacts.map(contact => 
+        contact.id === selectedContact.id 
+          ? { 
+              ...contact, 
+              last_message: newMessage,
+              last_message_time: new Date().toISOString()
+            }
+          : contact
       ));
       
-      // Clear the message input
-      setMessageText('');
-      
+      setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to send message',
+        title: 'Erreur',
+        description: 'Impossible d\'envoyer le message',
         variant: 'destructive',
       });
     } finally {
-      setSendingMessage(false);
+      setSending(false);
     }
   };
 
-  const selectContact = (contact: MessageContact) => {
-    setSelectedContact(contact);
+  const formatMessageTime = (timestamp: string) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
-  const filteredContacts = contacts.filter(contact => 
-    `${contact.first_name} ${contact.last_name}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    contact.email.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const getInitials = (firstName: string, lastName: string) => {
+    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center p-8">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="lg:col-span-1">
-        <Card className="h-full">
-          <CardHeader className="pb-2">
-            <CardTitle>Messages</CardTitle>
-            <CardDescription>Your conversations</CardDescription>
-            <div className="relative mt-2">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search contacts..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8"
-              />
-            </div>
-          </CardHeader>
-          <CardContent className="h-[600px] overflow-y-auto">
-            {loading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+    <div className="flex flex-col h-[calc(100vh-200px)] lg:h-[600px]">
+      <div className="grid grid-cols-1 md:grid-cols-3 h-full gap-4">
+        {/* Contacts sidebar */}
+        <div className="col-span-1 border rounded-lg overflow-hidden">
+          <div className="p-3 border-b bg-muted/50">
+            <h3 className="font-medium">Conversations</h3>
+          </div>
+          <ScrollArea className="h-[calc(100%-48px)]">
+            {contacts.length === 0 ? (
+              <div className="p-4 text-center text-muted-foreground">
+                <p>Aucune conversation</p>
               </div>
-            ) : filteredContacts.length > 0 ? (
-              <div className="space-y-2">
-                {filteredContacts.map((contact) => (
-                  <div 
+            ) : (
+              <div className="divide-y">
+                {contacts.map((contact) => (
+                  <div
                     key={contact.id}
-                    className={`flex items-center gap-3 p-2 rounded-md hover:bg-muted cursor-pointer ${
-                      selectedContact?.id === contact.id ? 'bg-muted' : ''
+                    className={`p-3 cursor-pointer hover:bg-accent/50 transition-colors ${
+                      selectedContact?.id === contact.id ? 'bg-accent' : ''
                     }`}
-                    onClick={() => selectContact(contact)}
+                    onClick={() => setSelectedContact(contact)}
                   >
-                    <Avatar>
-                      <AvatarImage 
-                        src={contact.avatar_url} 
-                        alt={`${contact.first_name} ${contact.last_name}`} 
-                      />
-                      <AvatarFallback>
-                        {contact.first_name.charAt(0) + contact.last_name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 overflow-hidden">
-                      <div className="flex justify-between items-center">
-                        <h4 className="font-medium text-sm truncate">
-                          {contact.first_name} {contact.last_name}
-                        </h4>
-                        <span className="text-xs text-muted-foreground">
-                          {formatDistanceToNow(new Date(contact.last_message_date), { addSuffix: true })}
-                        </span>
+                    <div className="flex items-center space-x-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={contact.avatar_url || ''} />
+                        <AvatarFallback>
+                          {getInitials(contact.first_name, contact.last_name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex justify-between items-center">
+                          <p className="font-medium truncate">
+                            {contact.first_name} {contact.last_name}
+                          </p>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(contact.last_message_time).toLocaleDateString()}
+                          </span>
+                        </div>
+                        <p className="text-sm truncate text-muted-foreground">
+                          {contact.last_message}
+                        </p>
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {contact.last_message}
-                      </p>
+                      {contact.unread_count > 0 && (
+                        <div className="ml-2 bg-primary text-primary-foreground rounded-full h-5 w-5 flex items-center justify-center text-xs">
+                          {contact.unread_count}
+                        </div>
+                      )}
                     </div>
-                    {contact.unread_count > 0 && (
-                      <Badge variant="default" className="ml-2">
-                        {contact.unread_count}
-                      </Badge>
-                    )}
                   </div>
                 ))}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <MessageCircle className="h-8 w-8 text-muted-foreground mb-2" />
-                <p className="text-muted-foreground">
-                  {searchQuery 
-                    ? "No contacts match your search" 
-                    : "No messages yet"}
-                </p>
-              </div>
             )}
-          </CardContent>
-        </Card>
-      </div>
-      
-      <div className="lg:col-span-2">
-        <Card className="h-full flex flex-col">
+          </ScrollArea>
+        </div>
+
+        {/* Chat area */}
+        <div className="col-span-1 md:col-span-2 border rounded-lg overflow-hidden flex flex-col">
           {selectedContact ? (
             <>
-              <CardHeader className="pb-2 border-b">
-                <div className="flex items-center gap-2">
-                  <Avatar>
-                    <AvatarImage 
-                      src={selectedContact.avatar_url} 
-                      alt={`${selectedContact.first_name} ${selectedContact.last_name}`} 
-                    />
-                    <AvatarFallback>
-                      {selectedContact.first_name.charAt(0) + selectedContact.last_name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div>
-                    <CardTitle className="text-lg">
-                      {selectedContact.first_name} {selectedContact.last_name}
-                    </CardTitle>
-                    <CardDescription>{selectedContact.email}</CardDescription>
-                  </div>
+              <div className="p-3 border-b bg-muted/50 flex items-center space-x-3">
+                <Avatar className="h-10 w-10">
+                  <AvatarImage src={selectedContact.avatar_url || ''} />
+                  <AvatarFallback>
+                    {getInitials(selectedContact.first_name, selectedContact.last_name)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="font-medium">
+                    {selectedContact.first_name} {selectedContact.last_name}
+                  </p>
                 </div>
-              </CardHeader>
+              </div>
               
-              <CardContent className="flex-1 overflow-y-auto p-4 h-[500px]">
+              <ScrollArea className="flex-1 p-4">
                 <div className="space-y-4">
-                  {messages.length > 0 ? messages.map((message) => (
-                    <div 
+                  {messages.map((message) => (
+                    <div
                       key={message.id}
-                      className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${
+                        message.sender_id === user?.id ? 'justify-end' : 'justify-start'
+                      }`}
                     >
-                      <div 
-                        className={`max-w-[80%] p-3 rounded-lg ${
-                          message.sender_id === user?.id 
-                            ? 'bg-primary text-primary-foreground' 
+                      <div
+                        className={`max-w-[80%] px-4 py-2 rounded-lg ${
+                          message.sender_id === user?.id
+                            ? 'bg-primary text-primary-foreground'
                             : 'bg-muted'
                         }`}
                       >
-                        <p className="text-sm">{message.content}</p>
+                        <p>{message.content}</p>
                         <p className={`text-xs mt-1 ${
-                          message.sender_id === user?.id 
-                            ? 'text-primary-foreground/70' 
+                          message.sender_id === user?.id
+                            ? 'text-primary-foreground/70'
                             : 'text-muted-foreground'
                         }`}>
-                          {format(new Date(message.created_at), 'h:mm a')}
+                          {formatMessageTime(message.created_at)}
                         </p>
                       </div>
                     </div>
-                  )) : (
-                    <div className="flex flex-col items-center justify-center h-full text-center">
-                      <MessageCircle className="h-8 w-8 text-muted-foreground mb-2" />
-                      <p className="text-muted-foreground">No messages yet</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Send a message to start the conversation
-                      </p>
-                    </div>
-                  )}
+                  ))}
                   <div ref={messagesEndRef} />
                 </div>
-              </CardContent>
+              </ScrollArea>
               
-              <CardFooter className="border-t pt-4">
-                <div className="flex w-full gap-2">
-                  <Textarea
-                    placeholder="Type your message..."
-                    value={messageText}
-                    onChange={(e) => setMessageText(e.target.value)}
-                    className="flex-1 resize-none"
-                    rows={2}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
+              <div className="p-3 border-t">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    sendMessage();
+                  }}
+                  className="flex items-center space-x-2"
+                >
+                  <Input
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder="Écrivez votre message..."
+                    className="flex-1"
                   />
-                  <Button 
-                    onClick={sendMessage} 
-                    disabled={!messageText.trim() || sendingMessage}
-                    size="icon"
-                  >
-                    <Send className="h-4 w-4" />
+                  <Button type="submit" disabled={!newMessage.trim() || sending} size="icon">
+                    {sending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
                   </Button>
-                </div>
-              </CardFooter>
+                </form>
+              </div>
             </>
           ) : (
-            <div className="flex flex-col items-center justify-center h-full py-16 text-center">
-              <div className="rounded-full bg-muted p-6 mb-4">
-                <MessageCircle className="h-10 w-10 text-muted-foreground" />
-              </div>
-              <h3 className="text-xl font-medium">Select a conversation</h3>
-              <p className="text-muted-foreground max-w-md mt-2">
-                Choose a contact from the list to view your conversation history
+            <div className="flex flex-col items-center justify-center h-full p-4">
+              <User className="h-16 w-16 text-muted-foreground mb-4" />
+              <p className="text-muted-foreground text-center">
+                Sélectionnez une conversation pour commencer à discuter
               </p>
             </div>
           )}
-        </Card>
+        </div>
       </div>
     </div>
   );

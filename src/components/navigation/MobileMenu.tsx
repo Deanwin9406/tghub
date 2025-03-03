@@ -1,101 +1,97 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { X, ShoppingBag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface MobileMenuProps {
-  isOpen: boolean;
-  onClose: () => void;
   navItems: { name: string; path: string }[];
   isLoggedIn: boolean;
   isTenantOnly: boolean;
+  onLinkClick: () => void;
   isVendor?: boolean;
 }
 
-const MobileMenu = ({ isOpen, onClose, navItems, isLoggedIn, isTenantOnly, isVendor = false }: MobileMenuProps) => {
-  if (!isOpen) return null;
-
+const MobileMenu = ({ navItems, isLoggedIn, isTenantOnly, onLinkClick, isVendor = false }: MobileMenuProps) => {
   return (
-    <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 lg:hidden">
-      <div className="fixed inset-y-0 left-0 w-64 bg-background border-r p-4">
-        <div className="flex items-center justify-between mb-4">
-          <Link to={isVendor ? "/vendor-dashboard" : "/"} className="flex items-center" onClick={onClose}>
-            <ShoppingBag className="mr-2 h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">TogoPropConnect</span>
-          </Link>
-          <Button variant="ghost" size="icon" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
-        </div>
-        <ul className="space-y-2 font-medium">
+    <ScrollArea className="h-full">
+      <div className="flex flex-col p-4 space-y-4">
+        <h2 className="font-semibold">Navigation</h2>
+        <div className="flex flex-col space-y-1">
           {navItems.map((item) => (
-            <li key={item.name}>
-              <Link 
-                to={item.path} 
-                onClick={onClose}
-                className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
-              >
-                <span>{item.name}</span>
-              </Link>
-            </li>
+            <Button
+              key={item.name}
+              variant="ghost"
+              asChild
+              className="justify-start"
+              onClick={onLinkClick}
+            >
+              <Link to={item.path}>{item.name}</Link>
+            </Button>
           ))}
+          
           {isLoggedIn && !isVendor && (
             <>
               {!isTenantOnly && (
-                <li>
-                  <Link 
-                    to="/property-management" 
-                    onClick={onClose}
-                    className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
-                  >
-                    <span>Mes Propriétés</span>
-                  </Link>
-                </li>
+                <Button
+                  variant="ghost"
+                  asChild
+                  className="justify-start"
+                  onClick={onLinkClick}
+                >
+                  <Link to="/property-management">Mes Propriétés</Link>
+                </Button>
               )}
-              <li>
-                <Link 
-                  to="/dashboard" 
-                  onClick={onClose}
-                  className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
-                >
-                  <span>Tableau de bord</span>
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/profile" 
-                  onClick={onClose}
-                  className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
-                >
-                  <span>Profil</span>
-                </Link>
-              </li>
-              <li>
-                <Link 
-                  to="/favorites" 
-                  onClick={onClose}
-                  className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
-                >
-                  <span>Favoris</span>
-                </Link>
-              </li>
+              <Button
+                variant="ghost"
+                asChild
+                className="justify-start"
+                onClick={onLinkClick}
+              >
+                <Link to="/dashboard">Tableau de bord</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                asChild
+                className="justify-start"
+                onClick={onLinkClick}
+              >
+                <Link to="/profile">Profil</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                asChild
+                className="justify-start"
+                onClick={onLinkClick}
+              >
+                <Link to="/favorites">Favoris</Link>
+              </Button>
             </>
           )}
+          
           {isLoggedIn && isVendor && (
-            <li>
-              <Link 
-                to="/profile" 
-                onClick={onClose}
-                className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
+            <>
+              <Button
+                variant="ghost"
+                asChild
+                className="justify-start"
+                onClick={onLinkClick}
               >
-                <span>Profil</span>
-              </Link>
-            </li>
+                <Link to="/vendor-dashboard">Tableau de bord</Link>
+              </Button>
+              <Button
+                variant="ghost"
+                asChild
+                className="justify-start"
+                onClick={onLinkClick}
+              >
+                <Link to="/profile">Profil</Link>
+              </Button>
+            </>
           )}
-        </ul>
+        </div>
       </div>
-    </div>
+    </ScrollArea>
   );
 };
 

@@ -1008,6 +1008,147 @@ export type Database = {
           },
         ]
       }
+      service_appointments: {
+        Row: {
+          appointment_date: string
+          client_id: string
+          created_at: string
+          id: string
+          location: string | null
+          notes: string | null
+          proposal_id: string | null
+          status: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          appointment_date: string
+          client_id: string
+          created_at?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          proposal_id?: string | null
+          status?: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          appointment_date?: string
+          client_id?: string
+          created_at?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          proposal_id?: string | null
+          status?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_appointments_proposal_id_fkey"
+            columns: ["proposal_id"]
+            isOneToOne: false
+            referencedRelation: "service_proposals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_proposals: {
+        Row: {
+          created_at: string
+          estimated_days: number
+          id: string
+          message: string
+          price: number
+          request_id: string
+          status: string
+          updated_at: string
+          vendor_id: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_days: number
+          id?: string
+          message: string
+          price: number
+          request_id: string
+          status?: string
+          updated_at?: string
+          vendor_id: string
+        }
+        Update: {
+          created_at?: string
+          estimated_days?: number
+          id?: string
+          message?: string
+          price?: number
+          request_id?: string
+          status?: string
+          updated_at?: string
+          vendor_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_proposals_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "service_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_requests: {
+        Row: {
+          budget: number | null
+          category: string
+          created_at: string
+          description: string
+          id: string
+          property_id: string | null
+          requester_id: string
+          status: string
+          title: string
+          updated_at: string
+          urgency: string
+        }
+        Insert: {
+          budget?: number | null
+          category: string
+          created_at?: string
+          description: string
+          id?: string
+          property_id?: string | null
+          requester_id: string
+          status?: string
+          title: string
+          updated_at?: string
+          urgency: string
+        }
+        Update: {
+          budget?: number | null
+          category?: string
+          created_at?: string
+          description?: string
+          id?: string
+          property_id?: string | null
+          requester_id?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          urgency?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_requests_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "properties"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_favorites: {
         Row: {
           created_at: string
@@ -1058,6 +1199,48 @@ export type Database = {
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      vendor_profiles: {
+        Row: {
+          business_name: string
+          created_at: string
+          description: string | null
+          experience_years: number | null
+          hourly_rate: number | null
+          id: string
+          is_available: boolean | null
+          logo_url: string | null
+          service_area: string | null
+          services_offered: string[]
+          updated_at: string
+        }
+        Insert: {
+          business_name: string
+          created_at?: string
+          description?: string | null
+          experience_years?: number | null
+          hourly_rate?: number | null
+          id: string
+          is_available?: boolean | null
+          logo_url?: string | null
+          service_area?: string | null
+          services_offered?: string[]
+          updated_at?: string
+        }
+        Update: {
+          business_name?: string
+          created_at?: string
+          description?: string | null
+          experience_years?: number | null
+          hourly_rate?: number | null
+          id?: string
+          is_available?: boolean | null
+          logo_url?: string | null
+          service_area?: string | null
+          services_offered?: string[]
+          updated_at?: string
         }
         Relationships: []
       }
@@ -1113,6 +1296,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      can_access_route: {
+        Args: {
+          user_id: string
+          route: string
+        }
+        Returns: boolean
+      }
       can_view_community: {
         Args: {
           community_id: string
