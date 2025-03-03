@@ -39,6 +39,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       roles.includes('manager') || 
       roles.includes('agent') || 
       roles.includes('admin'));
+  
+  // Check if the user is a vendor
+  const isVendor = roles.includes('vendor');
 
   // Use useCallback to prevent recreating functions on each render
   const toggleMenu = useCallback(() => {
@@ -59,13 +62,20 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     navigate('/');
   }, [signOut, navigate]);
 
-  // Use regular links for navigation
-  const navItems = [
+  // Use regular links for navigation - different for vendors
+  const regularNavItems = [
     { name: 'Recherche', path: '/search' },
     { name: 'Agents', path: '/agents' },
     { name: 'Communautés', path: '/communities' },
     { name: 'Prestataires', path: '/vendors' },
   ];
+  
+  const vendorNavItems = [
+    { name: 'Tableau de bord', path: '/vendor-dashboard' },
+    { name: 'Communautés', path: '/communities' },
+  ];
+  
+  const navItems = isVendor ? vendorNavItems : regularNavItems;
 
   return (
     <div className="min-h-screen bg-background antialiased">
@@ -76,6 +86,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
         navItems={navItems}
         isLoggedIn={!!session}
         isTenantOnly={isTenantOnly}
+        isVendor={isVendor}
       />
 
       {/* Header/Navbar */}
@@ -86,7 +97,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
               <Button variant="ghost" size="icon" className="lg:hidden mr-2" onClick={toggleMenu}>
                 <Menu className="h-6 w-6" />
               </Button>
-              <Link to="/" className="flex items-center">
+              <Link to={isVendor ? "/vendor-dashboard" : "/"} className="flex items-center">
                 <ShoppingBag className="mr-2 h-6 w-6 text-primary" />
                 <span className="text-xl font-bold">TogoPropConnect</span>
               </Link>
@@ -96,20 +107,23 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                 navItems={navItems}
                 isLoggedIn={!!session}
                 isTenantOnly={isTenantOnly}
+                isVendor={isVendor}
               />
             </div>
             
             <div className="flex items-center gap-4">
               <ModeToggle />
               
-              {/* Comparison Dropdown */}
-              <ComparisonDropdown 
-                comparisonList={comparisonList} 
-                onClearComparison={clearComparison} 
-              />
+              {/* Comparison Dropdown - only show for non-vendors */}
+              {!isVendor && (
+                <ComparisonDropdown 
+                  comparisonList={comparisonList} 
+                  onClearComparison={clearComparison} 
+                />
+              )}
               
               {session ? (
-                <UserMenu user={user} onSignOut={handleSignOut} />
+                <UserMenu user={user} onSignOut={handleSignOut} isVendor={isVendor} />
               ) : (
                 <Button onClick={openAuthDialog}>Connexion</Button>
               )}

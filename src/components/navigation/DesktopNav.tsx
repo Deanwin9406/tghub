@@ -6,9 +6,10 @@ interface DesktopNavProps {
   navItems: { name: string; path: string }[];
   isLoggedIn: boolean;
   isTenantOnly: boolean;
+  isVendor?: boolean;
 }
 
-const DesktopNav = ({ navItems, isLoggedIn, isTenantOnly }: DesktopNavProps) => {
+const DesktopNav = ({ navItems, isLoggedIn, isTenantOnly, isVendor = false }: DesktopNavProps) => {
   return (
     <nav className="hidden lg:flex ml-10 space-x-4">
       {navItems.map((item) => (
@@ -20,7 +21,7 @@ const DesktopNav = ({ navItems, isLoggedIn, isTenantOnly }: DesktopNavProps) => 
           {item.name}
         </Link>
       ))}
-      {isLoggedIn && (
+      {isLoggedIn && !isVendor && (
         <>
           {!isTenantOnly && (
             <Link
@@ -49,6 +50,14 @@ const DesktopNav = ({ navItems, isLoggedIn, isTenantOnly }: DesktopNavProps) => 
             Favoris
           </Link>
         </>
+      )}
+      {isLoggedIn && isVendor && (
+        <Link
+          to="/profile"
+          className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+        >
+          Profil
+        </Link>
       )}
     </nav>
   );

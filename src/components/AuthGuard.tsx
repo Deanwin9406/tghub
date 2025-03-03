@@ -14,7 +14,8 @@ const ROLE_ROUTES = {
   landlord: ['/dashboard', '/profile', '/favorites', '/kyc', '/property-management', '/add-property', '/property/edit'],
   agent: ['/dashboard', '/profile', '/favorites', '/kyc', '/property-management'],
   manager: ['/dashboard', '/profile', '/favorites', '/kyc', '/property-management'],
-  admin: ['/dashboard', '/profile', '/favorites', '/kyc', '/property-management', '/add-property', '/property/edit']
+  admin: ['/dashboard', '/profile', '/favorites', '/kyc', '/property-management', '/add-property', '/property/edit'],
+  vendor: ['/vendor-dashboard', '/profile', '/favorites', '/kyc', '/communities']
 };
 
 const AuthGuard = memo(() => {
@@ -45,6 +46,13 @@ const AuthGuard = memo(() => {
   const hasRoleAccess = useCallback((userRoles: string[], currentPath: string) => {
     // If user has admin role, they have access to everything
     if (userRoles.includes('admin')) return true;
+    
+    // Vendors get special routing
+    if (userRoles.includes('vendor') && currentPath === '/dashboard') {
+      // Redirect vendors to vendor dashboard instead of regular dashboard
+      window.location.href = '/vendor-dashboard';
+      return false;
+    }
     
     // Check each role the user has for access
     for (const role of userRoles) {

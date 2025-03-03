@@ -23,6 +23,8 @@ import EditProperty from './pages/EditProperty';
 import NotFound from './pages/NotFound';
 import AddTenant from './pages/AddTenant';
 import ContactVendor from './pages/ContactVendor';
+import VendorDashboard from './pages/VendorDashboard';
+import { Toaster } from "@/components/ui/toast";
 
 // Memoize page components to reduce re-renders
 const MemoizedDashboard = memo(Dashboard);
@@ -32,6 +34,7 @@ const MemoizedPropertyManagement = memo(PropertyManagement);
 const MemoizedAddProperty = memo(AddProperty);
 const MemoizedEditProperty = memo(EditProperty);
 const MemoizedAddTenant = memo(AddTenant);
+const MemoizedVendorDashboard = memo(VendorDashboard);
 
 function App() {
   console.log("App rendering - routes setup");  // Debug App rendering
@@ -40,6 +43,7 @@ function App() {
     <AuthProvider>
       <ComparisonProvider>
         <FavoritesProvider>
+          <Toaster />
           <Routes>
             {/* Public routes - accessible to everyone */}
             <Route path="/" element={<Index />} />
@@ -58,6 +62,7 @@ function App() {
               <Route path="/kyc" element={<MemoizedKycVerification />} />
               <Route path="/favorites" element={<Favorites />} />
               <Route path="/dashboard" element={<MemoizedDashboard />} />
+              <Route path="/vendor-dashboard" element={<MemoizedVendorDashboard />} />
               <Route path="/add-property" element={<MemoizedAddProperty />} />
               <Route path="/property-management" element={<MemoizedPropertyManagement />} />
               <Route path="/property/edit/:id" element={<MemoizedEditProperty />} />

@@ -10,16 +10,17 @@ interface MobileMenuProps {
   navItems: { name: string; path: string }[];
   isLoggedIn: boolean;
   isTenantOnly: boolean;
+  isVendor?: boolean;
 }
 
-const MobileMenu = ({ isOpen, onClose, navItems, isLoggedIn, isTenantOnly }: MobileMenuProps) => {
+const MobileMenu = ({ isOpen, onClose, navItems, isLoggedIn, isTenantOnly, isVendor = false }: MobileMenuProps) => {
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 lg:hidden">
       <div className="fixed inset-y-0 left-0 w-64 bg-background border-r p-4">
         <div className="flex items-center justify-between mb-4">
-          <Link to="/" className="flex items-center" onClick={onClose}>
+          <Link to={isVendor ? "/vendor-dashboard" : "/"} className="flex items-center" onClick={onClose}>
             <ShoppingBag className="mr-2 h-6 w-6 text-primary" />
             <span className="text-xl font-bold">TogoPropConnect</span>
           </Link>
@@ -39,7 +40,7 @@ const MobileMenu = ({ isOpen, onClose, navItems, isLoggedIn, isTenantOnly }: Mob
               </Link>
             </li>
           ))}
-          {isLoggedIn && (
+          {isLoggedIn && !isVendor && (
             <>
               {!isTenantOnly && (
                 <li>
@@ -80,6 +81,17 @@ const MobileMenu = ({ isOpen, onClose, navItems, isLoggedIn, isTenantOnly }: Mob
                 </Link>
               </li>
             </>
+          )}
+          {isLoggedIn && isVendor && (
+            <li>
+              <Link 
+                to="/profile" 
+                onClick={onClose}
+                className="flex items-center p-2 text-base font-normal rounded-lg hover:bg-accent hover:text-accent-foreground"
+              >
+                <span>Profil</span>
+              </Link>
+            </li>
           )}
         </ul>
       </div>
