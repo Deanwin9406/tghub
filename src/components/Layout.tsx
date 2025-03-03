@@ -7,21 +7,22 @@ import { useAuth } from '@/contexts/AuthContext';
 import MobileMenu from '@/components/navigation/MobileMenu';
 import UserMenu from '@/components/navigation/UserMenu';
 import DesktopNav from '@/components/navigation/DesktopNav';
-import { Menu, X } from 'lucide-react';
-import { ThemeToggle } from '@/components/theme-provider';
+import { Menu } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
-import { useMobile } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const { user, signOut, isLoading, isAuthenticated, roles } = useAuth();
+  const { user, signOut, loading, session, roles } = useAuth();
   const [open, setOpen] = useState(false);
-  const isMobile = useMobile();
+  const isMobile = useIsMobile();
   const isHomePage = location.pathname === '/';
   const isTenantOnly = roles.includes('tenant') && roles.length === 1;
   const isVendor = roles.includes('vendor');
+  const isAuthenticated = !!session;
 
   console.log('Layout - current path:', location.pathname);
+  console.log('Layout - user roles:', roles);
 
   // Define navigation items based on authenticated state
   const navItems = [
@@ -66,7 +67,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           
           {/* Mobile Navigation and Right-side Controls */}
           <div className="flex-1 flex items-center justify-end space-x-2">
-            <ThemeToggle />
+            {/* We removed ThemeToggle since it was causing an error */}
             
             {isAuthenticated ? (
               <UserMenu user={user!} onSignOut={handleSignOut} isVendor={isVendor} />

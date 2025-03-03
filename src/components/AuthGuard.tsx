@@ -47,9 +47,8 @@ const AuthGuard = memo(() => {
     // If user has admin role, they have access to everything
     if (userRoles.includes('admin')) return true;
     
-    // Vendors get special routing
+    // Vendors need special handling - redirect to vendor dashboard
     if (userRoles.includes('vendor') && currentPath === '/dashboard') {
-      // Redirect vendors to vendor dashboard instead of regular dashboard
       window.location.href = '/vendor-dashboard';
       return false;
     }
@@ -126,6 +125,12 @@ const AuthGuard = memo(() => {
   if (!hasRoleAccess(roles, location.pathname)) {
     console.log("User doesn't have role access to this route:", location.pathname);
     setAccessError(`Vous n'avez pas les permissions pour accéder à cette page. Veuillez contacter un administrateur si vous pensez qu'il s'agit d'une erreur.`);
+    
+    // Special case for vendors trying to access regular dashboard - redirect to vendor dashboard
+    if (roles.includes('vendor') && location.pathname === '/dashboard') {
+      console.log("Vendor attempting to access /dashboard, redirecting to /vendor-dashboard");
+      return <Navigate to="/vendor-dashboard" replace />;
+    }
     
     // Show an access error with a redirect link to dashboard
     return (
