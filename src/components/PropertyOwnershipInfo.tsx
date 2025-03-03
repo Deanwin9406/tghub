@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -36,9 +37,9 @@ export const PropertyOwnershipInfo: React.FC<PropertyOwnershipInfoProps> = ({ pr
       } catch (error: any) {
         console.error('Error fetching property data:', error.message);
         toast({
-          variant: 'destructive',
           title: 'Erreur',
-          description: 'Impossible de récupérer les informations de la propriété'
+          description: 'Impossible de récupérer les informations de la propriété',
+          variant: 'destructive'
         });
       } finally {
         setLoading(false);
@@ -70,9 +71,9 @@ export const PropertyOwnershipInfo: React.FC<PropertyOwnershipInfoProps> = ({ pr
       } catch (error: any) {
         console.error('Error sending management request:', error.message);
         toast({
-          variant: 'destructive',
           title: 'Erreur',
-          description: 'Impossible d\'envoyer la demande de gestion'
+          description: 'Impossible d\'envoyer la demande de gestion',
+          variant: 'destructive'
         });
         setIsSubmitting(false);
       }

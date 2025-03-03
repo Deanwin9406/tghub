@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -69,7 +68,6 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
       if (error) {
         console.error("Sign-in error:", error);
         
-        // Handle different error types with specific messages
         if (error.message.includes("Invalid login credentials")) {
           setErrorMessage("Email ou mot de passe incorrect. Veuillez réessayer.");
         } else if (error.message.includes("Email not confirmed")) {
@@ -120,7 +118,6 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
       if (error) {
         console.error("Signup error:", error);
         
-        // Handle different error types with specific messages
         if (error.message.includes("already registered")) {
           setErrorMessage("Cet email est déjà utilisé. Essayez de vous connecter ou utilisez un autre email.");
         } else if (error.message.includes("password")) {
@@ -133,7 +130,6 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
           setErrorMessage(error.message || "Erreur lors de l'inscription. Veuillez réessayer.");
         }
       } else {
-        // Note: The user role is now handled by the database trigger
         console.log("User role selected:", userRole);
         
         toast({
@@ -170,8 +166,6 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
         if (error.message.includes("rate limited")) {
           setErrorMessage("Trop de tentatives. Veuillez réessayer plus tard.");
         } else if (error.message.includes("User not found")) {
-          // Hide the real error for security reasons
-          // Still show success message to prevent email enumeration
           toast({
             title: 'Email de réinitialisation envoyé',
             description: 'Si ce compte existe, vous recevrez un email avec les instructions.',
