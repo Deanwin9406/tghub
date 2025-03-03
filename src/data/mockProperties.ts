@@ -1,5 +1,5 @@
 
-import { PropertyType } from '../components/PropertyCard';
+import { PropertyType } from '../types/property';
 
 // Define an extended interface for the mock data
 interface ExtendedPropertyType extends PropertyType {

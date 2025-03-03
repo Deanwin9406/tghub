@@ -68,7 +68,8 @@ const FeaturedProperties = ({
           amenities: property.amenities || [],
           availability_date: property.availability_date || new Date().toISOString(),
           latitude: property.latitude,
-          longitude: property.longitude
+          longitude: property.longitude,
+          featured: property.featured
         }));
         
         setProperties(formattedProperties);
