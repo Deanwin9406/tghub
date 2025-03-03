@@ -12,7 +12,7 @@ import { DialogContent, DialogDescription, DialogHeader, DialogTitle, Dialog } f
 import { DialogTrigger } from '@radix-ui/react-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import Map from '@/components/Map';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';

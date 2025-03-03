@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -48,19 +47,15 @@ const ContactVendor = () => {
   const [timeSlot, setTimeSlot] = useState<string>('');
   const [activeTab, setActiveTab] = useState('message');
   
-  // Get time slots based on vendor availability
   const getTimeSlots = () => {
     if (!vendor) return [];
     
-    // Parse the vendor's hours (e.g., "8:00 AM - 5:00 PM")
     const hours = vendor.availability.hours.split(' - ');
-    const startTime = hours[0]; // e.g., "8:00 AM"
-    const endTime = hours[1]; // e.g., "5:00 PM"
+    const startTime = hours[0];
+    const endTime = hours[1];
     
-    // For simplicity, generating time slots in 1-hour increments
     const timeSlots = [];
     
-    // Converting to 24-hour format for easier calculation
     const startHour = startTime.includes('AM') 
       ? parseInt(startTime.split(':')[0]) 
       : (parseInt(startTime.split(':')[0]) + 12) % 24;
@@ -78,7 +73,6 @@ const ContactVendor = () => {
     return timeSlots;
   };
   
-  // Get vendor from state or fetch it
   useEffect(() => {
     const vendorFromState = location.state?.vendor;
     
@@ -86,8 +80,6 @@ const ContactVendor = () => {
       setVendor(vendorFromState);
       setLoading(false);
     } else {
-      // Fallback to fetch from API if needed
-      // This is mock data for now
       const mockVendors = [
         {
           id: '1',
@@ -145,7 +137,6 @@ const ContactVendor = () => {
         }
       ];
       
-      // Get vendor ID from URL params
       const vendorId = new URLSearchParams(location.search).get('id');
       
       if (vendorId) {
@@ -173,7 +164,6 @@ const ContactVendor = () => {
     }
   }, [location, navigate, toast]);
   
-  // Handle direct contact options
   const handleCall = () => {
     if (vendor?.contact.phone) {
       window.location.href = `tel:${vendor.contact.phone.replace(/\s/g, '')}`;
@@ -188,13 +178,11 @@ const ContactVendor = () => {
   
   const handleWhatsApp = () => {
     if (vendor?.contact.whatsapp) {
-      // Format phone number for WhatsApp (remove spaces)
       const phoneNumber = vendor.contact.whatsapp.replace(/\s/g, '');
       window.open(`https://wa.me/${phoneNumber}?text=I'm interested in your services`, '_blank');
     }
   };
   
-  // Handle in-app message submission
   const handleSendMessage = async () => {
     if (!user) {
       toast({
@@ -214,20 +202,16 @@ const ContactVendor = () => {
       return;
     }
     
-    // This would normally send a message to the vendor via your backend
-    // For demo purposes, we'll just show a success toast
     toast({
       title: "Message envoyé",
       description: "Votre message a été envoyé avec succès au fournisseur.",
       variant: "default"
     });
     
-    // Clear form
     setMessageSubject('');
     setMessageContent('');
   };
   
-  // Handle appointment booking
   const handleBookAppointment = async () => {
     if (!user) {
       toast({
@@ -247,15 +231,12 @@ const ContactVendor = () => {
       return;
     }
     
-    // This would normally schedule an appointment with the vendor via your backend
-    // For demo purposes, we'll just show a success toast
     toast({
       title: "Rendez-vous réservé",
       description: `Votre rendez-vous a été réservé pour le ${format(date, 'PPP', { locale: fr })} à ${timeSlot}.`,
       variant: "default"
     });
     
-    // Clear form
     setDate(undefined);
     setTimeSlot('');
   };
@@ -302,7 +283,6 @@ const ContactVendor = () => {
         </Button>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {/* Vendor Info Card */}
           <div className="md:col-span-1">
             <Card className="mb-6">
               <div className="aspect-square overflow-hidden">
@@ -365,7 +345,6 @@ const ContactVendor = () => {
             </Card>
           </div>
           
-          {/* Contact Tabs */}
           <div className="md:col-span-2">
             <Card>
               <CardHeader>
@@ -434,11 +413,9 @@ const ContactVendor = () => {
                                 selected={date}
                                 onSelect={setDate}
                                 disabled={(date) => {
-                                  // Disable past dates
                                   const today = new Date();
                                   today.setHours(0, 0, 0, 0);
                                   
-                                  // Disable days not in vendor's availability
                                   const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
                                   const dayAbbrev = dayOfWeek.substring(0, 3);
                                   
