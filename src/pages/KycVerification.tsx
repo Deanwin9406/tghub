@@ -32,13 +32,14 @@ const KycVerification = () => {
     if (!user) return;
 
     try {
+      // Use maybeSingle() instead of single() to handle when no record exists
       const { data, error } = await supabase
         .from('kyc_verifications')
         .select('status')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error("Error fetching KYC status:", error);
         setKycStatus(null);
         return;
@@ -116,17 +117,42 @@ const KycVerification = () => {
         throw new Error(`Erreur lors du téléchargement du justificatif de domicile: ${addressError.message}`);
       }
 
-      // Save KYC verification request
-      const { error: dbError } = await supabase
+      // Check if KYC record already exists
+      const { data: existingKyc } = await supabase
         .from('kyc_verifications')
-        .insert({
-          user_id: user.id,
-          id_type: 'passport', // Default value or add a selector in the UI
-          id_number: 'ID-' + Math.random().toString(36).substring(2, 10).toUpperCase(), // This should be user-provided
-          id_image_url: identityFileName,
-          address_proof_url: addressFileName,
-          status: 'pending',
-        });
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      let dbOperation;
+      if (existingKyc) {
+        // Update existing record
+        dbOperation = supabase
+          .from('kyc_verifications')
+          .update({
+            id_type: 'passport', // Default value or add a selector in the UI
+            id_number: 'ID-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            id_image_url: identityFileName,
+            address_proof_url: addressFileName,
+            status: 'pending',
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', user.id);
+      } else {
+        // Insert new record
+        dbOperation = supabase
+          .from('kyc_verifications')
+          .insert({
+            user_id: user.id,
+            id_type: 'passport', // Default value or add a selector in the UI
+            id_number: 'ID-' + Math.random().toString(36).substring(2, 10).toUpperCase(),
+            id_image_url: identityFileName,
+            address_proof_url: addressFileName,
+            status: 'pending',
+          });
+      }
+
+      const { error: dbError } = await dbOperation;
 
       if (dbError) {
         throw new Error(`Erreur lors de la sauvegarde de la demande KYC: ${dbError.message}`);

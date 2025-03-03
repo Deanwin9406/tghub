@@ -158,7 +158,7 @@ const Profile = () => {
         .from('kyc_verifications')
         .select('status')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
         
       if (error && error.code !== 'PGRST116') {
         console.error("Error checking KYC status:", error);
