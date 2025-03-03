@@ -9,12 +9,29 @@ import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
 
+interface PropertyType {
+  id: string;
+  title: string;
+  address: string;
+  city: string;
+  price: number;
+  property_type: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  main_image_url: string | null;
+  status: string;
+  description: string | null;
+  size_sqm: number | null;
+  amenities: string[] | null;
+  owner_id: string;
+}
+
 const EditProperty = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { user, roles } = useAuth();
   const navigate = useNavigate();
-  const [property, setProperty] = useState(null);
+  const [property, setProperty] = useState<PropertyType | null>(null);
   const [loading, setLoading] = useState(true);
   const [hasPermission, setHasPermission] = useState(false);
 
@@ -92,13 +109,41 @@ const EditProperty = () => {
     }
   };
 
-  const handleSubmit = (propertyData: any) => {
-    console.log('Updated property data:', propertyData);
-    toast({
-      title: 'Propriété mise à jour',
-      description: 'La propriété a été mise à jour avec succès.',
-    });
-    navigate('/property-management');
+  const handleSubmit = async (propertyData: any) => {
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .update({
+          title: propertyData.title,
+          description: propertyData.description,
+          price: propertyData.price,
+          property_type: propertyData.type,
+          bedrooms: propertyData.beds,
+          bathrooms: propertyData.baths,
+          size_sqm: propertyData.area,
+          main_image_url: propertyData.image,
+          city: propertyData.location,
+          address: propertyData.address,
+          country: propertyData.country || 'Togo',
+          amenities: propertyData.amenities
+        })
+        .eq('id', id);
+        
+      if (error) throw error;
+      
+      toast({
+        title: 'Propriété mise à jour',
+        description: 'La propriété a été mise à jour avec succès.',
+      });
+      navigate('/property-management');
+    } catch (error: any) {
+      console.error('Error updating property:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to update property',
+        variant: 'destructive',
+      });
+    }
   };
 
   if (loading) {

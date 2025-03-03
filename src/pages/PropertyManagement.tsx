@@ -21,38 +21,11 @@ interface PropertyType {
   bathrooms: number | null;
   main_image_url: string | null;
   status: string;
-  description: string;
-  square_footage: number;
-  size_sqm: number | null;
-  year_built: number;
-  amenities: string[];
-  image_urls: string[];
-  availability_date: string;
-}
-
-interface DatabasePropertyType {
-  id: string;
-  title: string;
-  address: string;
-  city: string;
-  price: number;
-  property_type: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  main_image_url: string | null;
-  status: string;
   description: string | null;
   size_sqm: number | null;
-  owner_id: string;
-  country: string;
-  created_at: string;
-  updated_at: string;
-  featured: boolean | null;
   amenities: string[] | null;
-  availability_date: string | null;
+  owner_id: string;
 }
-
-type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor';
 
 const PropertyManagement = () => {
   const navigate = useNavigate();
@@ -120,27 +93,7 @@ const PropertyManagement = () => {
 
       if (error) throw error;
       
-      const propertyData = data.map((property: DatabasePropertyType) => ({
-        id: property.id,
-        title: property.title,
-        address: property.address,
-        city: property.city,
-        price: property.price,
-        property_type: property.property_type,
-        bedrooms: property.bedrooms,
-        bathrooms: property.bathrooms,
-        main_image_url: property.main_image_url,
-        status: property.status,
-        description: property.description || '',
-        square_footage: property.size_sqm || 0,
-        size_sqm: property.size_sqm,
-        year_built: new Date().getFullYear(), // Default to current year if not available
-        amenities: property.amenities || [],
-        image_urls: property.main_image_url ? [property.main_image_url] : [],
-        availability_date: property.availability_date || new Date().toISOString()
-      }));
-      
-      setProperties(propertyData);
+      setProperties(data || []);
     } catch (error) {
       console.error('Error fetching properties:', error);
       toast({

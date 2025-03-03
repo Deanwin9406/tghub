@@ -9,23 +9,10 @@ import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
-// Add 'isEditing' to the PropertyFormProps interface
 interface PropertyFormProps {
-  onSubmit: (data: {
-    title: string;
-    description: string;
-    price: number;
-    priceUnit: "XOF" | "USD" | "EUR";
-    type: "apartment" | "house" | "villa" | "office" | "land" | "other";
-    purpose: string;
-    location: string;
-    beds: number;
-    baths: number;
-    area: number;
-    image: string;
-    features: string[];
-  }) => void;
+  onSubmit: (data: any) => void;
   initialData?: any;
   propertyId?: string;
   isEditing?: boolean;
@@ -34,6 +21,7 @@ interface PropertyFormProps {
 const PropertyForm = ({ onSubmit, initialData, propertyId, isEditing = false }: PropertyFormProps) => {
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
   
   const [formData, setFormData] = useState({
     title: initialData?.title || "",
@@ -47,8 +35,12 @@ const PropertyForm = ({ onSubmit, initialData, propertyId, isEditing = false }: 
     baths: initialData?.bathrooms || 0,
     area: initialData?.size_sqm || 0,
     image: initialData?.main_image_url || "",
-    features: initialData?.features || []
+    address: initialData?.address || "",
+    country: initialData?.country || "Togo",
+    amenities: initialData?.amenities || []
   });
+  
+  const [submitting, setSubmitting] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -64,9 +56,87 @@ const PropertyForm = ({ onSubmit, initialData, propertyId, isEditing = false }: 
     setFormData(prev => ({ ...prev, [name]: Number(value) }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit(formData);
+    
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to save a property",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setSubmitting(true);
+    
+    try {
+      const propertyData = {
+        title: formData.title,
+        description: formData.description,
+        price: formData.price,
+        property_type: formData.type,
+        bedrooms: formData.beds,
+        bathrooms: formData.baths,
+        size_sqm: formData.area,
+        main_image_url: formData.image,
+        city: formData.location,
+        address: formData.address,
+        country: formData.country,
+        amenities: formData.amenities,
+        owner_id: user.id,
+        status: 'available',
+      };
+      
+      let result;
+      
+      if (isEditing && propertyId) {
+        // Update existing property
+        const { data, error } = await supabase
+          .from('properties')
+          .update(propertyData)
+          .eq('id', propertyId)
+          .select();
+          
+        if (error) throw error;
+        result = data?.[0];
+        
+        toast({
+          title: "Success",
+          description: "Property has been updated successfully"
+        });
+      } else {
+        // Create new property
+        const { data, error } = await supabase
+          .from('properties')
+          .insert(propertyData)
+          .select();
+          
+        if (error) throw error;
+        result = data?.[0];
+        
+        toast({
+          title: "Success",
+          description: "Property has been created successfully"
+        });
+      }
+      
+      // Call the onSubmit callback with the result
+      onSubmit(result);
+      
+      // Redirect after successful submission
+      navigate('/property-management');
+      
+    } catch (error: any) {
+      console.error('Error saving property:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save property",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -87,16 +157,28 @@ const PropertyForm = ({ onSubmit, initialData, propertyId, isEditing = false }: 
             </div>
             
             <div className="space-y-3">
-              <Label htmlFor="location">Location</Label>
+              <Label htmlFor="location">City</Label>
               <Input
                 id="location"
                 name="location"
                 value={formData.location}
                 onChange={handleChange}
-                placeholder="City, Country"
+                placeholder="City"
                 required
               />
             </div>
+          </div>
+          
+          <div className="space-y-3">
+            <Label htmlFor="address">Address</Label>
+            <Input
+              id="address"
+              name="address"
+              value={formData.address}
+              onChange={handleChange}
+              placeholder="Full address"
+              required
+            />
           </div>
           
           <div className="space-y-3">
@@ -229,8 +311,8 @@ const PropertyForm = ({ onSubmit, initialData, propertyId, isEditing = false }: 
           </div>
           
           <div className="flex justify-end">
-            <Button type="submit">
-              {isEditing ? 'Update Property' : 'Add Property'}
+            <Button type="submit" disabled={submitting}>
+              {submitting ? 'Saving...' : isEditing ? 'Update Property' : 'Add Property'}
             </Button>
           </div>
         </form>

@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
-// Define a complete PropertyType
+// Define a PropertyType that matches our database schema
 export interface PropertyType {
   id: string;
   title: string;
@@ -16,38 +16,13 @@ export interface PropertyType {
   bathrooms: number | null;
   main_image_url: string | null;
   status: string;
-  description: string;
-  square_footage: number;
-  year_built: number;
-  amenities: string[];
-  image_urls: string[];
-  availability_date: string;
-}
-
-// Interface for database properties
-interface DatabasePropertyType {
-  address: string;
-  bathrooms: number;
-  bedrooms: number;
-  city: string;
-  country: string;
-  created_at: string;
-  description: string;
-  featured: boolean;
-  id: string;
-  main_image_url: string;
-  owner_id: string;
-  price: number;
-  property_type: string;
-  status: string;
-  title: string;
-  updated_at: string;
+  description: string | null;
+  size_sqm: number | null;
   square_footage?: number;
-  size_sqm?: number;
   year_built?: number;
-  amenities?: string[];
+  amenities: string[] | null;
   image_urls?: string[];
-  availability_date?: string;
+  availability_date: string | null;
 }
 
 export type FavoriteContextType = {
@@ -89,17 +64,9 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
 
       if (error) throw error;
 
-      // Transform the database properties to match PropertyType
+      // Transform the retrieved data to match our PropertyType
       const favoriteProperties = data.map(item => {
-        const dbProperty = item.properties as DatabasePropertyType;
-        return {
-          ...dbProperty,
-          square_footage: dbProperty.square_footage || dbProperty.size_sqm || 0,
-          year_built: dbProperty.year_built || 0,
-          amenities: dbProperty.amenities || [],
-          image_urls: dbProperty.image_urls || [],
-          availability_date: dbProperty.availability_date || new Date().toISOString()
-        } as PropertyType;
+        return item.properties as PropertyType;
       });
       
       setFavorites(favoriteProperties);

@@ -17,7 +17,7 @@ import Map from '@/components/Map';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// Update PropertyType to match both our frontend needs and database schema
+// Define PropertyType to match our database schema
 interface PropertyType {
   id: string;
   title: string;
@@ -30,39 +30,14 @@ interface PropertyType {
   main_image_url: string | null;
   status: string;
   description: string;
-  square_footage: number; 
-  size_sqm?: number | null;
-  year_built: number;
-  amenities: string[];
-  image_urls: string[];
-  availability_date: string;
-  latitude?: number | null;
-  longitude?: number | null;
-}
-
-// Define the shape of the raw database property type
-interface DatabasePropertyType {
-  id: string;
-  title: string;
-  address: string;
-  city: string;
-  price: number;
-  property_type: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  main_image_url: string | null;
-  status: string;
-  description: string | null;
   size_sqm: number | null;
-  owner_id: string;
-  country: string;
-  created_at: string;
-  updated_at: string;
-  featured: boolean | null;
+  square_footage?: number;
+  year_built?: number;
+  amenities: string[];
+  image_urls?: string[];
+  availability_date?: string;
   latitude: number | null;
   longitude: number | null;
-  availability_date: string | null;
-  amenities: string[] | null;
 }
 
 const Search = () => {
@@ -82,10 +57,7 @@ const Search = () => {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const { toast } = useToast();
   
-  console.log("Search page loaded");
-
   useEffect(() => {
-    console.log("Fetching properties");
     fetchProperties();
   }, []);
 
@@ -93,9 +65,6 @@ const Search = () => {
     setLoading(true);
     setConnectionError(null);
     try {
-      console.log("Fetching from Supabase:", supabase);
-      console.log("Supabase URL:", process.env.SUPABASE_URL);
-      
       const { data, error } = await supabase
         .from('properties')
         .select('*');
@@ -111,96 +80,36 @@ const Search = () => {
         throw error;
       }
 
-      console.log("Properties fetched:", data?.length);
-      console.log("Raw properties data:", data);
-      
-      if (!data || data.length === 0) {
-        console.log("No properties found in the database");
-        // Create sample data for demo purposes
-        const sampleData = Array(5).fill(null).map((_, index) => ({
-          id: `sample-${index}`,
-          title: `Sample Property ${index + 1}`,
-          address: `123 Sample St ${index + 1}`,
-          city: 'Lomé',
-          price: 500000 + (index * 100000),
-          property_type: ['apartment', 'house', 'villa', 'office'][index % 4],
-          bedrooms: (index % 3) + 1,
-          bathrooms: (index % 2) + 1,
-          main_image_url: 'https://placehold.co/600x400',
-          status: 'available',
-          description: `A beautiful sample property ${index + 1}`,
-          latitude: 6.1319 + (Math.random() - 0.5) * 0.1,
-          longitude: 1.2254 + (Math.random() - 0.5) * 0.1,
-          square_footage: 100 + ((index % 3) + 1) * 50,
-          year_built: 2000 + ((index % 3) + 1) * 3,
-          amenities: ['wifi', 'parking', 'security'],
-          image_urls: ['https://placehold.co/600x400'],
-          availability_date: new Date().toISOString()
+      if (data && data.length > 0) {
+        const formattedProperties = data.map((property) => ({
+          id: property.id,
+          title: property.title,
+          address: property.address,
+          city: property.city,
+          price: property.price,
+          property_type: property.property_type,
+          bedrooms: property.bedrooms,
+          bathrooms: property.bathrooms,
+          main_image_url: property.main_image_url || 'https://placehold.co/600x400',
+          status: property.status,
+          description: property.description || '',
+          size_sqm: property.size_sqm,
+          square_footage: property.size_sqm, // Use size_sqm for square_footage
+          year_built: new Date().getFullYear(), // Default value
+          amenities: property.amenities || [],
+          image_urls: property.main_image_url ? [property.main_image_url] : ['https://placehold.co/600x400'],
+          availability_date: property.availability_date || new Date().toISOString(),
+          latitude: property.latitude,
+          longitude: property.longitude
         }));
         
-        setProperties(sampleData as PropertyType[]);
-        console.log("Created sample data:", sampleData);
-      } else {
-        const formattedProperties = data.map((property: DatabasePropertyType) => {
-          // Create a formatted property with all the fields we need
-          const formattedProperty: PropertyType = {
-            id: property.id,
-            title: property.title,
-            address: property.address,
-            city: property.city,
-            price: property.price,
-            property_type: property.property_type,
-            bedrooms: property.bedrooms,
-            bathrooms: property.bathrooms,
-            main_image_url: property.main_image_url,
-            status: property.status,
-            description: property.description || '',
-            // Ensure all required fields are present with defaults if needed
-            square_footage: property.size_sqm || 0,
-            year_built: 2020, // Default year if not available
-            amenities: property.amenities || ['wifi', 'parking', 'security'],
-            image_urls: [property.main_image_url || 'https://placehold.co/600x400'],
-            availability_date: property.availability_date || new Date().toISOString(),
-            // Use the database values if available, or generate random ones for demo
-            latitude: property.latitude,
-            longitude: property.longitude
-          };
-          
-          return formattedProperty;
-        });
-
         setProperties(formattedProperties);
-        console.log("Formatted properties:", formattedProperties);
+      } else {
+        setProperties([]);
       }
     } catch (error) {
       console.error('Error fetching properties:', error);
       setMapError("Failed to load properties data");
-      
-      // Create and set sample data as fallback
-      const sampleData = Array(5).fill(null).map((_, index) => ({
-        id: `sample-${index}`,
-        title: `Sample Property ${index + 1}`,
-        address: `123 Sample St ${index + 1}`,
-        city: 'Lomé',
-        price: 500000 + (index * 100000),
-        property_type: ['apartment', 'house', 'villa', 'office'][index % 4],
-        bedrooms: (index % 3) + 1,
-        bathrooms: (index % 2) + 1,
-        main_image_url: 'https://placehold.co/600x400',
-        status: 'available',
-        description: `A beautiful sample property ${index + 1}`,
-        latitude: 6.1319 + (Math.random() - 0.5) * 0.1,
-        longitude: 1.2254 + (Math.random() - 0.5) * 0.1,
-        square_footage: 100 + ((index % 3) + 1) * 50,
-        year_built: 2000 + ((index % 3) + 1) * 3,
-        amenities: ['wifi', 'parking', 'security'],
-        image_urls: ['https://placehold.co/600x400'],
-        availability_date: new Date().toISOString()
-      }));
-      
-      setProperties(sampleData as PropertyType[]);
-      console.log("Created sample data as fallback:", sampleData);
-      
       setConnectionError(`Error connecting to database: ${error instanceof Error ? error.message : String(error)}`);
     } finally {
       setLoading(false);
@@ -268,17 +177,17 @@ const Search = () => {
   };
 
   // Format properties for map display
-  const mapProperties = filteredProperties.map(property => ({
-    id: property.id,
-    latitude: property.latitude || 6.1319, // Default to Lomé if not specified
-    longitude: property.longitude || 1.2254,
-    title: property.title,
-    price: property.price,
-    currency: 'XOF',
-    type: property.property_type
-  }));
-
-  console.log("Map properties:", mapProperties);
+  const mapProperties = filteredProperties
+    .filter(property => property.latitude && property.longitude) // Only include properties with coordinates
+    .map(property => ({
+      id: property.id,
+      latitude: property.latitude || 6.1319, // Default to Lomé if not specified
+      longitude: property.longitude || 1.2254,
+      title: property.title,
+      price: property.price,
+      currency: 'XOF',
+      type: property.property_type
+    }));
 
   return (
     <Layout>

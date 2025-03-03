@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -15,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Building, Bed, Bath, MapPin, CreditCard } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PropertyType {
   id: string;
@@ -28,26 +30,26 @@ interface PropertyType {
   main_image_url: string | null;
   status: string;
   description: string;
-  square_footage?: number;
-  size_sqm?: number;
-  year_built?: number;
-  amenities?: string[];
-  image_urls?: string[];
-  availability_date?: string;
+  size_sqm: number | null;
+  amenities: string[] | null;
+  availability_date: string | null;
+  owner_id: string;
 }
 
 const PropertyDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [property, setProperty] = useState<PropertyType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOwner, setIsOwner] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchPropertyDetails();
     }
-  }, [id]);
+  }, [id, user]);
 
   const fetchPropertyDetails = async () => {
     setLoading(true);
@@ -63,6 +65,11 @@ const PropertyDetails = () => {
       }
 
       setProperty(data as PropertyType);
+      
+      // Check if current user is the owner
+      if (user && data.owner_id === user.id) {
+        setIsOwner(true);
+      }
     } catch (error: any) {
       console.error('Error fetching property details:', error.message);
       toast({
@@ -73,6 +80,10 @@ const PropertyDetails = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEdit = () => {
+    navigate(`/property/edit/${id}`);
   };
 
   if (loading) {
@@ -92,8 +103,8 @@ const PropertyDetails = () => {
           <div className="text-center">
             <h2 className="text-2xl font-semibold mb-4">Property Not Found</h2>
             <p className="text-gray-600">Could not retrieve property details.</p>
-            <Button onClick={() => navigate('/property-management')}>
-              Back to Property Management
+            <Button onClick={() => navigate('/search')}>
+              Back to Search
             </Button>
           </div>
         </div>
@@ -106,17 +117,26 @@ const PropertyDetails = () => {
       <div className="container mx-auto py-8">
         <Card>
           <CardHeader>
-            <CardTitle className="text-2xl font-bold">{property.title}</CardTitle>
-            <CardDescription>
-              <div className="flex items-center gap-1">
-                <MapPin className="h-4 w-4 text-gray-500" />
-                {property.address}, {property.city}
+            <div className="flex justify-between">
+              <div>
+                <CardTitle className="text-2xl font-bold">{property.title}</CardTitle>
+                <CardDescription>
+                  <div className="flex items-center gap-1">
+                    <MapPin className="h-4 w-4 text-gray-500" />
+                    {property.address}, {property.city}
+                  </div>
+                </CardDescription>
               </div>
-            </CardDescription>
+              {isOwner && (
+                <Button onClick={handleEdit} variant="outline">
+                  Edit Property
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent className="grid gap-4">
             <img
-              src={property.main_image_url}
+              src={property.main_image_url || 'https://placehold.co/600x400'}
               alt={property.title}
               className="rounded-md w-full object-cover h-64"
             />
@@ -131,18 +151,22 @@ const PropertyDetails = () => {
                 <Building className="h-5 w-5 text-gray-500" />
                 {property.property_type}
               </div>
-              <div className="flex items-center gap-2">
-                <Bed className="h-5 w-5 text-gray-500" />
-                {property.bedrooms} Bedrooms
-              </div>
-              <div className="flex items-center gap-2">
-                <Bath className="h-5 w-5 text-gray-500" />
-                {property.bathrooms} Bathrooms
-              </div>
-              {property.square_footage && (
+              {property.bedrooms && (
+                <div className="flex items-center gap-2">
+                  <Bed className="h-5 w-5 text-gray-500" />
+                  {property.bedrooms} Bedrooms
+                </div>
+              )}
+              {property.bathrooms && (
+                <div className="flex items-center gap-2">
+                  <Bath className="h-5 w-5 text-gray-500" />
+                  {property.bathrooms} Bathrooms
+                </div>
+              )}
+              {property.size_sqm && (
                 <div className="flex items-center gap-2">
                   <CreditCard className="h-5 w-5 text-gray-500" />
-                  {property.square_footage} sqft
+                  {property.size_sqm} sqm
                 </div>
               )}
             </div>
@@ -151,6 +175,19 @@ const PropertyDetails = () => {
               <h3 className="text-lg font-semibold mb-2">Description</h3>
               <p className="text-gray-700">{property.description}</p>
             </div>
+
+            {property.amenities && property.amenities.length > 0 && (
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Amenities</h3>
+                <div className="flex flex-wrap gap-2">
+                  {property.amenities.map((amenity, index) => (
+                    <Badge key={index} variant="outline">
+                      {amenity}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <PropertyOwnershipInfo propertyId={property.id} />
           </CardContent>
