@@ -61,6 +61,7 @@ const FeaturedProperties = ({
           status: property.status,
           address: property.address,
           city: property.city,
+          country: property.country || "Unknown", // Add default country value
           bedrooms: property.bedrooms,
           bathrooms: property.bathrooms,
           square_footage: property.size_sqm || 0,
@@ -112,6 +113,7 @@ const FeaturedProperties = ({
         status: "available",
         address: "Lomé, Agbalépédogan",
         city: "Lomé",
+        country: "Togo", // Add country
         bedrooms: 4,
         bathrooms: 3,
         size_sqm: 250,
@@ -133,6 +135,7 @@ const FeaturedProperties = ({
         status: "available",
         address: "Lomé, Adidogomé",
         city: "Lomé",
+        country: "Togo", // Add country
         bedrooms: 2,
         bathrooms: 2,
         size_sqm: 100,
