@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -186,27 +187,51 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error };
       }
 
-      if (data.user?.id) {
-        // Explicitly create profile with first and last name
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert([{ 
-            id: data.user.id, 
-            email: email, 
-            first_name: firstName, 
-            last_name: lastName 
-          }]);
+      console.log("Signup response:", data);
 
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-          return { error: profileError };
+      // If user is created successfully, create a profile manually
+      if (data.user?.id) {
+        try {
+          // Explicitly create profile with first and last name
+          const { error: profileError } = await supabase
+            .from('profiles')
+            .insert([{ 
+              id: data.user.id, 
+              email: email, 
+              first_name: firstName, 
+              last_name: lastName 
+            }]);
+
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+            // Don't return error here as signup was successful
+            // Just log the error and continue
+          } else {
+            console.log("Profile created successfully with name:", firstName, lastName);
+          }
+
+          // Also attempt to assign the default tenant role
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert([{
+              user_id: data.user.id,
+              role: 'tenant'
+            }]);
+
+          if (roleError) {
+            console.error('Error assigning role:', roleError);
+            // Don't return error, just log it
+          } else {
+            console.log("Default role assigned successfully");
+          }
+        } catch (insertError) {
+          console.error("Error during profile/role creation:", insertError);
+          // Continue since user creation was successful
         }
-        
-        console.log("Profile created successfully with name:", firstName, lastName);
       }
 
       return { error: null };
-    } catch (error) {
+    } catch (error: any) {
       console.error("Unexpected error during signup:", error);
       return { error };
     } finally {

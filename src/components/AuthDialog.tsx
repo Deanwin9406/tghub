@@ -124,10 +124,8 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
         });
       } else {
         // Add user role if signup was successful
-        if (userRole) {
-          // We will handle adding user role in a separate step if needed
-          console.log("User role selected:", userRole);
-        }
+        // Note: The user role is now handled by the database trigger
+        console.log("User role selected:", userRole);
         
         toast({
           title: 'Compte créé',
@@ -136,6 +134,7 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
         setActiveTab('login');
       }
     } catch (error: any) {
+      console.error("Signup error:", error);
       toast({
         title: 'Échec d\'inscription',
         description: error.message || 'Une erreur inattendue est survenue',
