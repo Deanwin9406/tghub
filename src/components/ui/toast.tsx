@@ -19,15 +19,18 @@ export const toast = (props: ToastProps) => {
   // Map variant to sonner's style options
   const style = variant === "destructive" ? { style: "destructive" } : {};
   
-  return toastFunction({
-    ...style,
-    ...rest,
-    // If we have a title and description, use both, otherwise just use description
-    ...(title 
-      ? { 
-          title: title,
-          description: description 
-        } 
-      : { description: description || "" })
-  });
+  if (title) {
+    return toastFunction({
+      ...style,
+      ...rest,
+      title: title,
+      description: description
+    });
+  } else {
+    return toastFunction({
+      ...style,
+      ...rest,
+      description: description || ""
+    });
+  }
 };

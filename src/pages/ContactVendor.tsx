@@ -8,10 +8,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useToast } from '@/hooks/use-toast';
-import { CalendarIcon, Phone, Mail, MessageCircle, Calendar as CalendarIcon2, Clock, Info, MapPin, Star, CheckCircle } from 'lucide-react';
+import { CalendarIcon, Phone, Mail, MessageCircle, Calendar as CalendarIcon2, Clock, Info, MapPin, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -310,7 +309,7 @@ const ContactVendor = () => {
                     <p className="text-sm">{vendor.location}</p>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Calendar className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
+                    <CalendarIcon2 className="h-4 w-4 mt-1 text-muted-foreground shrink-0" />
                     <p className="text-sm">Disponible: {vendor.availability.days.join(', ')}</p>
                   </div>
                   <div className="flex items-start gap-2">
@@ -408,21 +407,6 @@ const ContactVendor = () => {
                               </Button>
                             </PopoverTrigger>
                             <PopoverContent className="w-auto p-0">
-                              <Calendar
-                                mode="single"
-                                selected={date}
-                                onSelect={setDate}
-                                disabled={(date) => {
-                                  const today = new Date();
-                                  today.setHours(0, 0, 0, 0);
-                                  
-                                  const dayOfWeek = date.toLocaleDateString('en-US', { weekday: 'short' });
-                                  const dayAbbrev = dayOfWeek.substring(0, 3);
-                                  
-                                  return date < today || !vendor.availability.days.includes(dayAbbrev);
-                                }}
-                                initialFocus
-                              />
                             </PopoverContent>
                           </Popover>
                         </div>
