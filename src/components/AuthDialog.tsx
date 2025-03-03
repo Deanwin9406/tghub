@@ -22,6 +22,8 @@ import {
 } from "@/components/ui/select";
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertCircle } from "lucide-react";
 
 type AuthDialogProps = {
   open: boolean;
@@ -39,6 +41,7 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
   const [userRole, setUserRole] = useState('tenant');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showResetForm, setShowResetForm] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -58,16 +61,24 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMessage(null);
     
     try {
       const { error } = await signIn(email, password);
       
       if (error) {
-        toast({
-          title: 'Échec de connexion',
-          description: error.message,
-          variant: 'destructive',
-        });
+        console.error("Sign-in error:", error);
+        
+        // Handle different error types with specific messages
+        if (error.message.includes("Invalid login credentials")) {
+          setErrorMessage("Email ou mot de passe incorrect. Veuillez réessayer.");
+        } else if (error.message.includes("Email not confirmed")) {
+          setErrorMessage("Votre email n'a pas été confirmé. Veuillez vérifier votre boîte de réception.");
+        } else if (error.message.includes("rate limited")) {
+          setErrorMessage("Trop de tentatives. Veuillez réessayer plus tard.");
+        } else {
+          setErrorMessage(error.message || "Une erreur s'est produite lors de la connexion.");
+        }
       } else {
         toast({
           title: 'Bienvenue!',
@@ -77,11 +88,8 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
         navigate('/dashboard');
       }
     } catch (error: any) {
-      toast({
-        title: 'Échec de connexion',
-        description: error.message || 'Une erreur inattendue est survenue',
-        variant: 'destructive',
-      });
+      console.error("Login exception:", error);
+      setErrorMessage("Une erreur inattendue est survenue. Veuillez réessayer.");
     } finally {
       setIsSubmitting(false);
     }
@@ -90,24 +98,17 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMessage(null);
     
     try {
       if (!firstName || !lastName) {
-        toast({
-          title: 'Informations manquantes',
-          description: 'Veuillez fournir votre prénom et nom',
-          variant: 'destructive',
-        });
+        setErrorMessage("Veuillez fournir votre prénom et nom");
         setIsSubmitting(false);
         return;
       }
       
       if (password !== confirmPassword) {
-        toast({
-          title: 'Mots de passe non identiques',
-          description: 'Les mots de passe ne correspondent pas',
-          variant: 'destructive',
-        });
+        setErrorMessage("Les mots de passe ne correspondent pas");
         setIsSubmitting(false);
         return;
       }
@@ -117,13 +118,21 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
       const { error } = await signUp(email, password, firstName, lastName);
       
       if (error) {
-        toast({
-          title: 'Échec d\'inscription',
-          description: error.message,
-          variant: 'destructive',
-        });
+        console.error("Signup error:", error);
+        
+        // Handle different error types with specific messages
+        if (error.message.includes("already registered")) {
+          setErrorMessage("Cet email est déjà utilisé. Essayez de vous connecter ou utilisez un autre email.");
+        } else if (error.message.includes("password")) {
+          setErrorMessage("Le mot de passe doit contenir au moins 6 caractères.");
+        } else if (error.message.includes("valid email")) {
+          setErrorMessage("Veuillez entrer une adresse email valide.");
+        } else if (error.message.includes("rate limited")) {
+          setErrorMessage("Trop de tentatives. Veuillez réessayer plus tard.");
+        } else {
+          setErrorMessage(error.message || "Erreur lors de l'inscription. Veuillez réessayer.");
+        }
       } else {
-        // Add user role if signup was successful
         // Note: The user role is now handled by the database trigger
         console.log("User role selected:", userRole);
         
@@ -135,11 +144,7 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
       }
     } catch (error: any) {
       console.error("Signup error:", error);
-      toast({
-        title: 'Échec d\'inscription',
-        description: error.message || 'Une erreur inattendue est survenue',
-        variant: 'destructive',
-      });
+      setErrorMessage("Une erreur inattendue est survenue. Veuillez réessayer.");
     } finally {
       setIsSubmitting(false);
     }
@@ -148,16 +153,34 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMessage(null);
     
     try {
+      if (!email.trim()) {
+        setErrorMessage("Veuillez entrer votre adresse email");
+        setIsSubmitting(false);
+        return;
+      }
+
       const { error } = await resetPassword(email);
       
       if (error) {
-        toast({
-          title: 'Échec de réinitialisation du mot de passe',
-          description: error.message,
-          variant: 'destructive',
-        });
+        console.error("Reset password error:", error);
+        
+        if (error.message.includes("rate limited")) {
+          setErrorMessage("Trop de tentatives. Veuillez réessayer plus tard.");
+        } else if (error.message.includes("User not found")) {
+          // Hide the real error for security reasons
+          // Still show success message to prevent email enumeration
+          toast({
+            title: 'Email de réinitialisation envoyé',
+            description: 'Si ce compte existe, vous recevrez un email avec les instructions.',
+          });
+          setShowResetForm(false);
+          return;
+        } else {
+          setErrorMessage(error.message || "Erreur lors de la réinitialisation. Veuillez réessayer.");
+        }
       } else {
         toast({
           title: 'Email de réinitialisation envoyé',
@@ -166,11 +189,8 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
         setShowResetForm(false);
       }
     } catch (error: any) {
-      toast({
-        title: 'Échec de réinitialisation du mot de passe',
-        description: error.message || 'Une erreur inattendue est survenue',
-        variant: 'destructive',
-      });
+      console.error("Reset password exception:", error);
+      setErrorMessage("Une erreur inattendue est survenue. Veuillez réessayer.");
     } finally {
       setIsSubmitting(false);
     }
@@ -202,6 +222,13 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
           </DialogDescription>
         </DialogHeader>
         
+        {errorMessage && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+        )}
+        
         {showResetForm ? (
           <form onSubmit={handleResetPassword} className="space-y-4">
             <div className="space-y-2">
@@ -221,7 +248,10 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
             <div className="text-center">
               <Button 
                 variant="link" 
-                onClick={() => setShowResetForm(false)}
+                onClick={() => {
+                  setShowResetForm(false);
+                  setErrorMessage(null);
+                }}
                 className="text-sm"
                 type="button"
               >
@@ -230,7 +260,10 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
             </div>
           </form>
         ) : (
-          <Tabs defaultValue={activeTab} onValueChange={setActiveTab} className="w-full">
+          <Tabs defaultValue={activeTab} onValueChange={(value) => {
+            setActiveTab(value);
+            setErrorMessage(null);
+          }} className="w-full">
             <TabsList className="grid w-full grid-cols-2 mb-4">
               <TabsTrigger value="login">Connexion</TabsTrigger>
               <TabsTrigger value="register">Inscription</TabsTrigger>
@@ -255,7 +288,10 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
                     <Button 
                       variant="link" 
                       className="text-xs"
-                      onClick={() => setShowResetForm(true)}
+                      onClick={() => {
+                        setShowResetForm(true);
+                        setErrorMessage(null);
+                      }}
                       type="button"
                     >
                       Mot de passe oublié?

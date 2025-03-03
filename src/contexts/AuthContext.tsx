@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Session, User } from '@supabase/supabase-js';
+import { Session, User, AuthError } from '@supabase/supabase-js';
 import { Profile } from '@/types/community';
 
 interface AuthContextType {
@@ -10,15 +10,15 @@ interface AuthContextType {
   profile: Profile | null;
   roles: string[];
   hasCompletedKyc: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any | null }>;
+  signIn: (email: string, password: string) => Promise<{ error: AuthError | Error | null }>;
   signOut: () => Promise<void>;
-  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: any | null }>;
+  signUp: (email: string, password: string, firstName: string, lastName: string) => Promise<{ error: AuthError | Error | null }>;
   updateProfile: (updates: Partial<Profile>) => Promise<{ error: any | null }>;
-  sendPasswordResetEmail: (email: string) => Promise<{ error: any | null }>;
+  sendPasswordResetEmail: (email: string) => Promise<{ error: AuthError | Error | null }>;
   loading: boolean;
   session: Session | null;
   isLoading: boolean;
-  resetPassword: (email: string) => Promise<{ error: any | null }>;
+  resetPassword: (email: string) => Promise<{ error: AuthError | Error | null }>;
   checkKycStatus: () => Promise<boolean>;
 }
 
@@ -140,15 +140,32 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const signIn = async (email: string, password: string): Promise<{ error: any | null }> => {
+  const signIn = async (email: string, password: string): Promise<{ error: AuthError | Error | null }> => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      // Validate inputs
+      if (!email.trim()) {
+        return { error: new Error("L'email est requis") };
+      }
+      
+      if (!password.trim()) {
+        return { error: new Error("Le mot de passe est requis") };
+      }
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      
       if (error) {
         console.error('Sign-in error:', error);
         return { error };
       }
+      
+      // Log successful login attempt
+      console.log("User logged in successfully:", data.user?.email);
+      
       return { error: null };
+    } catch (error) {
+      console.error("Unexpected sign-in error:", error);
+      return { error: error instanceof Error ? error : new Error("Erreur inattendue lors de la connexion") };
     } finally {
       setLoading(false);
     }
@@ -156,7 +173,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const signOut = async (): Promise<void> => {
     try {
+      console.log("Signing out user...");
       await supabase.auth.signOut();
+      console.log("User signed out successfully");
     } catch (error) {
       console.error("Error signing out:", error);
     } finally {
@@ -166,10 +185,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const signUp = async (email: string, password: string, firstName: string, lastName: string): Promise<{ error: any | null }> => {
+  const signUp = async (email: string, password: string, firstName: string, lastName: string): Promise<{ error: AuthError | Error | null }> => {
     setLoading(true);
     try {
-      console.log("Sign up data:", { email, firstName, lastName }); // Debug log
+      console.log("Sign up started for:", { email, firstName, lastName }); // Debug log
+      
+      // Basic input validation
+      if (!email.trim()) {
+        return { error: new Error("L'email est requis") };
+      }
+      
+      if (!password.trim() || password.length < 6) {
+        return { error: new Error("Le mot de passe doit contenir au moins 6 caractères") };
+      }
+      
+      if (!firstName.trim() || !lastName.trim()) {
+        return { error: new Error("Le prénom et le nom sont requis") };
+      }
       
       const { data, error } = await supabase.auth.signUp({
         email: email,
@@ -240,7 +272,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const updateProfile = async (updates: Partial<Profile>): Promise<{ error: any | null }> => {
-    if (!user) return { error: new Error("No user logged in") };
+    if (!user) return { error: new Error("Aucun utilisateur connecté") };
 
     setLoading(true);
     try {
@@ -262,9 +294,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
-  const sendPasswordResetEmail = async (email: string): Promise<{ error: any | null }> => {
+  const sendPasswordResetEmail = async (email: string): Promise<{ error: AuthError | Error | null }> => {
     setLoading(true);
     try {
+      // Input validation
+      if (!email.trim()) {
+        return { error: new Error("L'email est requis") };
+      }
+      
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth?reset=true`,
       });
@@ -274,7 +311,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         return { error };
       }
 
+      console.log("Password reset email sent to:", email);
       return { error: null };
+    } catch (error) {
+      console.error("Unexpected error during password reset:", error);
+      return { error: error instanceof Error ? error : new Error("Erreur inattendue lors de la réinitialisation du mot de passe") };
     } finally {
       setLoading(false);
     }
@@ -313,3 +354,6 @@ export const useAuth = (): AuthContextType => {
   }
   return context;
 };
+
+// Export the PropertyType from the FavoritesContext
+export type { Profile };

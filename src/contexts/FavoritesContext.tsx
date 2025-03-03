@@ -185,3 +185,5 @@ export const useFavorites = () => {
   }
   return context;
 };
+
+export type { PropertyType };
