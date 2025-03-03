@@ -56,7 +56,7 @@ const AuthGuard = memo(() => {
     return false;
   }, [isPathInRoutes]);
 
-  // Add debugging for current path - throttle console logs to reduce overhead
+  // Add debugging for current path
   useEffect(() => {
     console.log("AuthGuard - current location path:", location.pathname);
   }, [location.pathname]);
@@ -66,7 +66,7 @@ const AuthGuard = memo(() => {
     checkAuthStatus();
   }, [loading, checkAuthStatus]);
 
-  // Enhanced logging for debugging - only log when values change
+  // Enhanced logging for debugging
   useEffect(() => {
     console.log("AuthGuard - authentication status:", { 
       session: session ? "exists" : "null", 
@@ -77,7 +77,7 @@ const AuthGuard = memo(() => {
     });
   }, [location.pathname, session, loading, isReady, roles]);
 
-  // Show nothing while checking authentication
+  // Show loading spinner while checking authentication
   if (!isReady) {
     return (
       <div className="flex justify-center items-center h-screen">
@@ -87,8 +87,7 @@ const AuthGuard = memo(() => {
   }
 
   // Check if the current path is a public route that doesn't require auth
-  const isPublicRoute = PUBLIC_ROUTES.some(route => location.pathname === route || 
-                                                   location.pathname.startsWith(`${route}/`));
+  const isPublicRoute = isPathInRoutes(PUBLIC_ROUTES, location.pathname);
 
   // If accessing a public route, let users stay there regardless of authentication status
   if (isPublicRoute) {
@@ -96,10 +95,23 @@ const AuthGuard = memo(() => {
     return <Outlet />;
   }
 
-  // If user is not authenticated and trying to access a protected route, redirect to home
+  // If user is not authenticated and trying to access a protected route, redirect to login page
   if (!session) {
-    console.log("User not authenticated, redirecting to home");
-    return <Navigate to="/" state={{ from: location }} replace />;
+    console.log("User not authenticated, redirecting to login page");
+    return (
+      <div className="container mx-auto py-12 px-4">
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Authentication Required</AlertTitle>
+          <AlertDescription>
+            Please log in to access this page.
+          </AlertDescription>
+        </Alert>
+        <div className="flex justify-center">
+          <Navigate to="/" state={{ from: location }} replace />
+        </div>
+      </div>
+    );
   }
 
   // If user is authenticated but doesn't have the right role for this route
@@ -107,7 +119,7 @@ const AuthGuard = memo(() => {
     console.log("User doesn't have role access to this route:", location.pathname);
     setAccessError(`You don't have permission to access this page. Please contact an administrator if you believe this is an error.`);
     
-    // Show an access error with a redirect link to dashboard instead of automatic redirection
+    // Show an access error with a redirect link to dashboard
     return (
       <div className="container mx-auto py-12 px-4">
         <Alert variant="destructive" className="mb-6">

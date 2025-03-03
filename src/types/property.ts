@@ -38,5 +38,3 @@ export interface ExtendedPropertyType extends PropertyType {
   favorite?: boolean;
   compareEnabled?: boolean;
 }
-
-// Export these types to be used across the application
