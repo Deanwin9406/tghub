@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -163,6 +164,11 @@ const Vendors = () => {
 const VendorCard = ({ vendor }: { vendor: Vendor }) => {
   const navigate = useNavigate();
 
+  const handleContact = () => {
+    // Navigate to the contact vendor page with vendor data in state
+    navigate(`/contact-vendor?id=${vendor.id}`, { state: { vendor } });
+  };
+
   return (
     <Card className="overflow-hidden h-full flex flex-col">
       <div className="h-48 overflow-hidden">
@@ -208,7 +214,7 @@ const VendorCard = ({ vendor }: { vendor: Vendor }) => {
           <Star className="h-4 w-4 mr-1 text-yellow-500" />
           <span>{vendor.rating}</span>
         </div>
-        <Button variant="outline" onClick={() => navigate('/contact-vendor')}>
+        <Button variant="outline" onClick={handleContact}>
           Contact
         </Button>
       </CardFooter>

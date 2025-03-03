@@ -22,6 +22,7 @@ import PropertyManagement from './pages/PropertyManagement';
 import EditProperty from './pages/EditProperty';
 import NotFound from './pages/NotFound';
 import AddTenant from './pages/AddTenant';
+import ContactVendor from './pages/ContactVendor';
 
 // Memoize page components to reduce re-renders
 const MemoizedDashboard = memo(Dashboard);
@@ -49,6 +50,7 @@ function App() {
             <Route path="/agents" element={<Agents />} />
             <Route path="/agents/:id" element={<AgentProfile />} />
             <Route path="/vendors" element={<Vendors />} />
+            <Route path="/contact-vendor" element={<ContactVendor />} />
             
             {/* Protected routes - using AuthGuard for role-based authorization */}
             <Route element={<AuthGuard />}>
