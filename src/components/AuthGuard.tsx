@@ -87,11 +87,6 @@ const AuthGuard = memo(() => {
   const isPublicRoute = PUBLIC_ROUTES.some(route => location.pathname === route || 
                                                    location.pathname.startsWith(`${route}/`));
 
-  // If accessing a public route while authenticated, let them through (no forced redirect)
-  if (session && isPublicRoute) {
-    return <Outlet />;
-  }
-
   // If user is not authenticated and trying to access a protected route, redirect to home
   if (!session && !isPublicRoute) {
     console.log("User not authenticated, redirecting to home");
@@ -104,8 +99,8 @@ const AuthGuard = memo(() => {
     return <Navigate to="/dashboard" state={{ from: location }} replace />;
   }
 
-  // User is authenticated and has proper role access, allow navigation
-  console.log("User is authenticated with proper role access, allowing access to:", location.pathname);
+  // User is authenticated and has proper role access, or accessing public route, allow navigation
+  console.log("User has proper access to:", location.pathname);
   return <Outlet />;
 });
 
