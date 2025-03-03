@@ -9,11 +9,6 @@ import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-interface ExtendedPropertyType extends PropertyType {
-  featured?: boolean;
-  new?: boolean;
-}
-
 interface FeaturedPropertiesProps {
   title?: string;
   viewAllLink?: string;
@@ -88,12 +83,12 @@ const FeaturedProperties = ({
       
       // Fallback to mock data if API fails
       const mockProperties = getMockProperties();
-      let filteredProperties = [...mockProperties] as ExtendedPropertyType[];
+      let filteredProperties = [...mockProperties];
       
       if (type === 'featured') {
-        filteredProperties = (mockProperties as ExtendedPropertyType[]).filter(p => p.featured);
+        filteredProperties = mockProperties.filter(p => p.featured);
       } else if (type === 'newest') {
-        filteredProperties = (mockProperties as ExtendedPropertyType[]).filter(p => p.new);
+        filteredProperties = mockProperties.filter(p => p.new);
       }
       
       setProperties(filteredProperties.slice(0, limit));
@@ -125,7 +120,9 @@ const FeaturedProperties = ({
         amenities: ["Piscine", "Jardin", "Garage"],
         availability_date: "2023-06-01",
         latitude: 6.1319,
-        longitude: 1.2254
+        longitude: 1.2254,
+        featured: true,
+        new: false
       },
       {
         id: "2",
@@ -147,7 +144,9 @@ const FeaturedProperties = ({
         amenities: ["Balcon", "Ascenseur", "Parking"],
         availability_date: "2023-07-15",
         latitude: 6.1419,
-        longitude: 1.2154
+        longitude: 1.2154,
+        featured: false,
+        new: true
       },
     ];
   };

@@ -30,12 +30,12 @@ export interface PropertyType {
   availability_date?: string;
   square_footage?: number;
   image?: string;
+  new?: boolean;
 }
 
 export interface ExtendedPropertyType extends PropertyType {
   favorite?: boolean;
   compareEnabled?: boolean;
-  new?: boolean;
 }
 
 // Export these types to be used across the application
