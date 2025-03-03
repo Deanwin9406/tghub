@@ -203,14 +203,76 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
   );
 };
 
+const AgentDashboard: React.FC<ManagerDashboardProps> = ({
+  properties,
+  maintenanceRequests,
+  payments,
+  messages,
+  stats
+}) => {
+  return (
+    <div>
+      <h1 className="text-3xl font-bold mb-6">Tableau de bord agent</h1>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <StatCard 
+          title="Commissions" 
+          value={stats.totalRevenue.toString()} 
+          description="Commissions totales" 
+          icon={DollarSign} 
+        />
+        <StatCard 
+          title="Propriétés" 
+          value={stats.propertiesCount.toString()} 
+          description="Propriétés gérées" 
+          icon={Building} 
+        />
+        <StatCard 
+          title="Leads" 
+          value={stats.maintenanceCount.toString()} 
+          description="Nouveaux leads" 
+          icon={User} 
+        />
+        <StatCard 
+          title="Visites" 
+          value={stats.pendingPaymentsCount.toString()} 
+          description="Visites à venir" 
+          icon={FileText} 
+        />
+      </div>
+      
+      <Tabs defaultValue="properties" className="w-full">
+        <TabsList className="mb-4">
+          <TabsTrigger value="properties">Propriétés</TabsTrigger>
+          <TabsTrigger value="leads">Leads</TabsTrigger>
+          <TabsTrigger value="messages">Messages</TabsTrigger>
+          <TabsTrigger value="commissions">Commissions</TabsTrigger>
+        </TabsList>
+        <TabsContent value="properties">
+          <PropertiesTab properties={properties} />
+        </TabsContent>
+        <TabsContent value="leads">
+          <PropertyManagerTab properties={properties} maintenanceRequests={maintenanceRequests} />
+        </TabsContent>
+        <TabsContent value="messages">
+          <MessagesTab messages={messages} />
+        </TabsContent>
+        <TabsContent value="commissions">
+          <PaymentsTab payments={payments} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, roles } = useAuth();
   const { toast } = useToast();
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [properties, setProperties] = useState([]);
+  const [maintenanceRequests, setMaintenanceRequests] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [payments, setPayments] = useState([]);
   const [stats, setStats] = useState({
     totalRevenue: 0,
     propertiesCount: 0,
@@ -537,13 +599,23 @@ const Dashboard = () => {
     });
   };
 
-  const isTenant = roles.includes('tenant') && 
-                  !(roles.includes('landlord') || 
-                    roles.includes('manager') || 
-                    roles.includes('agent') || 
-                    roles.includes('admin'));
-  
-  console.log("Dashboard - Is tenant:", isTenant, "Roles:", roles);
+  const getDashboardByRole = () => {
+    console.log("Dashboard - determining dashboard type by roles:", roles);
+    
+    if (roles.includes('admin') || roles.includes('landlord') || roles.includes('manager')) {
+      return 'manager';
+    } else if (roles.includes('agent')) {
+      return 'agent';
+    } else if (roles.includes('tenant')) {
+      return 'tenant';
+    }
+    
+    // Default to tenant if no specific role found
+    return 'tenant';
+  };
+
+  const dashboardType = getDashboardByRole();
+  console.log("Dashboard - selected dashboard type:", dashboardType);
 
   return (
     <Layout>
@@ -553,22 +625,34 @@ const Dashboard = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           </div>
         ) : (
-          isTenant ? (
-            <TenantDashboard 
-              properties={properties} 
-              maintenanceRequests={maintenanceRequests} 
-              payments={payments} 
-              messages={messages} 
-            />
-          ) : (
-            <ManagerDashboard 
-              properties={properties} 
-              maintenanceRequests={maintenanceRequests} 
-              payments={payments} 
-              messages={messages} 
-              stats={stats} 
-            />
-          )
+          <>
+            {dashboardType === 'tenant' && (
+              <TenantDashboard 
+                properties={properties} 
+                maintenanceRequests={maintenanceRequests} 
+                payments={payments} 
+                messages={messages} 
+              />
+            )}
+            {dashboardType === 'manager' && (
+              <ManagerDashboard 
+                properties={properties} 
+                maintenanceRequests={maintenanceRequests} 
+                payments={payments} 
+                messages={messages} 
+                stats={stats} 
+              />
+            )}
+            {dashboardType === 'agent' && (
+              <AgentDashboard 
+                properties={properties} 
+                maintenanceRequests={maintenanceRequests} 
+                payments={payments} 
+                messages={messages} 
+                stats={stats} 
+              />
+            )}
+          </>
         )}
       </div>
     </Layout>

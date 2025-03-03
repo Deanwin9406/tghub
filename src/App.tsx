@@ -40,7 +40,7 @@ function App() {
       <ComparisonProvider>
         <FavoritesProvider>
           <Routes>
-            {/* Public routes */}
+            {/* Public routes - accessible to everyone */}
             <Route path="/" element={<Index />} />
             <Route path="/communities" element={<Communities />} />
             <Route path="/communities/:id" element={<CommunityDetails />} />
@@ -50,7 +50,7 @@ function App() {
             <Route path="/agents/:id" element={<AgentProfile />} />
             <Route path="/vendors" element={<Vendors />} />
             
-            {/* Protected routes - using memoized components to reduce re-renders */}
+            {/* Protected routes - using AuthGuard for role-based authorization */}
             <Route element={<AuthGuard />}>
               <Route path="/profile" element={<MemoizedProfile />} />
               <Route path="/kyc" element={<MemoizedKycVerification />} />
