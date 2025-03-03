@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -7,7 +6,8 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Badge } from '@/components/ui/badge';
 import { Heart, Bed, Bath, MapPin, ArrowRight, Home, X } from 'lucide-react';
 import { useComparison } from '@/contexts/ComparisonContext';
-import { useFavorites, PropertyType } from '@/contexts/FavoritesContext';
+import { useFavorites } from '@/contexts/FavoritesContext';
+import { PropertyType } from '@/types/property';
 
 export interface PropertyCardProps {
   property: PropertyType;

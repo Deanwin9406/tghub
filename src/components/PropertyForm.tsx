@@ -1,14 +1,14 @@
+
 import React, { useState } from 'react';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import PropertyFormBasicInfo from './property/PropertyFormBasicInfo';
+import PropertyFormPricing from './property/PropertyFormPricing';
+import PropertyFormDetails from './property/PropertyFormDetails';
 
 interface PropertyFormProps {
   onSubmit: (data: any) => void;
@@ -142,172 +142,32 @@ const PropertyForm = ({ onSubmit, initialData, propertyId, isEditing = false }: 
     <Card>
       <CardContent className="pt-6">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-3">
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                name="title"
-                value={formData.title}
-                onChange={handleChange}
-                placeholder="Property title"
-                required
-              />
-            </div>
-            
-            <div className="space-y-3">
-              <Label htmlFor="location">City</Label>
-              <Input
-                id="location"
-                name="location"
-                value={formData.location}
-                onChange={handleChange}
-                placeholder="City"
-                required
-              />
-            </div>
-          </div>
+          <PropertyFormBasicInfo 
+            title={formData.title}
+            location={formData.location}
+            address={formData.address}
+            description={formData.description}
+            onInputChange={handleChange}
+          />
           
-          <div className="space-y-3">
-            <Label htmlFor="address">Address</Label>
-            <Input
-              id="address"
-              name="address"
-              value={formData.address}
-              onChange={handleChange}
-              placeholder="Full address"
-              required
-            />
-          </div>
+          <PropertyFormPricing 
+            price={formData.price}
+            priceUnit={formData.priceUnit}
+            purpose={formData.purpose}
+            onNumberChange={handleNumberChange}
+            onSelectChange={handleSelectChange}
+          />
           
-          <div className="space-y-3">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleChange}
-              placeholder="Describe your property"
-              rows={4}
-            />
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-3">
-              <Label htmlFor="price">Price</Label>
-              <Input
-                id="price"
-                name="price"
-                type="number"
-                value={formData.price}
-                onChange={handleNumberChange}
-                placeholder="Price"
-                required
-              />
-            </div>
-            
-            <div className="space-y-3">
-              <Label htmlFor="priceUnit">Currency</Label>
-              <Select 
-                value={formData.priceUnit} 
-                onValueChange={(value) => handleSelectChange('priceUnit', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select currency" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="XOF">XOF</SelectItem>
-                  <SelectItem value="USD">USD</SelectItem>
-                  <SelectItem value="EUR">EUR</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-3">
-              <Label htmlFor="purpose">Purpose</Label>
-              <Select 
-                value={formData.purpose} 
-                onValueChange={(value) => handleSelectChange('purpose', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select purpose" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="sale">For Sale</SelectItem>
-                  <SelectItem value="rent">For Rent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-3">
-              <Label htmlFor="type">Property Type</Label>
-              <Select 
-                value={formData.type} 
-                onValueChange={(value) => handleSelectChange('type', value)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="apartment">Apartment</SelectItem>
-                  <SelectItem value="house">House</SelectItem>
-                  <SelectItem value="villa">Villa</SelectItem>
-                  <SelectItem value="office">Office</SelectItem>
-                  <SelectItem value="land">Land</SelectItem>
-                  <SelectItem value="other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            <div className="space-y-3">
-              <Label htmlFor="beds">Bedrooms</Label>
-              <Input
-                id="beds"
-                name="beds"
-                type="number"
-                value={formData.beds}
-                onChange={handleNumberChange}
-                placeholder="Number of bedrooms"
-              />
-            </div>
-            
-            <div className="space-y-3">
-              <Label htmlFor="baths">Bathrooms</Label>
-              <Input
-                id="baths"
-                name="baths"
-                type="number"
-                value={formData.baths}
-                onChange={handleNumberChange}
-                placeholder="Number of bathrooms"
-              />
-            </div>
-          </div>
-          
-          <div className="space-y-3">
-            <Label htmlFor="area">Area (m²)</Label>
-            <Input
-              id="area"
-              name="area"
-              type="number"
-              value={formData.area}
-              onChange={handleNumberChange}
-              placeholder="Property area in square meters"
-            />
-          </div>
-          
-          <div className="space-y-3">
-            <Label htmlFor="image">Main Image URL</Label>
-            <Input
-              id="image"
-              name="image"
-              value={formData.image}
-              onChange={handleChange}
-              placeholder="URL to main property image"
-            />
-          </div>
+          <PropertyFormDetails 
+            type={formData.type}
+            beds={formData.beds}
+            baths={formData.baths}
+            area={formData.area}
+            image={formData.image}
+            onNumberChange={handleNumberChange}
+            onInputChange={handleChange}
+            onSelectChange={handleSelectChange}
+          />
           
           <div className="flex justify-end">
             <Button type="submit" disabled={submitting}>

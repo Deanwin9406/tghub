@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PropertyCard from './PropertyCard';
-import { PropertyType } from '@/contexts/FavoritesContext';
+import { PropertyType } from '@/types/property';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
