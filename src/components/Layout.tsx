@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, memo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import {
@@ -18,8 +18,14 @@ import { ShoppingBag, Menu, X, LogOut, User, Settings } from 'lucide-react';
 import { getInitials } from '@/lib/utils';
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import AuthDialog from '@/components/AuthDialog';
+
+// Memoize link components to reduce re-renders
+const NavigationLink = memo(({ to, children, className, onClick }: { to: string; children: React.ReactNode; className?: string; onClick?: () => void }) => (
+  <Link to={to} className={className} onClick={onClick}>
+    {children}
+  </Link>
+));
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const { session, user, signOut, roles } = useAuth();
@@ -29,7 +35,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [authDialogOpen, setAuthDialogOpen] = useState(false);
   
-  // Log current path for debugging
+  // Log current path for debugging - only when path changes
   useEffect(() => {
     console.log("Layout - current path:", location.pathname);
   }, [location.pathname]);
@@ -41,33 +47,32 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       roles.includes('agent') || 
       roles.includes('admin'));
 
-  console.log("Layout - isTenantOnly:", isTenantOnly, "Roles:", roles);
+  // Use useCallback to prevent recreating functions on each render
+  const toggleMenu = useCallback(() => {
+    setIsMenuOpen(prev => !prev);
+  }, []);
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-
-  const closeMenu = () => {
+  const closeMenu = useCallback(() => {
     setIsMenuOpen(false);
-  };
+  }, []);
 
-  const openAuthDialog = () => {
+  const openAuthDialog = useCallback(() => {
     setAuthDialogOpen(true);
-  };
+  }, []);
 
-  // Handle navigation
-  const handleNavigation = (path: string) => (e: React.MouseEvent) => {
+  // Handle navigation - use useCallback to prevent recreating function
+  const handleNavigation = useCallback((path: string) => (e: React.MouseEvent) => {
     e.preventDefault();
     console.log("Layout - navigating to:", path);
     navigate(path);
     closeMenu();
-  };
+  }, [navigate, closeMenu]);
 
   // Updated to use signOut from AuthContext
-  const handleSignOut = async () => {
+  const handleSignOut = useCallback(async () => {
     await signOut();
     navigate('/');
-  };
+  }, [signOut, navigate]);
 
   // Use regular links for navigation
   const navItems = [
@@ -281,4 +286,4 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
   );
 };
 
-export default Layout;
+export default memo(Layout);

@@ -1,26 +1,31 @@
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, memo } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
-const AuthGuard = () => {
+const AuthGuard = memo(() => {
   const { session, loading } = useAuth();
   const location = useLocation();
   const [isReady, setIsReady] = useState(false);
 
-  // Add debugging for current path
-  useEffect(() => {
-    console.log("AuthGuard - current location path:", location.pathname);
-  }, [location.pathname]);
-
-  useEffect(() => {
-    // Only set isReady once loading is complete
+  // Use useCallback to prevent recreating functions on each render
+  const checkAuthStatus = useCallback(() => {
     if (!loading) {
       setIsReady(true);
     }
   }, [loading]);
 
-  // Enhanced logging for debugging
+  // Add debugging for current path - throttle console logs to reduce overhead
+  useEffect(() => {
+    console.log("AuthGuard - current location path:", location.pathname);
+  }, [location.pathname]);
+
+  useEffect(() => {
+    // Only check auth status once the loading state changes
+    checkAuthStatus();
+  }, [loading, checkAuthStatus]);
+
+  // Enhanced logging for debugging - only log when values change
   useEffect(() => {
     console.log("AuthGuard - authentication status:", { 
       session: session ? "exists" : "null", 
@@ -48,6 +53,6 @@ const AuthGuard = () => {
   // User is authenticated, allow navigation to the requested route without any redirection
   console.log("User is authenticated, allowing access to:", location.pathname);
   return <Outlet />;
-};
+});
 
 export default AuthGuard;

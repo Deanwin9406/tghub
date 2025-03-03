@@ -1,31 +1,8 @@
-
 import { createContext, useContext, useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
-
-// Define a PropertyType that matches our database schema and PropertyCard component
-export interface PropertyType {
-  id: string;
-  title: string;
-  address: string;
-  city: string;
-  price: number;
-  property_type: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  main_image_url: string | null;
-  status: string;
-  description: string | null;
-  size_sqm: number | null;
-  square_footage: number;
-  year_built: number;
-  amenities: string[] | null;
-  image_urls: string[];
-  availability_date: string | null;
-  latitude?: number | null;
-  longitude?: number | null;
-}
+import { PropertyType } from '@/types/property';
 
 export type FavoriteContextType = {
   favorites: PropertyType[];
@@ -68,7 +45,8 @@ export const FavoritesProvider = ({ children }: { children: React.ReactNode }) =
 
       // Transform the retrieved data to match our PropertyType
       const favoriteProperties = data.map(item => {
-        return item.properties as PropertyType;
+        // Cast to our PropertyType to ensure type compatibility
+        return item.properties as unknown as PropertyType;
       });
       
       setFavorites(favoriteProperties);

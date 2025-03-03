@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { memo } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ComparisonProvider } from "@/contexts/ComparisonContext";
@@ -23,6 +23,15 @@ import EditProperty from './pages/EditProperty';
 import NotFound from './pages/NotFound';
 import AddTenant from './pages/AddTenant';
 
+// Memoize page components to reduce re-renders
+const MemoizedDashboard = memo(Dashboard);
+const MemoizedProfile = memo(Profile);
+const MemoizedKycVerification = memo(KycVerification);
+const MemoizedPropertyManagement = memo(PropertyManagement);
+const MemoizedAddProperty = memo(AddProperty);
+const MemoizedEditProperty = memo(EditProperty);
+const MemoizedAddTenant = memo(AddTenant);
+
 function App() {
   console.log("App rendering - routes setup");  // Debug App rendering
   
@@ -41,16 +50,16 @@ function App() {
             <Route path="/agents/:id" element={<AgentProfile />} />
             <Route path="/vendors" element={<Vendors />} />
             
-            {/* Protected routes */}
+            {/* Protected routes - using memoized components to reduce re-renders */}
             <Route element={<AuthGuard />}>
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/kyc" element={<KycVerification />} />
+              <Route path="/profile" element={<MemoizedProfile />} />
+              <Route path="/kyc" element={<MemoizedKycVerification />} />
               <Route path="/favorites" element={<Favorites />} />
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/add-property" element={<AddProperty />} />
-              <Route path="/property-management" element={<PropertyManagement />} />
-              <Route path="/property/edit/:id" element={<EditProperty />} />
-              <Route path="/property/:propertyId/add-tenant" element={<AddTenant />} />
+              <Route path="/dashboard" element={<MemoizedDashboard />} />
+              <Route path="/add-property" element={<MemoizedAddProperty />} />
+              <Route path="/property-management" element={<MemoizedPropertyManagement />} />
+              <Route path="/property/edit/:id" element={<MemoizedEditProperty />} />
+              <Route path="/property/:propertyId/add-tenant" element={<MemoizedAddTenant />} />
             </Route>
             
             <Route path="*" element={<NotFound />} />

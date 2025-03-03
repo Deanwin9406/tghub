@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, X, Bed, Bath, Square, Trash2 } from 'lucide-react';
@@ -7,18 +6,7 @@ import { useComparison } from '@/contexts/ComparisonContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { PropertyType } from '@/components/PropertyCard';
-
-// Extend the PropertyType to include additional properties used in this component
-interface ExtendedPropertyType extends PropertyType {
-  image?: string;
-  location?: string;
-  purpose?: string;
-  type?: string;
-  beds?: number;
-  baths?: number;
-  area?: number;
-}
+import { PropertyType, ExtendedPropertyType } from '@/types/property';
 
 const ComparisonPage = () => {
   const { comparisonList, removeFromComparison, clearComparison } = useComparison();
