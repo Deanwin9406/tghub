@@ -102,9 +102,9 @@ const AuthGuard = memo(() => {
       <div className="container mx-auto py-12 px-4">
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Authentication Required</AlertTitle>
+          <AlertTitle>Authentification Requise</AlertTitle>
           <AlertDescription>
-            Please log in to access this page.
+            Veuillez vous connecter pour accéder à cette page.
           </AlertDescription>
         </Alert>
         <div className="flex justify-center">
@@ -117,14 +117,14 @@ const AuthGuard = memo(() => {
   // If user is authenticated but doesn't have the right role for this route
   if (!hasRoleAccess(roles, location.pathname)) {
     console.log("User doesn't have role access to this route:", location.pathname);
-    setAccessError(`You don't have permission to access this page. Please contact an administrator if you believe this is an error.`);
+    setAccessError(`Vous n'avez pas les permissions pour accéder à cette page. Veuillez contacter un administrateur si vous pensez qu'il s'agit d'une erreur.`);
     
     // Show an access error with a redirect link to dashboard
     return (
       <div className="container mx-auto py-12 px-4">
         <Alert variant="destructive" className="mb-6">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Access Denied</AlertTitle>
+          <AlertTitle>Accès Refusé</AlertTitle>
           <AlertDescription>
             {accessError}
           </AlertDescription>

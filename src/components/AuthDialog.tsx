@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -312,13 +313,13 @@ const AuthDialog = ({ open, onOpenChange }: AuthDialogProps) => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="userRole">Rôle</Label>
+                  <Label htmlFor="userRole">Je suis un(e)</Label>
                   <Select 
                     value={userRole} 
                     onValueChange={setUserRole}
                   >
                     <SelectTrigger id="userRole">
-                      <SelectValue placeholder="Sélectionnez un rôle" />
+                      <SelectValue placeholder="Sélectionnez votre profil" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="tenant">Locataire</SelectItem>
