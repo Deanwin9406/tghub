@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { CalendarIcon, Phone, Mail, MessageCircle, Calendar as CalendarIcon2, Clock, Info, MapPin, Star } from 'lucide-react';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 
 interface Vendor {
   id: string;
@@ -31,6 +32,17 @@ interface Vendor {
     hours: string;
   };
   image: string;
+  expertise?: string[];
+  bio?: string;
+}
+
+interface Review {
+  id: string;
+  reviewer: string;
+  rating: number;
+  comment: string;
+  date: string;
+  reviewerAvatar?: string;
 }
 
 const ContactVendor = () => {
@@ -45,6 +57,38 @@ const ContactVendor = () => {
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [timeSlot, setTimeSlot] = useState<string>('');
   const [activeTab, setActiveTab] = useState('message');
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  
+  // Mock reviews for demonstration
+  const mockReviews: Review[] = [
+    {
+      id: '1',
+      reviewer: 'Sophie Martin',
+      rating: 5,
+      comment: 'Excellent service, très professionnel et ponctuel. Je recommande vivement!',
+      date: '2023-12-15',
+      reviewerAvatar: 'https://randomuser.me/api/portraits/women/44.jpg'
+    },
+    {
+      id: '2',
+      reviewer: 'Thomas Dubois',
+      rating: 4,
+      comment: 'Bon travail, propre et efficace. Un peu cher mais la qualité est au rendez-vous.',
+      date: '2023-11-28',
+      reviewerAvatar: 'https://randomuser.me/api/portraits/men/32.jpg'
+    },
+    {
+      id: '3',
+      reviewer: 'Léa Petit',
+      rating: 5,
+      comment: 'Service rapide et de qualité. Merci beaucoup!',
+      date: '2023-10-10',
+      reviewerAvatar: 'https://randomuser.me/api/portraits/women/68.jpg'
+    }
+  ];
   
   const getTimeSlots = () => {
     if (!vendor) return [];
@@ -76,7 +120,14 @@ const ContactVendor = () => {
     const vendorFromState = location.state?.vendor;
     
     if (vendorFromState) {
-      setVendor(vendorFromState);
+      // Add mock expertise and bio for demonstration
+      const vendorWithDetails = {
+        ...vendorFromState,
+        expertise: ['Installation électrique', 'Dépannage', 'Rénovation', 'Câblage industriel'],
+        bio: 'Avec plus de 15 ans d\'expérience dans le domaine de l\'électricité, notre équipe d\'électriciens qualifiés offre des services de haute qualité pour tous vos besoins électriques. Nous sommes spécialisés dans les installations électriques résidentielles et commerciales, les dépannages d\'urgence et les projets de rénovation.'
+      };
+      setVendor(vendorWithDetails);
+      setReviews(mockReviews);
       setLoading(false);
     } else {
       const mockVendors = [
@@ -96,7 +147,9 @@ const ContactVendor = () => {
             days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'],
             hours: '8:00 AM - 5:00 PM'
           },
-          image: 'https://images.unsplash.com/photo-1621905244249-563b19458969?q=80&w=870&auto=format&fit=crop'
+          image: 'https://images.unsplash.com/photo-1621905244249-563b19458969?q=80&w=870&auto=format&fit=crop',
+          expertise: ['Installation électrique', 'Dépannage', 'Rénovation', 'Câblage industriel'],
+          bio: 'Avec plus de 15 ans d\'expérience dans le domaine de l\'électricité, notre équipe d\'électriciens qualifiés offre des services de haute qualité pour tous vos besoins électriques. Nous sommes spécialisés dans les installations électriques résidentielles et commerciales, les dépannages d\'urgence et les projets de rénovation.'
         },
         {
           id: '2',
@@ -114,7 +167,9 @@ const ContactVendor = () => {
             days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
             hours: '9:00 AM - 6:00 PM'
           },
-          image: 'https://images.unsplash.com/photo-1617838482403-48a924a8557f?q=80&w=870&auto=format&fit=crop'
+          image: 'https://images.unsplash.com/photo-1617838482403-48a924a8557f?q=80&w=870&auto=format&fit=crop',
+          expertise: ['Réparation de tuyaux', 'Installation de sanitaires', 'Débouchage de canalisations'],
+          bio: 'AquaFlow Plumbing Services est votre partenaire de confiance pour tous vos besoins en plomberie. Nos plombiers expérimentés sont disponibles 24h/24 et 7j/7 pour résoudre tous vos problèmes de plomberie, des fuites mineures aux installations complètes.'
         },
         {
           id: '3',
@@ -132,7 +187,9 @@ const ContactVendor = () => {
             days: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
             hours: '7:00 AM - 7:00 PM'
           },
-          image: 'https://images.unsplash.com/photo-1574172269172-890559175891?q=80&w=870&auto=format&fit=crop'
+          image: 'https://images.unsplash.com/photo-1574172269172-890559175891?q=80&w=870&auto=format&fit=crop',
+          expertise: ['Peinture intérieure', 'Peinture extérieure', 'Revêtements muraux'],
+          bio: 'Transformez votre espace avec les services de peinture professionnels de Supreme Painters. Nos peintres qualifiés utilisent des peintures de haute qualité et des techniques avancées pour créer des finitions impeccables qui dureront des années.'
         }
       ];
       
@@ -142,6 +199,7 @@ const ContactVendor = () => {
         const foundVendor = mockVendors.find(v => v.id === vendorId);
         if (foundVendor) {
           setVendor(foundVendor);
+          setReviews(mockReviews);
         } else {
           toast({
             title: "Fournisseur introuvable",
@@ -239,6 +297,47 @@ const ContactVendor = () => {
     setDate(undefined);
     setTimeSlot('');
   };
+
+  const handleSubmitReview = () => {
+    const newReview: Review = {
+      id: `temp-${Date.now()}`,
+      reviewer: user?.email || 'Anonymous User',
+      rating: reviewRating,
+      comment: reviewComment,
+      date: new Date().toISOString().split('T')[0],
+    };
+
+    setReviews([newReview, ...reviews]);
+    setShowReviewDialog(false);
+    setReviewComment('');
+    setReviewRating(5);
+
+    // Update vendor rating (average of all reviews)
+    if (vendor) {
+      const totalRating = reviews.reduce((sum, review) => sum + review.rating, 0) + newReview.rating;
+      const newAverageRating = totalRating / (reviews.length + 1);
+      setVendor({
+        ...vendor,
+        rating: parseFloat(newAverageRating.toFixed(1))
+      });
+    }
+
+    toast({
+      title: "Avis envoyé",
+      description: "Merci! Votre avis a été publié avec succès.",
+    });
+  };
+  
+  const renderStars = (rating: number) => {
+    return Array(5).fill(0).map((_, i) => (
+      <Star 
+        key={i} 
+        className={`h-4 w-4 ${i < rating ? 'text-yellow-500 fill-yellow-500' : 'text-gray-300'}`}
+        onClick={showReviewDialog ? () => setReviewRating(i + 1) : undefined}
+        style={showReviewDialog ? { cursor: 'pointer' } : undefined}
+      />
+    ));
+  };
   
   if (loading) {
     return (
@@ -281,8 +380,8 @@ const ContactVendor = () => {
           &larr; Retour aux fournisseurs
         </Button>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="md:col-span-1">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
             <Card className="mb-6">
               <div className="aspect-square overflow-hidden">
                 <img 
@@ -294,7 +393,9 @@ const ContactVendor = () => {
               <CardHeader>
                 <CardTitle>{vendor.name}</CardTitle>
                 <CardDescription className="flex items-center">
-                  <Star className="h-4 w-4 text-yellow-500 mr-1" />
+                  <div className="flex mr-2">
+                    {renderStars(vendor.rating)}
+                  </div>
                   {vendor.rating} • {vendor.category}
                 </CardDescription>
               </CardHeader>
@@ -342,10 +443,38 @@ const ContactVendor = () => {
                 </Button>
               </CardFooter>
             </Card>
+            
+            {/* Vendor Bio and Expertise */}
+            <Card className="mb-6">
+              <CardHeader>
+                <CardTitle>À propos</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Biographie</h3>
+                    <p className="text-sm text-muted-foreground">{vendor.bio}</p>
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-medium mb-2">Domaines d'expertise</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {vendor.expertise?.map((skill, index) => (
+                        <span 
+                          key={index}
+                          className="bg-muted text-xs px-2 py-1 rounded-full"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
           
-          <div className="md:col-span-2">
-            <Card>
+          <div className="lg:col-span-2">
+            <Card className="mb-6">
               <CardHeader>
                 <CardTitle>Contacter {vendor.name}</CardTitle>
                 <CardDescription>
@@ -453,8 +582,116 @@ const ContactVendor = () => {
                 </Tabs>
               </CardContent>
             </Card>
+            
+            {/* Reviews Section */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <div>
+                  <CardTitle>Avis et évaluations</CardTitle>
+                  <CardDescription>
+                    {reviews.length} avis • {vendor.rating} sur 5
+                  </CardDescription>
+                </div>
+                <Button 
+                  onClick={() => setShowReviewDialog(true)}
+                  variant="outline"
+                >
+                  Laisser un avis
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {reviews.length > 0 ? (
+                  <div className="space-y-6">
+                    {reviews.map((review) => (
+                      <div key={review.id} className="pb-6 border-b last:border-0">
+                        <div className="flex items-start gap-4">
+                          <div className="h-10 w-10 rounded-full overflow-hidden bg-muted flex-shrink-0">
+                            {review.reviewerAvatar ? (
+                              <img 
+                                src={review.reviewerAvatar} 
+                                alt={review.reviewer} 
+                                className="h-full w-full object-cover"
+                              />
+                            ) : (
+                              <div className="h-full w-full bg-primary/10 flex items-center justify-center text-primary font-medium">
+                                {review.reviewer.substring(0, 1).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="font-medium">{review.reviewer}</p>
+                                <div className="flex items-center mt-1">
+                                  {renderStars(review.rating)}
+                                  <span className="ml-2 text-xs text-muted-foreground">
+                                    {review.date}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="mt-2 text-sm">{review.comment}</p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-10">
+                    <p className="text-muted-foreground">Aucun avis pour le moment.</p>
+                    <Button 
+                      onClick={() => setShowReviewDialog(true)}
+                      variant="outline"
+                      className="mt-4"
+                    >
+                      Soyez le premier à laisser un avis
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
         </div>
+        
+        {/* Review Dialog */}
+        <Dialog open={showReviewDialog} onOpenChange={setShowReviewDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Laisser un avis pour {vendor.name}</DialogTitle>
+              <DialogDescription>
+                Partagez votre expérience avec ce prestataire de services
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="py-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Votre évaluation</label>
+                <div className="flex gap-1">
+                  {renderStars(reviewRating)}
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium mb-2">Votre commentaire</label>
+                <Textarea
+                  placeholder="Partagez les détails de votre expérience avec ce prestataire..."
+                  value={reviewComment}
+                  onChange={(e) => setReviewComment(e.target.value)}
+                  className="min-h-[100px]"
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowReviewDialog(false)}>
+                Annuler
+              </Button>
+              <Button onClick={handleSubmitReview} disabled={!reviewComment.trim()}>
+                Publier
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </Layout>
   );

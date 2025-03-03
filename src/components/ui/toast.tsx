@@ -20,17 +20,15 @@ export const toast = (props: ToastProps) => {
   const style = variant === "destructive" ? { style: "destructive" } : {};
   
   if (title) {
-    return toastFunction({
+    return toastFunction(title, {
+      description,
       ...style,
       ...rest,
-      title: title,
-      description: description
     });
   } else {
-    return toastFunction({
+    return toastFunction(description || "", {
       ...style,
       ...rest,
-      description: description || ""
     });
   }
 };
