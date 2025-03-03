@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import SearchBar from '@/components/SearchBar';
@@ -11,11 +12,11 @@ import { DialogContent, DialogDescription, DialogHeader, DialogTitle, Dialog } f
 import { DialogTrigger } from '@radix-ui/react-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { useToast } from '@/hooks/use-toast';
+import { toast } from '@/hooks/use-toast';
 import Map from '@/components/Map';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { PropertyType } from '@/contexts/FavoritesContext';
+import { PropertyType } from '@/types/property';
 
 const Search = () => {
   const [properties, setProperties] = useState<PropertyType[]>([]);
@@ -63,6 +64,7 @@ const Search = () => {
           title: property.title,
           address: property.address,
           city: property.city,
+          country: property.country || "Togo", // Ensure country is always present
           price: property.price,
           property_type: property.property_type,
           bedrooms: property.bedrooms,
