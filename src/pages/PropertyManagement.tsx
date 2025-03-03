@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -9,23 +8,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import PropertyCard from '@/components/PropertyCard';
-
-interface PropertyType {
-  id: string;
-  title: string;
-  address: string;
-  city: string;
-  price: number;
-  property_type: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  main_image_url: string | null;
-  status: string;
-  description: string | null;
-  size_sqm: number | null;
-  amenities: string[] | null;
-  owner_id: string;
-}
+import { PropertyType } from '@/contexts/FavoritesContext';
 
 const PropertyManagement = () => {
   const navigate = useNavigate();
@@ -93,7 +76,15 @@ const PropertyManagement = () => {
 
       if (error) throw error;
       
-      setProperties(data || []);
+      const formattedProperties = data?.map(property => ({
+        ...property,
+        square_footage: property.size_sqm,
+        year_built: 2023,
+        image_urls: property.main_image_url ? [property.main_image_url] : [],
+        availability_date: property.availability_date || null
+      })) || [];
+      
+      setProperties(formattedProperties);
     } catch (error) {
       console.error('Error fetching properties:', error);
       toast({

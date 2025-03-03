@@ -4,7 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
-// Define a PropertyType that matches our database schema
+// Define a PropertyType that matches our database schema and PropertyCard component
 export interface PropertyType {
   id: string;
   title: string;
@@ -22,7 +22,7 @@ export interface PropertyType {
   year_built?: number;
   amenities: string[] | null;
   image_urls?: string[];
-  availability_date: string | null;
+  availability_date?: string | null;
 }
 
 export type FavoriteContextType = {

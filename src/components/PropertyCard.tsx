@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
@@ -7,26 +6,7 @@ import { AspectRatio } from '@/components/ui/aspect-ratio';
 import { Badge } from '@/components/ui/badge';
 import { Heart, Bed, Bath, MapPin, ArrowRight, Home, X } from 'lucide-react';
 import { useComparison } from '@/contexts/ComparisonContext';
-import { useFavorites } from '@/contexts/FavoritesContext';
-
-export interface PropertyType {
-  id: string;
-  title: string;
-  address: string;
-  city: string;
-  price: number;
-  property_type: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  main_image_url: string | null;
-  status: string;
-  description: string;
-  square_footage: number;
-  year_built: number;
-  amenities: string[];
-  image_urls: string[];
-  availability_date: string;
-}
+import { useFavorites, PropertyType } from '@/contexts/FavoritesContext';
 
 export interface PropertyCardProps {
   property: PropertyType;

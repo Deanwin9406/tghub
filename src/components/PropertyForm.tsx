@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -85,7 +84,7 @@ const PropertyForm = ({ onSubmit, initialData, propertyId, isEditing = false }: 
         country: formData.country,
         amenities: formData.amenities,
         owner_id: user.id,
-        status: 'available',
+        status: 'available' as 'available' | 'rented' | 'sold' | 'under_maintenance',
       };
       
       let result;

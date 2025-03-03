@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import Layout from '@/components/Layout';
 import SearchBar from '@/components/SearchBar';
@@ -16,29 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import Map from '@/components/Map';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-// Define PropertyType to match our database schema
-interface PropertyType {
-  id: string;
-  title: string;
-  address: string;
-  city: string;
-  price: number;
-  property_type: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  main_image_url: string | null;
-  status: string;
-  description: string;
-  size_sqm: number | null;
-  square_footage?: number;
-  year_built?: number;
-  amenities: string[];
-  image_urls?: string[];
-  availability_date?: string;
-  latitude: number | null;
-  longitude: number | null;
-}
+import { PropertyType } from '@/contexts/FavoritesContext';
 
 const Search = () => {
   const [properties, setProperties] = useState<PropertyType[]>([]);
@@ -125,31 +102,26 @@ const Search = () => {
   };
 
   const filteredProperties = properties.filter(property => {
-    // Apply search term filter
     if (searchTerm && !property.title.toLowerCase().includes(searchTerm.toLowerCase()) && 
         !property.description?.toLowerCase().includes(searchTerm.toLowerCase()) &&
         !property.city.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
 
-    // Apply price filter
     if (property.price < filters.minPrice || property.price > filters.maxPrice) {
       return false;
     }
 
-    // Apply property type filter
     if (filters.propertyTypes.length > 0 && !filters.propertyTypes.includes(property.property_type)) {
       return false;
     }
 
-    // Apply bedroom filter
     if (filters.bedrooms !== 'any' && property.bedrooms !== (filters.bedrooms === '4+' ? 4 : parseInt(filters.bedrooms))) {
       if (!(filters.bedrooms === '4+' && property.bedrooms && property.bedrooms >= 4)) {
         return false;
       }
     }
 
-    // Apply bathroom filter
     if (filters.bathrooms !== 'any' && property.bathrooms !== (filters.bathrooms === '3+' ? 3 : parseInt(filters.bathrooms))) {
       if (!(filters.bathrooms === '3+' && property.bathrooms && property.bathrooms >= 3)) {
         return false;
@@ -176,12 +148,11 @@ const Search = () => {
     });
   };
 
-  // Format properties for map display
   const mapProperties = filteredProperties
-    .filter(property => property.latitude && property.longitude) // Only include properties with coordinates
+    .filter(property => property.latitude && property.longitude)
     .map(property => ({
       id: property.id,
-      latitude: property.latitude || 6.1319, // Default to Lomé if not specified
+      latitude: property.latitude || 6.1319,
       longitude: property.longitude || 1.2254,
       title: property.title,
       price: property.price,
@@ -365,7 +336,7 @@ const Search = () => {
                   properties={mapProperties}
                   onPropertyClick={handlePropertyClick}
                   zoom={13}
-                  center={[1.2254, 6.1319]} // Center on Lomé, Togo
+                  center={[1.2254, 6.1319]}
                   height="100%"
                 />
               )}
