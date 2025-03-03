@@ -1,9 +1,9 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Session, User, AuthError } from '@supabase/supabase-js';
 import { Profile } from '@/types/community';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
@@ -35,6 +35,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [roles, setRoles] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [hasCompletedKyc, setHasCompletedKyc] = useState<boolean>(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     console.log("AuthContext - Authentication state updated:", { 
@@ -161,6 +163,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       // Log successful login attempt
       console.log("User logged in successfully:", data.user?.email);
+      
+      // Redirect to home page instead of dashboard
+      navigate('/');
       
       return { error: null };
     } catch (error) {
@@ -355,5 +360,5 @@ export const useAuth = (): AuthContextType => {
   return context;
 };
 
-// Export the PropertyType from the FavoritesContext
+// Export the Profile type from the AuthContext
 export type { Profile };
