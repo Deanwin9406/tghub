@@ -2,6 +2,8 @@
 import React, { useEffect, useState, useCallback, memo } from 'react';
 import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { AlertCircle } from 'lucide-react';
 
 // Define public routes that don't require authentication
 const PUBLIC_ROUTES = ['/', '/search', '/communities', '/agents', '/vendors', '/property'];
@@ -19,6 +21,7 @@ const AuthGuard = memo(() => {
   const { session, loading, roles } = useAuth();
   const location = useLocation();
   const [isReady, setIsReady] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
 
   // Use useCallback to prevent recreating functions on each render
   const checkAuthStatus = useCallback(() => {
@@ -87,22 +90,38 @@ const AuthGuard = memo(() => {
   const isPublicRoute = PUBLIC_ROUTES.some(route => location.pathname === route || 
                                                    location.pathname.startsWith(`${route}/`));
 
-  // If accessing a public route while authenticated, let the user stay there (no forced redirect)
-  if (session && isPublicRoute) {
-    console.log("Authenticated user accessing public route, allowing access");
+  // If accessing a public route, let users stay there regardless of authentication status
+  if (isPublicRoute) {
+    console.log("User accessing public route, allowing access");
     return <Outlet />;
   }
 
   // If user is not authenticated and trying to access a protected route, redirect to home
-  if (!session && !isPublicRoute) {
+  if (!session) {
     console.log("User not authenticated, redirecting to home");
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
   // If user is authenticated but doesn't have the right role for this route
-  if (session && !isPublicRoute && !hasRoleAccess(roles, location.pathname)) {
-    console.log("User doesn't have access to this route, redirecting to dashboard");
-    return <Navigate to="/dashboard" state={{ from: location }} replace />;
+  if (!hasRoleAccess(roles, location.pathname)) {
+    console.log("User doesn't have role access to this route:", location.pathname);
+    setAccessError(`You don't have permission to access this page. Please contact an administrator if you believe this is an error.`);
+    
+    // Show an access error with a redirect link to dashboard instead of automatic redirection
+    return (
+      <div className="container mx-auto py-12 px-4">
+        <Alert variant="destructive" className="mb-6">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Access Denied</AlertTitle>
+          <AlertDescription>
+            {accessError}
+          </AlertDescription>
+        </Alert>
+        <div className="flex justify-center">
+          <Navigate to="/dashboard" replace />
+        </div>
+      </div>
+    );
   }
 
   // User is authenticated and has proper role access, allow navigation

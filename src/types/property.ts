@@ -20,8 +20,9 @@ export interface PropertyType {
   latitude?: number;
   longitude?: number;
   image_urls?: string[];
+  // Support for legacy property fields used in existing components
   area?: number;
-  beds?: number;
+  beds?: number; 
   baths?: number;
   location?: string;
   purpose?: string;
