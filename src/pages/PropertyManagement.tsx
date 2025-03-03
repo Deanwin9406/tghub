@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -78,10 +79,12 @@ const PropertyManagement = () => {
       
       const formattedProperties = data?.map(property => ({
         ...property,
-        square_footage: property.size_sqm,
+        square_footage: property.size_sqm || 0,
         year_built: 2023,
         image_urls: property.main_image_url ? [property.main_image_url] : [],
-        availability_date: property.availability_date || null
+        availability_date: property.availability_date || null,
+        latitude: property.latitude || null,
+        longitude: property.longitude || null
       })) || [];
       
       setProperties(formattedProperties);

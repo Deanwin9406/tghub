@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import PropertyCard, { PropertyType } from './PropertyCard';
+import PropertyCard from './PropertyCard';
+import { PropertyType } from '@/contexts/FavoritesContext';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -63,12 +64,15 @@ const FeaturedProperties = ({
           bedrooms: property.bedrooms,
           bathrooms: property.bathrooms,
           square_footage: property.size_sqm || 0,
+          size_sqm: property.size_sqm || 0,
           main_image_url: property.main_image_url || 'https://placehold.co/600x400',
           description: property.description || '',
           image_urls: property.main_image_url ? [property.main_image_url] : ['https://placehold.co/600x400'],
           year_built: new Date().getFullYear(), // Default if not available
           amenities: property.amenities || [],
-          availability_date: property.availability_date || new Date().toISOString()
+          availability_date: property.availability_date || new Date().toISOString(),
+          latitude: property.latitude,
+          longitude: property.longitude
         }));
         
         setProperties(formattedProperties);
@@ -110,6 +114,7 @@ const FeaturedProperties = ({
         city: "Lomé",
         bedrooms: 4,
         bathrooms: 3,
+        size_sqm: 250,
         square_footage: 250,
         main_image_url: "https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=880&q=80",
         description: "Une belle villa moderne avec piscine",
@@ -117,6 +122,8 @@ const FeaturedProperties = ({
         year_built: 2020,
         amenities: ["Piscine", "Jardin", "Garage"],
         availability_date: "2023-06-01",
+        latitude: 6.1319,
+        longitude: 1.2254
       },
       {
         id: "2",
@@ -128,6 +135,7 @@ const FeaturedProperties = ({
         city: "Lomé",
         bedrooms: 2,
         bathrooms: 2,
+        size_sqm: 100,
         square_footage: 100,
         main_image_url: "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=880&q=80",
         description: "Un appartement de standing au cœur de la ville",
@@ -135,6 +143,8 @@ const FeaturedProperties = ({
         year_built: 2019,
         amenities: ["Balcon", "Ascenseur", "Parking"],
         availability_date: "2023-07-15",
+        latitude: 6.1419,
+        longitude: 1.2154
       },
     ];
   };

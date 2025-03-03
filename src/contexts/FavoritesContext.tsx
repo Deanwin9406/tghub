@@ -18,11 +18,13 @@ export interface PropertyType {
   status: string;
   description: string | null;
   size_sqm: number | null;
-  square_footage?: number;
-  year_built?: number;
+  square_footage: number;
+  year_built: number;
   amenities: string[] | null;
-  image_urls?: string[];
-  availability_date?: string | null;
+  image_urls: string[];
+  availability_date: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export type FavoriteContextType = {

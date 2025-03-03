@@ -1,6 +1,6 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { PropertyType } from '@/components/PropertyCard';
+import { PropertyType } from '@/contexts/FavoritesContext';
 
 interface ComparisonContextType {
   comparisonList: PropertyType[];
