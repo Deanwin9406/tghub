@@ -1,87 +1,133 @@
-
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
 import Layout from '@/components/Layout';
-import { useAuth } from '@/contexts/AuthContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, Send, Search } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription, 
+  CardFooter 
+} from '@/components/ui/card';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Input } from '@/components/ui/input';
+import { Loader2, Send } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
 
-// Update the Contact type to match what the API returns
-type Contact = {
+interface Thread {
   id: string;
-  first_name: string;
-  last_name: string;
-  avatar_url: string | null;
+  participant_ids: string[];
+  last_message: {
+    content: string;
+    sender_id: string;
+    created_at: string;
+  };
   unread_count: number;
-  last_message: string;
-  last_message_time: string;
-};
+  updated_at: string;
+  participants: Participant[];
+}
 
-// Update the Message type to match what the API returns
-type Message = {
+interface Participant {
   id: string;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+}
+
+interface Message {
+  id: string;
+  thread_id: string;
   sender_id: string;
-  recipient_id: string;
   content: string;
   created_at: string;
-  read_at?: string | null;
-  status: 'sent' | 'delivered' | 'read';
-};
+  read_at: string | null;
+}
 
 const Messages = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   
-  const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [threads, setThreads] = useState<Thread[]>([]);
+  const [activeThread, setActiveThread] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [participants, setParticipants] = useState<Record<string, Participant>>({});
+  
+  // For creating new threads
+  const [users, setUsers] = useState<Participant[]>([]);
+  const [selectedUser, setSelectedUser] = useState<string | null>(null);
 
-  // Fetch contacts list
-  const fetchContacts = async () => {
-    if (!user) return;
-    
+  useEffect(() => {
+    if (user) {
+      fetchThreads();
+      fetchUsers();
+      
+      // Check for user_id in URL params to start a new conversation
+      const recipientId = searchParams.get('user');
+      if (recipientId) {
+        // Check if there's an existing thread with this user
+        createOrFindThread(recipientId);
+      }
+    }
+  }, [user]);
+
+  useEffect(() => {
+    if (activeThread) {
+      fetchMessages(activeThread);
+      markThreadAsRead(activeThread);
+    }
+  }, [activeThread]);
+
+  useEffect(() => {
+    // Scroll to bottom when new messages arrive
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const fetchThreads = async () => {
+    setLoading(true);
     try {
-      // Use a mock/fallback approach since the RPC function doesn't exist yet
-      // This is a temporary fix until the backend RPC is properly set up
       const { data, error } = await supabase
-        .from('profiles')
-        .select('id, first_name, last_name, avatar_url')
-        .neq('id', user.id)
-        .limit(10);
-      
+        .from('message_threads')
+        .select('*')
+        .contains('participant_ids', [user!.id])
+        .order('updated_at', { ascending: false });
+
       if (error) throw error;
-      
-      // Transform the data to match Contact type
-      const contactsData: Contact[] = (data || []).map(profile => ({
-        id: profile.id,
-        first_name: profile.first_name || '',
-        last_name: profile.last_name || '',
-        avatar_url: profile.avatar_url,
-        unread_count: 0,
-        last_message: 'No messages yet',
-        last_message_time: new Date().toISOString()
-      }));
-      
-      setContacts(contactsData);
+
+      // Fetch participants for each thread
+      const threadsWithParticipants = await Promise.all(
+        data.map(async (thread) => {
+          const participants = await fetchParticipantsForThread(thread.id);
+          return {
+            ...thread,
+            participants,
+          };
+        })
+      );
+
+      setThreads(threadsWithParticipants);
+
+      // If no active thread is set, set the first one
+      if (threadsWithParticipants.length > 0 && !activeThread) {
+        setActiveThread(threadsWithParticipants[0].id);
+      }
     } catch (error) {
-      console.error('Error fetching contacts:', error);
+      console.error('Error fetching threads:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load contacts.',
+        title: 'Erreur',
+        description: 'Impossible de charger les conversations',
         variant: 'destructive',
       });
     } finally {
@@ -89,75 +135,146 @@ const Messages = () => {
     }
   };
 
-  // Fetch messages for a specific contact
-  const fetchMessages = async (contactId: string) => {
-    if (!user) return;
-    
+  const fetchParticipantsForThread = async (threadId: string): Promise<Participant[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('message_thread_participants')
+        .select(`
+          user_id,
+          profiles:user_id (
+            id,
+            first_name,
+            last_name,
+            avatar_url
+          )
+        `)
+        .eq('thread_id', threadId);
+
+      if (error) throw error;
+
+      // Store participants in the participants state for easy lookup
+      const participantData = data.map(p => p.profiles as Participant);
+      
+      // Update our participants record
+      const newParticipants = { ...participants };
+      participantData.forEach(p => {
+        newParticipants[p.id] = p;
+      });
+      setParticipants(newParticipants);
+
+      return participantData;
+    } catch (error) {
+      console.error('Error fetching participants:', error);
+      return [];
+    }
+  };
+
+  const fetchMessages = async (threadId: string) => {
     try {
       const { data, error } = await supabase
         .from('messages')
         .select('*')
-        .or(`sender_id.eq.${user.id},recipient_id.eq.${user.id}`)
-        .or(`sender_id.eq.${contactId},recipient_id.eq.${contactId}`)
+        .eq('thread_id', threadId)
         .order('created_at', { ascending: true });
-      
+
       if (error) throw error;
-      
-      // Cast the data to our Message type
-      setMessages((data || []) as Message[]);
-      
-      // Mark messages as read by updating status instead of is_read
-      const unreadMessages = data?.filter(
-        (msg) => msg.recipient_id === user.id && msg.status !== 'read' && msg.sender_id === contactId
-      );
-      
-      if (unreadMessages && unreadMessages.length > 0) {
-        await supabase
-          .from('messages')
-          .update({ status: 'read', read_at: new Date().toISOString() })
-          .in('id', unreadMessages.map(msg => msg.id));
-        
-        // Update contacts list to reflect read messages
-        fetchContacts();
-      }
+
+      setMessages(data);
     } catch (error) {
       console.error('Error fetching messages:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load messages.',
+        title: 'Erreur',
+        description: 'Impossible de charger les messages',
         variant: 'destructive',
       });
     }
   };
 
-  // Send a new message
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!user || !selectedContact || !newMessage.trim()) return;
-    
-    setSendingMessage(true);
-    
+  const fetchUsers = async () => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, first_name, last_name, avatar_url')
+        .neq('id', user!.id);
+
+      if (error) throw error;
+
+      setUsers(data);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    }
+  };
+
+  const markThreadAsRead = async (threadId: string) => {
+    try {
+      // Mark all messages in this thread as read
+      await supabase
+        .from('messages')
+        .update({ read_at: new Date().toISOString() })
+        .eq('thread_id', threadId)
+        .eq('recipient_id', user!.id)
+        .is('read_at', null);
+
+      // Update the thread's unread count
+      const updatedThreads = threads.map(thread => {
+        if (thread.id === threadId) {
+          return { ...thread, unread_count: 0 };
+        }
+        return thread;
+      });
+
+      setThreads(updatedThreads);
+    } catch (error) {
+      console.error('Error marking thread as read:', error);
+    }
+  };
+
+  const sendMessage = async () => {
+    if (!activeThread || !newMessage.trim()) return;
+
+    setSendingMessage(true);
+    try {
+      // Get the other participant's ID
+      const otherParticipantId = threads
+        .find(t => t.id === activeThread)
+        ?.participant_ids
+        .find(id => id !== user!.id);
+
+      if (!otherParticipantId) {
+        toast({
+          title: 'Erreur',
+          description: 'Impossible de déterminer le destinataire',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // Create the message
+      const { data, error } = await supabase
         .from('messages')
         .insert({
-          sender_id: user.id,
-          recipient_id: selectedContact.id,
-          content: newMessage.trim(),
-          status: 'sent'
-        });
-      
+          thread_id: activeThread,
+          sender_id: user!.id,
+          recipient_id: otherParticipantId,
+          content: newMessage,
+        })
+        .select();
+
       if (error) throw error;
+
+      // Add the new message to the messages array
+      setMessages([...messages, data[0]]);
       
+      // Clear the input
       setNewMessage('');
-      fetchMessages(selectedContact.id);
-      fetchContacts(); // Refresh contacts list to update last message
+      
+      // Refresh threads to update last_message
+      fetchThreads();
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to send message.',
+        title: 'Erreur',
+        description: 'Impossible d\'envoyer le message',
         variant: 'destructive',
       });
     } finally {
@@ -165,221 +282,288 @@ const Messages = () => {
     }
   };
 
-  // Subscribe to real-time updates
-  const subscribeToMessages = () => {
-    if (!user) return;
-    
-    const subscription = supabase
-      .channel('messages-channel')
-      .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'messages', filter: `recipient_id=eq.${user.id}` },
-        (payload) => {
-          // If we're already chatting with this sender, fetch new messages
-          if (selectedContact && payload.new.sender_id === selectedContact.id) {
-            fetchMessages(selectedContact.id);
-          }
-          
-          // Refresh contacts list
-          fetchContacts();
-          
-          // Notify user if they're not chatting with this sender
-          if (!selectedContact || payload.new.sender_id !== selectedContact.id) {
-            const sender = contacts.find(c => c.id === payload.new.sender_id);
-            if (sender) {
-              toast({
-                title: `New message from ${sender.first_name} ${sender.last_name}`,
-                description: payload.new.content.length > 30 
-                  ? `${payload.new.content.substring(0, 30)}...` 
-                  : payload.new.content,
-              });
-            }
-          }
-        }
-      )
-      .subscribe();
-    
-    return () => {
-      supabase.removeChannel(subscription);
-    };
+  const createOrFindThread = async (recipientId: string) => {
+    try {
+      // Check if there's an existing thread with this user
+      const { data: existingThreads, error: findError } = await supabase
+        .from('message_threads')
+        .select('*')
+        .contains('participant_ids', [user!.id, recipientId]);
+
+      if (findError) throw findError;
+
+      if (existingThreads && existingThreads.length > 0) {
+        // Found an existing thread
+        setActiveThread(existingThreads[0].id);
+        return;
+      }
+
+      // Create a new thread
+      const { data: newThread, error: createError } = await supabase
+        .from('message_threads')
+        .insert({
+          participant_ids: [user!.id, recipientId],
+        })
+        .select();
+
+      if (createError) throw createError;
+
+      // Refresh threads and set the active thread
+      await fetchThreads();
+      if (newThread && newThread.length > 0) {
+        setActiveThread(newThread[0].id);
+      }
+    } catch (error) {
+      console.error('Error creating thread:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Impossible de créer la conversation',
+        variant: 'destructive',
+      });
+    }
   };
 
-  // Initial load
-  useEffect(() => {
-    fetchContacts();
-    
-    // Set up subscription
-    const unsubscribe = subscribeToMessages();
-    
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
-  }, [user]);
-
-  // When a contact is selected
-  useEffect(() => {
-    if (selectedContact) {
-      fetchMessages(selectedContact.id);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
     }
-  }, [selectedContact]);
+  };
 
-  // Filter contacts based on search query
-  const filteredContacts = contacts.filter(contact => {
-    const fullName = `${contact.first_name} ${contact.last_name}`.toLowerCase();
-    return fullName.includes(searchQuery.toLowerCase());
-  });
+  const getThreadName = (thread: Thread): string => {
+    // Find participants that are not the current user
+    const otherParticipants = thread.participants.filter(p => p.id !== user!.id);
+    
+    if (otherParticipants.length === 0) return 'Nouvelle conversation';
+    
+    return otherParticipants
+      .map(p => `${p.first_name || ''} ${p.last_name || ''}`.trim())
+      .join(', ');
+  };
 
-  // Get initials for avatar fallback
-  const getInitials = (firstName: string, lastName: string) => {
-    return `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+  const getInitials = (firstName: string | null, lastName: string | null): string => {
+    const first = firstName?.charAt(0) || '';
+    const last = lastName?.charAt(0) || '';
+    return `${first}${last}`.toUpperCase();
+  };
+
+  const formatMessageTime = (timestamp: string): string => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatThreadTime = (timestamp: string): string => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    
+    // If it's today, show time only
+    if (date.toDateString() === now.toDateString()) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+    
+    // If it's this year, show day and month
+    if (date.getFullYear() === now.getFullYear()) {
+      return date.toLocaleDateString([], { day: 'numeric', month: 'short' });
+    }
+    
+    // Otherwise show full date
+    return date.toLocaleDateString();
   };
 
   return (
     <Layout>
-      <div className="container mx-auto py-6">
+      <div className="container mx-auto py-8">
         <h1 className="text-3xl font-bold mb-6">Messages</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 h-[calc(100vh-12rem)]">
-          {/* Contacts List */}
-          <Card className="md:col-span-1 overflow-hidden">
-            <CardHeader className="p-4">
-              <CardTitle className="text-xl">Contacts</CardTitle>
-              <div className="relative mt-2">
-                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher un contact..."
-                  className="pl-8"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {loading ? (
-                <div className="flex justify-center items-center h-48">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                </div>
-              ) : filteredContacts.length === 0 ? (
-                <div className="text-center py-8 text-muted-foreground">
-                  {searchQuery ? 'Aucun contact trouvé' : 'Aucune conversation démarrée'}
-                </div>
-              ) : (
-                <ScrollArea className="h-[calc(100vh-16rem)]">
-                  {filteredContacts.map((contact) => (
-                    <div
-                      key={contact.id}
-                      className={`flex items-center p-3 hover:bg-muted cursor-pointer ${
-                        selectedContact?.id === contact.id ? 'bg-muted' : ''
-                      }`}
-                      onClick={() => setSelectedContact(contact)}
-                    >
-                      <div className="relative">
-                        <Avatar className="h-10 w-10">
-                          <AvatarImage src={contact.avatar_url || ''} />
-                          <AvatarFallback>{getInitials(contact.first_name, contact.last_name)}</AvatarFallback>
-                        </Avatar>
-                        {contact.unread_count > 0 && (
-                          <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-[10px] font-medium flex items-center justify-center text-primary-foreground">
-                            {contact.unread_count}
-                          </span>
-                        )}
-                      </div>
-                      <div className="ml-3 flex-1 overflow-hidden">
-                        <p className="font-medium truncate">{`${contact.first_name} ${contact.last_name}`}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {contact.last_message}
-                        </p>
-                      </div>
-                      {contact.last_message_time && (
-                        <div className="text-xs text-muted-foreground whitespace-nowrap ml-2">
-                          {formatDistanceToNow(new Date(contact.last_message_time), {
-                            addSuffix: true,
-                            locale: fr
-                          })}
-                        </div>
-                      )}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Threads List */}
+          <div className="md:col-span-1">
+            <Card className="h-[calc(100vh-200px)]">
+              <CardHeader className="pb-2">
+                <CardTitle>Conversations</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[calc(100vh-280px)]">
+                  {loading ? (
+                    <div className="flex justify-center items-center h-20">
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
                     </div>
-                  ))}
-                </ScrollArea>
-              )}
-            </CardContent>
-          </Card>
-          
-          {/* Chat Area */}
-          <Card className="md:col-span-3 flex flex-col overflow-hidden">
-            {selectedContact ? (
-              <>
-                <CardHeader className="p-4 border-b">
-                  <div className="flex items-center">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={selectedContact.avatar_url || ''} />
-                      <AvatarFallback>
-                        {getInitials(selectedContact.first_name, selectedContact.last_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="ml-3">
-                      <CardTitle className="text-lg">{`${selectedContact.first_name} ${selectedContact.last_name}`}</CardTitle>
+                  ) : threads.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-muted-foreground">
+                      Aucune conversation
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 p-0 flex flex-col overflow-hidden">
-                  <ScrollArea className="flex-1 p-4 h-[calc(100vh-22rem)]">
-                    <div className="space-y-4">
-                      {messages.map((message) => (
+                  ) : (
+                    <div>
+                      {threads.map((thread) => (
                         <div
-                          key={message.id}
-                          className={`flex ${message.sender_id === user?.id ? 'justify-end' : 'justify-start'}`}
+                          key={thread.id}
+                          className={`flex items-center p-4 gap-3 cursor-pointer hover:bg-muted/50 ${
+                            activeThread === thread.id ? 'bg-muted' : ''
+                          }`}
+                          onClick={() => setActiveThread(thread.id)}
                         >
-                          <div
-                            className={`max-w-[80%] px-4 py-2 rounded-lg ${
-                              message.sender_id === user?.id
-                                ? 'bg-primary text-primary-foreground rounded-br-none'
-                                : 'bg-muted rounded-bl-none'
-                            }`}
-                          >
-                            <p>{message.content}</p>
-                            <p className={`text-xs mt-1 ${
-                              message.sender_id === user?.id ? 'text-primary-foreground/70' : 'text-muted-foreground'
-                            }`}>
-                              {formatDistanceToNow(new Date(message.created_at), {
-                                addSuffix: true,
-                                locale: fr
-                              })}
+                          <Avatar className="h-10 w-10">
+                            {thread.participants.filter(p => p.id !== user!.id).map(p => (
+                              <AvatarImage key={p.id} src={p.avatar_url || ''} />
+                            ))}
+                            <AvatarFallback>
+                              {getInitials(
+                                thread.participants.find(p => p.id !== user!.id)?.first_name || null,
+                                thread.participants.find(p => p.id !== user!.id)?.last_name || null
+                              )}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 overflow-hidden">
+                            <div className="flex justify-between">
+                              <p className="font-medium truncate">{getThreadName(thread)}</p>
+                              <span className="text-xs text-muted-foreground">
+                                {formatThreadTime(thread.updated_at)}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">
+                              {thread.last_message?.content || 'Nouvelle conversation'}
                             </p>
                           </div>
+                          {thread.unread_count > 0 && (
+                            <div className="rounded-full bg-primary w-5 h-5 flex items-center justify-center text-xs text-primary-foreground">
+                              {thread.unread_count}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
-                  </ScrollArea>
-                  <Separator />
-                  <div className="p-4">
-                    <form onSubmit={sendMessage} className="flex gap-2">
+                  )}
+                </ScrollArea>
+              </CardContent>
+              <CardFooter className="border-t pt-4">
+                <div className="w-full">
+                  <label className="text-sm font-medium mb-2 block">Nouvelle conversation</label>
+                  <div className="flex gap-2">
+                    <select
+                      value={selectedUser || ''}
+                      onChange={(e) => setSelectedUser(e.target.value)}
+                      className="flex-1 p-2 border rounded-md"
+                    >
+                      <option value="">Sélectionner un utilisateur</option>
+                      {users.map((user) => (
+                        <option key={user.id} value={user.id}>
+                          {user.first_name} {user.last_name}
+                        </option>
+                      ))}
+                    </select>
+                    <Button
+                      onClick={() => selectedUser && createOrFindThread(selectedUser)}
+                      disabled={!selectedUser}
+                    >
+                      Démarrer
+                    </Button>
+                  </div>
+                </div>
+              </CardFooter>
+            </Card>
+          </div>
+          
+          {/* Messages */}
+          <div className="md:col-span-2">
+            <Card className="h-[calc(100vh-200px)] flex flex-col">
+              {activeThread ? (
+                <>
+                  <CardHeader className="pb-2 border-b">
+                    {threads.find((t) => t.id === activeThread) && (
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          {threads
+                            .find((t) => t.id === activeThread)
+                            ?.participants.filter(p => p.id !== user!.id)
+                            .map(p => (
+                              <AvatarImage key={p.id} src={p.avatar_url || ''} />
+                            ))}
+                          <AvatarFallback>
+                            {getInitials(
+                              threads.find((t) => t.id === activeThread)?.participants.find(p => p.id !== user!.id)?.first_name || null,
+                              threads.find((t) => t.id === activeThread)?.participants.find(p => p.id !== user!.id)?.last_name || null
+                            )}
+                          </AvatarFallback>
+                        </Avatar>
+                        <CardTitle>
+                          {getThreadName(threads.find((t) => t.id === activeThread)!)}
+                        </CardTitle>
+                      </div>
+                    )}
+                  </CardHeader>
+                  <CardContent className="flex-1 overflow-hidden p-0">
+                    <ScrollArea className="h-[calc(100vh-320px)] p-4">
+                      {messages.length === 0 ? (
+                        <div className="h-full flex items-center justify-center text-muted-foreground">
+                          Aucun message. Commencez la conversation!
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {messages.map((message) => {
+                            const isOwnMessage = message.sender_id === user!.id;
+                            const sender = participants[message.sender_id];
+                            
+                            return (
+                              <div
+                                key={message.id}
+                                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+                              >
+                                <div className={`flex gap-2 ${isOwnMessage ? 'flex-row-reverse' : 'flex-row'} max-w-[80%]`}>
+                                  {!isOwnMessage && (
+                                    <Avatar className="h-8 w-8">
+                                      <AvatarImage src={sender?.avatar_url || ''} />
+                                      <AvatarFallback>
+                                        {getInitials(sender?.first_name, sender?.last_name)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                  )}
+                                  <div>
+                                    <div
+                                      className={`rounded-lg p-3 ${
+                                        isOwnMessage ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                                      }`}
+                                    >
+                                      <p className="text-sm">{message.content}</p>
+                                    </div>
+                                    <p className={`text-xs text-muted-foreground mt-1 ${isOwnMessage ? 'text-right' : ''}`}>
+                                      {formatMessageTime(message.created_at)}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          <div ref={messagesEndRef} />
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
+                  <CardFooter className="border-t pt-4">
+                    <div className="flex w-full gap-2">
                       <Input
-                        placeholder="Écrivez votre message..."
+                        placeholder="Tapez votre message..."
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={handleKeyDown}
                         disabled={sendingMessage}
                       />
-                      <Button type="submit" disabled={!newMessage.trim() || sendingMessage}>
+                      <Button onClick={sendMessage} disabled={!newMessage.trim() || sendingMessage}>
                         {sendingMessage ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
                           <Send className="h-4 w-4" />
                         )}
                       </Button>
-                    </form>
-                  </div>
-                </CardContent>
-              </>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center p-6 text-muted-foreground">
-                <div className="mb-4">
-                  <Send className="h-12 w-12" />
+                    </div>
+                  </CardFooter>
+                </>
+              ) : (
+                <div className="h-full flex items-center justify-center text-muted-foreground">
+                  Sélectionnez une conversation pour afficher les messages
                 </div>
-                <h3 className="text-xl font-medium mb-2">Aucune conversation sélectionnée</h3>
-                <p>Sélectionnez un contact pour démarrer une conversation</p>
-              </div>
-            )}
-          </Card>
+              )}
+            </Card>
+          </div>
         </div>
       </div>
     </Layout>
