@@ -21,6 +21,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { 
   Loader2, 
   PlusCircle, 
@@ -28,8 +39,11 @@ import {
   CheckCircle2, 
   XCircle, 
   AlertCircle, 
-  MessageSquare 
+  MessageSquare,
+  CalendarPlus,
+  Calendar
 } from 'lucide-react';
+import { formatCurrency, formatDate, getStatusColorClass, translateStatus, translateUrgency, translateCategory } from '@/utils/formatUtils';
 
 interface ServiceRequest {
   id: string;
@@ -72,6 +86,21 @@ interface ServiceProposal {
   };
 }
 
+interface ProposalFormData {
+  price: number;
+  estimated_days: number;
+  message: string;
+}
+
+interface ScheduleAppointmentData {
+  proposalId: string;
+  vendorId: string;
+  date: string;
+  time: string;
+  location: string;
+  notes: string;
+}
+
 const ServiceRequests = () => {
   const navigate = useNavigate();
   const { user, roles } = useAuth();
@@ -79,6 +108,23 @@ const ServiceRequests = () => {
   const [loading, setLoading] = useState(true);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [activeTab, setActiveTab] = useState('all');
+  const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
+  const [showProposalDialog, setShowProposalDialog] = useState(false);
+  const [showAppointmentDialog, setShowAppointmentDialog] = useState(false);
+  const [proposalFormData, setProposalFormData] = useState<ProposalFormData>({
+    price: 0,
+    estimated_days: 1,
+    message: ''
+  });
+  const [appointmentData, setAppointmentData] = useState<ScheduleAppointmentData>({
+    proposalId: '',
+    vendorId: '',
+    date: '',
+    time: '',
+    location: '',
+    notes: ''
+  });
+  const [submitting, setSubmitting] = useState(false);
   const isVendor = roles.includes('vendor');
 
   useEffect(() => {
@@ -175,8 +221,8 @@ const ServiceRequests = () => {
     } catch (error) {
       console.error('Error fetching service requests:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to load service requests',
+        title: 'Erreur',
+        description: 'Échec du chargement des demandes de service',
         variant: 'destructive',
       });
     } finally {
@@ -194,8 +240,8 @@ const ServiceRequests = () => {
       if (error) throw error;
 
       toast({
-        title: 'Success',
-        description: `Proposal ${status === 'accepted' ? 'accepted' : 'rejected'} successfully`,
+        title: 'Succès',
+        description: `Proposition ${status === 'accepted' ? 'acceptée' : 'rejetée'} avec succès`,
       });
 
       // If accepted, update request status
@@ -217,10 +263,112 @@ const ServiceRequests = () => {
     } catch (error) {
       console.error('Error updating proposal:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to update proposal status',
+        title: 'Erreur',
+        description: 'Échec de la mise à jour du statut de la proposition',
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleSubmitProposal = async () => {
+    if (!selectedRequest) return;
+    
+    setSubmitting(true);
+    try {
+      const { error } = await supabase
+        .from('service_proposals')
+        .insert({
+          request_id: selectedRequest.id,
+          vendor_id: user!.id,
+          price: proposalFormData.price,
+          estimated_days: proposalFormData.estimated_days,
+          message: proposalFormData.message,
+          status: 'pending'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Succès',
+        description: 'Proposition soumise avec succès',
+      });
+
+      // Reset form and close dialog
+      setProposalFormData({
+        price: 0,
+        estimated_days: 1,
+        message: ''
+      });
+      setShowProposalDialog(false);
+      
+      // Refresh data
+      fetchServiceRequests();
+    } catch (error) {
+      console.error('Error submitting proposal:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Échec de la soumission de la proposition',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleScheduleAppointment = async () => {
+    if (!appointmentData.proposalId || !appointmentData.date || !appointmentData.time) {
+      toast({
+        title: 'Erreur',
+        description: 'Veuillez remplir tous les champs obligatoires',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setSubmitting(true);
+    try {
+      // Combine date and time
+      const appointment_date = new Date(`${appointmentData.date}T${appointmentData.time}`);
+      
+      const { error } = await supabase
+        .from('service_appointments')
+        .insert({
+          proposal_id: appointmentData.proposalId,
+          vendor_id: appointmentData.vendorId,
+          client_id: user!.id,
+          appointment_date: appointment_date.toISOString(),
+          location: appointmentData.location,
+          notes: appointmentData.notes,
+          status: 'scheduled'
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: 'Succès',
+        description: 'Rendez-vous programmé avec succès',
+      });
+
+      // Reset form and close dialog
+      setAppointmentData({
+        proposalId: '',
+        vendorId: '',
+        date: '',
+        time: '',
+        location: '',
+        notes: ''
+      });
+      setShowAppointmentDialog(false);
+      
+    } catch (error) {
+      console.error('Error scheduling appointment:', error);
+      toast({
+        title: 'Erreur',
+        description: 'Échec de la programmation du rendez-vous',
+        variant: 'destructive',
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -228,7 +376,7 @@ const ServiceRequests = () => {
     if (!request.proposals || request.proposals.length === 0) {
       return (
         <div className="p-4 text-center">
-          <p className="text-muted-foreground">No proposals yet</p>
+          <p className="text-muted-foreground">Aucune proposition pour le moment</p>
         </div>
       );
     }
@@ -244,17 +392,19 @@ const ServiceRequests = () => {
                 </p>
                 <p className="text-sm text-muted-foreground">{proposal.vendor?.email}</p>
               </div>
-              <Badge>{proposal.status}</Badge>
+              <Badge className={getStatusColorClass(proposal.status)}>
+                {translateStatus(proposal.status)}
+              </Badge>
             </div>
             
             <div className="grid grid-cols-2 gap-2 mb-3">
               <div className="text-sm">
-                <span className="text-muted-foreground">Price:</span>{' '}
-                {proposal.price.toLocaleString()} XOF
+                <span className="text-muted-foreground">Prix:</span>{' '}
+                {formatCurrency(proposal.price)}
               </div>
               <div className="text-sm">
-                <span className="text-muted-foreground">Estimated time:</span>{' '}
-                {proposal.estimated_days} day{proposal.estimated_days !== 1 ? 's' : ''}
+                <span className="text-muted-foreground">Délai estimé:</span>{' '}
+                {proposal.estimated_days} jour{proposal.estimated_days !== 1 ? 's' : ''}
               </div>
             </div>
             
@@ -267,26 +417,41 @@ const ServiceRequests = () => {
                   size="sm"
                   onClick={() => handleProposalAction(proposal.id, 'rejected')}
                 >
-                  Reject
+                  Rejeter
                 </Button>
                 <Button
                   size="sm"
                   onClick={() => handleProposalAction(proposal.id, 'accepted')}
                 >
-                  Accept
+                  Accepter
                 </Button>
               </div>
             )}
             
-            {proposal.status === 'accepted' && (
-              <div className="flex justify-end">
+            {!isVendor && proposal.status === 'accepted' && (
+              <div className="flex justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setAppointmentData({
+                      ...appointmentData,
+                      proposalId: proposal.id,
+                      vendorId: proposal.vendor_id
+                    });
+                    setShowAppointmentDialog(true);
+                  }}
+                >
+                  <CalendarPlus className="h-4 w-4 mr-2" />
+                  Programmer un rendez-vous
+                </Button>
                 <Button
                   size="sm"
                   variant="outline"
                   onClick={() => navigate(`/messages?vendor=${proposal.vendor_id}`)}
                 >
                   <MessageSquare className="h-4 w-4 mr-2" />
-                  Contact
+                  Contacter
                 </Button>
               </div>
             )}
@@ -297,55 +462,44 @@ const ServiceRequests = () => {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'open':
-        return <Badge variant="outline" className="bg-blue-100">Open</Badge>;
-      case 'in_progress':
-        return <Badge variant="outline" className="bg-yellow-100">In Progress</Badge>;
-      case 'completed':
-        return <Badge variant="outline" className="bg-green-100">Completed</Badge>;
-      case 'cancelled':
-        return <Badge variant="outline" className="bg-red-100">Cancelled</Badge>;
-      default:
-        return <Badge variant="outline">{status}</Badge>;
-    }
+    return <Badge className={getStatusColorClass(status)}>{translateStatus(status)}</Badge>;
   };
 
   const getUrgencyBadge = (urgency: string) => {
-    switch (urgency) {
-      case 'low':
-        return <Badge variant="outline" className="bg-green-100">Low</Badge>;
-      case 'medium':
-        return <Badge variant="outline" className="bg-yellow-100">Medium</Badge>;
-      case 'high':
-        return <Badge variant="outline" className="bg-orange-100">High</Badge>;
-      case 'critical':
-        return <Badge variant="outline" className="bg-red-100">Critical</Badge>;
-      default:
-        return <Badge variant="outline">{urgency}</Badge>;
-    }
+    const urgencyColors: Record<string, string> = {
+      'low': 'bg-green-100 text-green-800',
+      'medium': 'bg-yellow-100 text-yellow-800',
+      'high': 'bg-orange-100 text-orange-800',
+      'critical': 'bg-red-100 text-red-800'
+    };
+    
+    return (
+      <Badge variant="outline" className={urgencyColors[urgency] || 'bg-gray-100'}>
+        {translateUrgency(urgency)}
+      </Badge>
+    );
   };
 
   return (
     <Layout>
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">{isVendor ? 'Service Requests' : 'My Service Requests'}</h1>
+          <h1 className="text-3xl font-bold">{isVendor ? 'Demandes de service' : 'Mes demandes de service'}</h1>
           {!isVendor && (
             <Button onClick={() => navigate('/contact-vendor')}>
               <PlusCircle className="h-4 w-4 mr-2" />
-              New Service Request
+              Nouvelle demande de service
             </Button>
           )}
         </div>
 
         <Tabs defaultValue="all" onValueChange={setActiveTab} className="mb-8">
           <TabsList>
-            <TabsTrigger value="all">All</TabsTrigger>
-            <TabsTrigger value="open">Open</TabsTrigger>
-            <TabsTrigger value="in_progress">In Progress</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            {isVendor && <TabsTrigger value="mine">My Proposals</TabsTrigger>}
+            <TabsTrigger value="all">Tous</TabsTrigger>
+            <TabsTrigger value="open">Ouverts</TabsTrigger>
+            <TabsTrigger value="in_progress">En cours</TabsTrigger>
+            <TabsTrigger value="completed">Terminés</TabsTrigger>
+            {isVendor && <TabsTrigger value="mine">Mes propositions</TabsTrigger>}
           </TabsList>
           
           <TabsContent value="all" className="mt-6">
@@ -371,6 +525,154 @@ const ServiceRequests = () => {
           )}
         </Tabs>
       </div>
+
+      {/* Submit Proposal Dialog */}
+      <Dialog open={showProposalDialog} onOpenChange={setShowProposalDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Soumettre une proposition</DialogTitle>
+            <DialogDescription>
+              Proposez vos services pour cette demande: {selectedRequest?.title}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="price">Prix proposé (XOF)</Label>
+              <Input
+                id="price"
+                type="number"
+                min="0"
+                step="1000"
+                value={proposalFormData.price}
+                onChange={(e) => setProposalFormData({
+                  ...proposalFormData,
+                  price: parseInt(e.target.value) || 0
+                })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="estimated_days">Délai estimé (jours)</Label>
+              <Input
+                id="estimated_days"
+                type="number"
+                min="1"
+                value={proposalFormData.estimated_days}
+                onChange={(e) => setProposalFormData({
+                  ...proposalFormData,
+                  estimated_days: parseInt(e.target.value) || 1
+                })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="message">Message</Label>
+              <Textarea
+                id="message"
+                rows={4}
+                placeholder="Décrivez votre approche et pourquoi vous êtes la personne idéale pour ce travail..."
+                value={proposalFormData.message}
+                onChange={(e) => setProposalFormData({
+                  ...proposalFormData,
+                  message: e.target.value
+                })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowProposalDialog(false)}>Annuler</Button>
+            <Button 
+              onClick={handleSubmitProposal}
+              disabled={!proposalFormData.price || !proposalFormData.message || submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Soumission...
+                </>
+              ) : 'Soumettre la proposition'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Schedule Appointment Dialog */}
+      <Dialog open={showAppointmentDialog} onOpenChange={setShowAppointmentDialog}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Programmer un rendez-vous</DialogTitle>
+            <DialogDescription>
+              Planifiez une rencontre avec le fournisseur de services
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="date">Date</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  min={new Date().toISOString().split('T')[0]}
+                  value={appointmentData.date}
+                  onChange={(e) => setAppointmentData({
+                    ...appointmentData,
+                    date: e.target.value
+                  })}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="time">Heure</Label>
+                <Input
+                  id="time"
+                  type="time"
+                  value={appointmentData.time}
+                  onChange={(e) => setAppointmentData({
+                    ...appointmentData,
+                    time: e.target.value
+                  })}
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="location">Lieu</Label>
+              <Input
+                id="location"
+                placeholder="Adresse ou lieu de rencontre"
+                value={appointmentData.location}
+                onChange={(e) => setAppointmentData({
+                  ...appointmentData,
+                  location: e.target.value
+                })}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                rows={3}
+                placeholder="Notes supplémentaires ou instructions..."
+                value={appointmentData.notes}
+                onChange={(e) => setAppointmentData({
+                  ...appointmentData,
+                  notes: e.target.value
+                })}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAppointmentDialog(false)}>Annuler</Button>
+            <Button 
+              onClick={handleScheduleAppointment}
+              disabled={!appointmentData.date || !appointmentData.time || submitting}
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Programmation...
+                </>
+              ) : 'Programmer'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 
@@ -388,16 +690,16 @@ const ServiceRequests = () => {
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
-            <p className="text-xl font-medium mb-2">No service requests found</p>
+            <p className="text-xl font-medium mb-2">Aucune demande de service trouvée</p>
             <p className="text-muted-foreground mb-6">
               {isVendor 
-                ? 'There are no service requests matching your criteria at the moment.'
-                : 'You have not created any service requests yet.'
+                ? 'Il n\'y a pas de demandes de service correspondant à vos critères pour le moment.'
+                : 'Vous n\'avez pas encore créé de demandes de service.'
               }
             </p>
             {!isVendor && (
               <Button onClick={() => navigate('/contact-vendor')}>
-                Create a Service Request
+                Créer une demande de service
               </Button>
             )}
           </CardContent>
@@ -414,7 +716,7 @@ const ServiceRequests = () => {
                 <div>
                   <CardTitle>{request.title}</CardTitle>
                   <CardDescription>
-                    {new Date(request.created_at).toLocaleDateString()} • {request.category}
+                    {formatDate(request.created_at)} • {translateCategory(request.category)}
                   </CardDescription>
                 </div>
                 <div className="flex gap-2">
@@ -431,14 +733,14 @@ const ServiceRequests = () => {
                   <div>
                     <p className="text-sm font-medium">Budget</p>
                     <p className="text-sm text-muted-foreground">
-                      {request.budget.toLocaleString()} XOF
+                      {formatCurrency(request.budget)}
                     </p>
                   </div>
                 )}
                 
                 {request.property && (
                   <div>
-                    <p className="text-sm font-medium">Property</p>
+                    <p className="text-sm font-medium">Propriété</p>
                     <p className="text-sm text-muted-foreground truncate">
                       {request.property.title || request.property.address}
                     </p>
@@ -447,9 +749,18 @@ const ServiceRequests = () => {
                 
                 {!isVendor && request.requester && (
                   <div>
-                    <p className="text-sm font-medium">Requested by</p>
+                    <p className="text-sm font-medium">Demandé par</p>
                     <p className="text-sm text-muted-foreground">
                       {request.requester.first_name} {request.requester.last_name}
+                    </p>
+                  </div>
+                )}
+
+                {request.updated_at && request.updated_at !== request.created_at && (
+                  <div>
+                    <p className="text-sm font-medium">Dernière mise à jour</p>
+                    <p className="text-sm text-muted-foreground">
+                      {formatDate(request.updated_at)}
                     </p>
                   </div>
                 )}
@@ -459,11 +770,18 @@ const ServiceRequests = () => {
               
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <h4 className="font-medium">Proposals ({request.proposal_count || 0})</h4>
+                  <h4 className="font-medium">Propositions ({request.proposal_count || 0})</h4>
                   {isVendor && request.status === 'open' && (
-                    <Button size="sm" variant="outline">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => {
+                        setSelectedRequest(request);
+                        setShowProposalDialog(true);
+                      }}
+                    >
                       <PlusCircle className="h-4 w-4 mr-2" />
-                      Submit Proposal
+                      Soumettre une proposition
                     </Button>
                   )}
                 </div>
