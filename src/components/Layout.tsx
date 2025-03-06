@@ -1,42 +1,39 @@
 
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import MobileMenu from '@/components/navigation/MobileMenu';
 import UserMenu from '@/components/navigation/UserMenu';
 import DesktopNav from '@/components/navigation/DesktopNav';
+import RoleSwitcher from '@/components/navigation/RoleSwitcher';
 import { Menu } from 'lucide-react';
 import { Toaster } from '@/components/ui/toaster';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   const location = useLocation();
-  const { user, signOut, loading, session, roles } = useAuth();
+  const navigate = useNavigate();
+  const { user, signOut, loading, session, roles, activeRole } = useAuth();
   const [open, setOpen] = useState(false);
   const isMobile = useIsMobile();
   const isHomePage = location.pathname === '/';
-  const isTenantOnly = roles.includes('tenant') && roles.length === 1;
-  const isVendor = roles.includes('vendor');
-  const isLandlord = roles.includes('landlord');
-  const isAgent = roles.includes('agent');
-  const isManager = roles.includes('manager');
-  const isAdmin = roles.includes('admin');
   const isAuthenticated = !!session;
 
   console.log('Layout - current path:', location.pathname);
   console.log('Layout - user roles:', roles);
+  console.log('Layout - active role:', activeRole);
 
-  // Define common navigation items
-  const commonNavItems = [
-    { name: 'Accueil', path: '/' },
-    { name: 'Recherche', path: '/search' },
-    { name: 'Communautés', path: '/communities' },
-  ];
+  // Define navigation items based on the active role
+  const getNavItems = () => {
+    // Common navigation items for all users
+    const commonNavItems = [
+      { name: 'Accueil', path: '/' },
+      { name: 'Recherche', path: '/search' },
+      { name: 'Communautés', path: '/communities' },
+    ];
 
-  // Define navigation items based on user role
-  const roleSpecificNavItems = () => {
     // Public / Guest navigation
     if (!isAuthenticated) {
       return [
@@ -46,51 +43,62 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
       ];
     }
 
-    // Vendor-specific navigation
-    if (isVendor) {
-      return [
-        ...commonNavItems,
-        { name: 'Tableau de bord', path: '/vendor-dashboard' },
-        { name: 'Demandes', path: '/service-requests' },
-        { name: 'Rendez-vous', path: '/appointments' },
-      ];
+    // Role-specific navigation items
+    switch (activeRole) {
+      case 'vendor':
+        return [
+          ...commonNavItems,
+          { name: 'Tableau de bord', path: '/vendor-dashboard' },
+          { name: 'Demandes', path: '/service-requests' },
+          { name: 'Rendez-vous', path: '/appointments' },
+        ];
+      case 'tenant':
+        return [
+          ...commonNavItems,
+          { name: 'Tableau de bord', path: '/dashboard' },
+          { name: 'Agents', path: '/agents' },
+          { name: 'Prestataires', path: '/vendors' },
+          { name: 'Maintenance', path: '/maintenance' },
+        ];
+      case 'landlord':
+        return [
+          ...commonNavItems,
+          { name: 'Tableau de bord', path: '/dashboard' },
+          { name: 'Propriétés', path: '/property-management' },
+          { name: 'Locataires', path: '/tenants' },
+          { name: 'Paiements', path: '/payments' },
+          { name: 'Maintenance', path: '/maintenance' },
+        ];
+      case 'agent':
+        return [
+          ...commonNavItems,
+          { name: 'Tableau de bord', path: '/dashboard' },
+          { name: 'Propriétés', path: '/property-management' },
+          { name: 'Visites', path: '/viewings' },
+          { name: 'Clients', path: '/tenants' },
+        ];
+      case 'manager':
+        return [
+          ...commonNavItems,
+          { name: 'Tableau de bord', path: '/dashboard' },
+          { name: 'Propriétés', path: '/property-management' },
+          { name: 'Locataires', path: '/tenants' },
+          { name: 'Paiements', path: '/payments' },
+          { name: 'Maintenance', path: '/maintenance' },
+        ];
+      case 'admin':
+        return [
+          ...commonNavItems,
+          { name: 'Tableau de bord', path: '/dashboard' },
+          { name: 'Propriétés', path: '/property-management' },
+          { name: 'Administration', path: '/admin' },
+        ];
+      default:
+        return commonNavItems;
     }
-
-    // Tenant-specific navigation
-    if (isTenantOnly) {
-      return [
-        ...commonNavItems,
-        { name: 'Tableau de bord', path: '/dashboard' },
-        { name: 'Agents', path: '/agents' },
-        { name: 'Prestataires', path: '/vendors' },
-        { name: 'Maintenance', path: '/maintenance' },
-      ];
-    }
-
-    // Landlord, Agent, Manager or Admin navigation
-    const managerNavItems = [
-      ...commonNavItems,
-      { name: 'Tableau de bord', path: '/dashboard' },
-      { name: 'Propriétés', path: '/property-management' },
-      { name: 'Locataires', path: '/tenants' },
-      { name: 'Paiements', path: '/payments' },
-      { name: 'Maintenance', path: '/maintenance' },
-    ];
-
-    // Add agent-specific items
-    if (isAgent) {
-      managerNavItems.push({ name: 'Visites', path: '/viewings' });
-    }
-
-    // Add admin-specific items
-    if (isAdmin) {
-      managerNavItems.push({ name: 'Administration', path: '/admin' });
-    }
-
-    return managerNavItems;
   };
 
-  const navItems = roleSpecificNavItems();
+  const navItems = getNavItems();
 
   const handleSignOut = async () => {
     await signOut();
@@ -113,16 +121,23 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <DesktopNav 
             navItems={navItems} 
             isLoggedIn={isAuthenticated} 
-            isTenantOnly={isTenantOnly}
-            isVendor={isVendor}
+            activeRole={activeRole}
           />
           
           {/* Mobile Navigation and Right-side Controls */}
           <div className="flex-1 flex items-center justify-end space-x-2">
-            {/* We removed ThemeToggle since it was causing an error */}
+            {/* Role Switcher (only visible for authenticated users with multiple roles) */}
+            {isAuthenticated && roles.length > 1 && !isMobile && (
+              <RoleSwitcher className="mr-2" />
+            )}
             
             {isAuthenticated ? (
-              <UserMenu user={user!} onSignOut={handleSignOut} isVendor={isVendor} />
+              <UserMenu 
+                user={user!} 
+                onSignOut={handleSignOut} 
+                activeRole={activeRole} 
+                roles={roles}
+              />
             ) : (
               <Button variant="default" asChild>
                 <Link to="/auth">Se connecter</Link>
@@ -145,9 +160,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
                   <MobileMenu 
                     navItems={navItems} 
                     isLoggedIn={isAuthenticated} 
-                    isTenantOnly={isTenantOnly}
                     onLinkClick={() => setOpen(false)}
-                    isVendor={isVendor}
+                    activeRole={activeRole}
+                    roles={roles}
                   />
                 </SheetContent>
               </Sheet>

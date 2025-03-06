@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -9,6 +10,8 @@ interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   roles: string[];
+  activeRole: string;
+  setActiveRole: (role: string) => void;
   hasCompletedKyc: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | Error | null }>;
   signOut: () => Promise<void>;
@@ -33,10 +36,26 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
+  const [activeRole, setActiveRole] = useState<string>('tenant');
   const [loading, setLoading] = useState(true);
   const [hasCompletedKyc, setHasCompletedKyc] = useState<boolean>(false);
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  // Load active role from localStorage on initial load
+  useEffect(() => {
+    const savedRole = localStorage.getItem('activeRole');
+    if (savedRole) {
+      setActiveRole(savedRole);
+    }
+  }, []);
+
+  // Update localStorage when activeRole changes
+  useEffect(() => {
+    if (activeRole) {
+      localStorage.setItem('activeRole', activeRole);
+    }
+  }, [activeRole]);
 
   useEffect(() => {
     console.log("AuthContext - Authentication state updated:", { 
@@ -75,6 +94,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   }, [user]);
 
+  // Ensure activeRole exists in roles array when roles are fetched
+  useEffect(() => {
+    if (roles.length > 0 && !roles.includes(activeRole)) {
+      // If current active role doesn't exist in user's roles, set to first available role
+      setActiveRole(roles[0]);
+    }
+  }, [roles, activeRole]);
+
   const fetchUserProfile = async () => {
     if (!user) return;
 
@@ -111,6 +138,11 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
       const rolesArray = rolesData.map(item => item.role);
       setRoles(rolesArray);
+      
+      // If user has roles but active role is not in their roles, set first available
+      if (rolesArray.length > 0 && !rolesArray.includes(activeRole)) {
+        setActiveRole(rolesArray[0]);
+      }
     } catch (error) {
       console.error("Unexpected error fetching roles:", error);
     }
@@ -332,6 +364,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     user,
     profile,
     roles,
+    activeRole,
+    setActiveRole,
     hasCompletedKyc,
     signIn,
     signOut,

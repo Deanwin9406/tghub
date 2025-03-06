@@ -1,64 +1,38 @@
 
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
+import { cn } from '@/lib/utils';
 
 interface DesktopNavProps {
   navItems: { name: string; path: string }[];
   isLoggedIn: boolean;
-  isTenantOnly: boolean;
-  isVendor?: boolean;
+  activeRole?: string;
 }
 
-const DesktopNav = ({ navItems, isLoggedIn, isTenantOnly, isVendor = false }: DesktopNavProps) => {
+const DesktopNav = ({ navItems, isLoggedIn, activeRole = 'tenant' }: DesktopNavProps) => {
+  const location = useLocation();
+  
   return (
     <nav className="hidden lg:flex ml-10 space-x-4">
-      {navItems.map((item) => (
-        <Link
-          key={item.name}
-          to={item.path}
-          className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-        >
-          {item.name}
-        </Link>
-      ))}
-      {isLoggedIn && !isVendor && (
-        <>
-          {!isTenantOnly && (
-            <Link
-              to="/property-management"
-              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-            >
-              Mes Propriétés
-            </Link>
-          )}
+      {navItems.map((item) => {
+        const isActive = location.pathname === item.path || 
+                        (item.path !== '/' && location.pathname.startsWith(item.path));
+        
+        return (
           <Link
-            to="/dashboard"
-            className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
+            key={item.name}
+            to={item.path}
+            className={cn(
+              "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+              isActive 
+                ? "bg-primary/10 text-primary" 
+                : "hover:bg-accent hover:text-accent-foreground"
+            )}
           >
-            Tableau de bord
+            {item.name}
           </Link>
-          <Link
-            to="/profile"
-            className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-          >
-            Profil
-          </Link>
-          <Link
-            to="/favorites"
-            className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-          >
-            Favoris
-          </Link>
-        </>
-      )}
-      {isLoggedIn && isVendor && (
-        <Link
-          to="/profile"
-          className="px-3 py-2 rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground"
-        >
-          Profil
-        </Link>
-      )}
+        );
+      })}
     </nav>
   );
 };

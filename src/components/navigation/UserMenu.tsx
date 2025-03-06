@@ -9,24 +9,47 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSub,
+  DropdownMenuSubTrigger,
+  DropdownMenuSubContent,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User } from '@supabase/supabase-js';
+import { translateRole } from '@/utils/formatUtils';
+import { useAuth } from '@/contexts/AuthContext';
+import { Check } from 'lucide-react';
 
 export interface UserMenuProps {
   user: User;
   onSignOut: () => Promise<void>;
-  isVendor?: boolean;
+  activeRole?: string;
+  roles?: string[];
 }
 
-const UserMenu = ({ user, onSignOut, isVendor = false }: UserMenuProps) => {
+const UserMenu = ({ user, onSignOut, activeRole = 'tenant', roles = [] }: UserMenuProps) => {
   const navigate = useNavigate();
+  const { setActiveRole } = useAuth();
   const email = user?.email || '';
   const initial = email.charAt(0).toUpperCase();
 
   const handleSignOut = async () => {
     await onSignOut();
     navigate('/');
+  };
+
+  const handleRoleChange = (role: string) => {
+    setActiveRole(role);
+    
+    // Navigate to appropriate dashboard based on role
+    if (role === 'vendor') {
+      navigate('/vendor-dashboard');
+    } else {
+      navigate('/dashboard');
+    }
+  };
+
+  const getMainDashboardLink = () => {
+    return activeRole === 'vendor' ? '/vendor-dashboard' : '/dashboard';
   };
 
   return (
@@ -46,21 +69,44 @@ const UserMenu = ({ user, onSignOut, isVendor = false }: UserMenuProps) => {
             <p className="text-xs leading-none text-muted-foreground">
               {email}
             </p>
+            {activeRole && (
+              <p className="text-xs mt-1 text-primary">
+                {translateRole(activeRole)}
+              </p>
+            )}
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link to="/profile">Profil</Link>
         </DropdownMenuItem>
-        {isVendor ? (
-          <DropdownMenuItem asChild>
-            <Link to="/vendor-dashboard">Tableau de bord</Link>
-          </DropdownMenuItem>
-        ) : (
-          <DropdownMenuItem asChild>
-            <Link to="/dashboard">Tableau de bord</Link>
-          </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to={getMainDashboardLink()}>Tableau de bord</Link>
+        </DropdownMenuItem>
+        
+        {/* Role Switcher Sub-Menu (only if user has multiple roles) */}
+        {roles.length > 1 && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>
+                <span>Changer de rôle</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                {roles.map(role => (
+                  <DropdownMenuItem 
+                    key={role}
+                    onClick={() => handleRoleChange(role)}
+                  >
+                    <span className="mr-2">{translateRole(role)}</span>
+                    {activeRole === role && <Check className="h-4 w-4 ml-auto" />}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </>
         )}
+        
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
           Se déconnecter

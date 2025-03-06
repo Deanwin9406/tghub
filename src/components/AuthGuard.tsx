@@ -19,7 +19,7 @@ const ROLE_ROUTES = {
 };
 
 const AuthGuard = memo(() => {
-  const { session, loading, roles } = useAuth();
+  const { session, loading, roles, activeRole } = useAuth();
   const location = useLocation();
   const [isReady, setIsReady] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
@@ -43,21 +43,19 @@ const AuthGuard = memo(() => {
   }, []);
 
   // Helper to check if user has access to current path based on roles
-  const hasRoleAccess = useCallback((userRoles: string[], currentPath: string) => {
-    // If user has admin role, they have access to everything
-    if (userRoles.includes('admin')) return true;
+  const hasRoleAccess = useCallback((userRoles: string[], activeRole: string, currentPath: string) => {
+    // If user has admin role and it's the active role, they have access to everything
+    if (activeRole === 'admin') return true;
     
     // Vendors need special handling - redirect to vendor dashboard
-    if (userRoles.includes('vendor') && currentPath === '/dashboard') {
+    if (activeRole === 'vendor' && currentPath === '/dashboard') {
       window.location.href = '/vendor-dashboard';
       return false;
     }
     
-    // Check each role the user has for access
-    for (const role of userRoles) {
-      if (role in ROLE_ROUTES && isPathInRoutes(ROLE_ROUTES[role as keyof typeof ROLE_ROUTES], currentPath)) {
-        return true;
-      }
+    // Check if active role has access to the current path
+    if (activeRole in ROLE_ROUTES && isPathInRoutes(ROLE_ROUTES[activeRole as keyof typeof ROLE_ROUTES], currentPath)) {
+      return true;
     }
     
     return false;
@@ -66,7 +64,8 @@ const AuthGuard = memo(() => {
   // Add debugging for current path
   useEffect(() => {
     console.log("AuthGuard - current location path:", location.pathname);
-  }, [location.pathname]);
+    console.log("AuthGuard - active role:", activeRole);
+  }, [location.pathname, activeRole]);
 
   useEffect(() => {
     // Only check auth status once the loading state changes
@@ -80,9 +79,10 @@ const AuthGuard = memo(() => {
       loading, 
       isReady,
       userRoles: roles,
+      activeRole,
       currentPath: location.pathname 
     });
-  }, [location.pathname, session, loading, isReady, roles]);
+  }, [location.pathname, session, loading, isReady, roles, activeRole]);
 
   // Show loading spinner while checking authentication
   if (!isReady) {
@@ -122,15 +122,24 @@ const AuthGuard = memo(() => {
   }
 
   // If user is authenticated but doesn't have the right role for this route
-  if (!hasRoleAccess(roles, location.pathname)) {
-    console.log("User doesn't have role access to this route:", location.pathname);
-    setAccessError(`Vous n'avez pas les permissions pour accéder à cette page. Veuillez contacter un administrateur si vous pensez qu'il s'agit d'une erreur.`);
+  if (!hasRoleAccess(roles, activeRole, location.pathname)) {
+    console.log("User doesn't have role access to this route with active role:", activeRole, location.pathname);
+    setAccessError(`Vous n'avez pas les permissions pour accéder à cette page avec votre rôle actuel (${activeRole}). Veuillez changer de rôle ou contacter un administrateur si vous pensez qu'il s'agit d'une erreur.`);
     
     // Special case for vendors trying to access regular dashboard - redirect to vendor dashboard
-    if (roles.includes('vendor') && location.pathname === '/dashboard') {
+    if (activeRole === 'vendor' && location.pathname === '/dashboard') {
       console.log("Vendor attempting to access /dashboard, redirecting to /vendor-dashboard");
       return <Navigate to="/vendor-dashboard" replace />;
     }
+    
+    // For other roles attempting to access vendor dashboard - redirect to regular dashboard
+    if (activeRole !== 'vendor' && location.pathname === '/vendor-dashboard') {
+      console.log("Non-vendor attempting to access /vendor-dashboard, redirecting to /dashboard");
+      return <Navigate to="/dashboard" replace />;
+    }
+    
+    // Get appropriate dashboard based on active role
+    const dashboardPath = activeRole === 'vendor' ? '/vendor-dashboard' : '/dashboard';
     
     // Show an access error with a redirect link to dashboard
     return (
@@ -143,14 +152,14 @@ const AuthGuard = memo(() => {
           </AlertDescription>
         </Alert>
         <div className="flex justify-center">
-          <Navigate to="/dashboard" replace />
+          <Navigate to={dashboardPath} replace />
         </div>
       </div>
     );
   }
 
   // User is authenticated and has proper role access, allow navigation
-  console.log("User has proper access to:", location.pathname);
+  console.log("User has proper access to:", location.pathname, "with role:", activeRole);
   return <Outlet />;
 });
 
