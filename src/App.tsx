@@ -32,6 +32,7 @@ import ServiceRequests from './pages/ServiceRequests';
 import Appointments from './pages/Appointments';
 import Messages from './pages/Messages';
 import Admin from './pages/Admin';
+import AuthPage from './pages/AuthPage';
 import { Toaster } from "@/components/ui/toast";
 
 // Memoize page components to reduce re-renders
@@ -51,6 +52,7 @@ const MemoizedServiceRequests = memo(ServiceRequests);
 const MemoizedAppointments = memo(Appointments);
 const MemoizedMessages = memo(Messages);
 const MemoizedAdmin = memo(Admin);
+const MemoizedAuthPage = memo(AuthPage);
 
 function App() {
   console.log("App rendering - routes setup");  // Debug App rendering
@@ -63,6 +65,7 @@ function App() {
           <Routes>
             {/* Public routes - accessible to everyone */}
             <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<MemoizedAuthPage />} />
             <Route path="/communities" element={<Communities />} />
             <Route path="/communities/:id" element={<CommunityDetails />} />
             <Route path="/search" element={<Search />} />
