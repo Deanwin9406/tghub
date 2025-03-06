@@ -1413,10 +1413,10 @@ export type Database = {
           compliance_status: string | null
           created_at: string
           description: string | null
+          featured: boolean | null
           features: Json | null
           id: string
           images: string[] | null
-          is_featured: boolean | null
           location_coordinates: unknown | null
           owner_id: string | null
           parking_spaces: number | null
@@ -1438,10 +1438,10 @@ export type Database = {
           compliance_status?: string | null
           created_at?: string
           description?: string | null
+          featured?: boolean | null
           features?: Json | null
           id?: string
           images?: string[] | null
-          is_featured?: boolean | null
           location_coordinates?: unknown | null
           owner_id?: string | null
           parking_spaces?: number | null
@@ -1463,10 +1463,10 @@ export type Database = {
           compliance_status?: string | null
           created_at?: string
           description?: string | null
+          featured?: boolean | null
           features?: Json | null
           id?: string
           images?: string[] | null
-          is_featured?: boolean | null
           location_coordinates?: unknown | null
           owner_id?: string | null
           parking_spaces?: number | null

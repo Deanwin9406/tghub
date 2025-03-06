@@ -1,39 +1,59 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  Card, 
+  CardContent, 
+  CardDescription, 
+  CardHeader, 
+  CardTitle 
+} from '@/components/ui/card';
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Calendar, PlusCircle } from 'lucide-react';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useNavigate } from 'react-router-dom';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Loader2, 
+  PlusCircle, 
+  Clock, 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle, 
+  MessageSquare 
+} from 'lucide-react';
 
 interface ServiceRequest {
   id: string;
   title: string;
   description: string;
   category: string;
-  budget: number | null;
   urgency: string;
   status: string;
+  budget: number | null;
   created_at: string;
-  requester: {
-    id: string;
+  updated_at: string;
+  requester_id: string;
+  property_id: string | null;
+  requester?: {
     first_name: string | null;
     last_name: string | null;
-    avatar_url: string | null;
-  } | null;
+    email: string;
+  };
   property?: {
-    id: string;
     title: string;
     address: string;
-  } | null;
+  };
+  proposals?: ServiceProposal[];
+  proposal_count?: number;
 }
 
 interface ServiceProposal {
@@ -42,23 +62,24 @@ interface ServiceProposal {
   estimated_days: number;
   message: string;
   status: string;
+  vendor_id: string;
+  request_id: string;
   created_at: string;
+  vendor?: {
+    first_name: string | null;
+    last_name: string | null;
+    email: string;
+  };
 }
 
 const ServiceRequests = () => {
+  const navigate = useNavigate();
   const { user, roles } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [serviceRequests, setServiceRequests] = useState<ServiceRequest[]>([]);
-  const [activeTab, setActiveTab] = useState('open');
-  const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
-  const [myProposals, setMyProposals] = useState<Record<string, ServiceProposal>>({});
-  const [proposalLoading, setProposalLoading] = useState(false);
-  const [proposalPrice, setProposalPrice] = useState('');
-  const [proposalDays, setProposalDays] = useState('');
-  const [proposalMessage, setProposalMessage] = useState('');
-  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [activeTab, setActiveTab] = useState('all');
+  const isVendor = roles.includes('vendor');
 
   useEffect(() => {
     if (user) {
@@ -73,57 +94,89 @@ const ServiceRequests = () => {
         .from('service_requests')
         .select(`
           *,
-          requester:requester_id (
-            id,
-            first_name,
-            last_name,
-            avatar_url
-          ),
-          property:property_id (
-            id,
-            title,
-            address
-          )
-        `)
-        .eq('status', activeTab);
+          requester:requester_id(first_name, last_name, email),
+          property:property_id(title, address),
+          proposals:service_proposals(*)
+        `);
 
-      // If vendor is targeting specific requests
-      if (roles.includes('vendor')) {
-        // Get vendor profile to check services offered
-        const { data: vendorData, error: vendorError } = await supabase
-          .from('vendor_profiles')
-          .select('services_offered')
-          .eq('id', user!.id)
-          .single();
+      // Filter based on user role and active tab
+      if (isVendor) {
+        // For vendors, show open requests or ones they've responded to
+        if (activeTab === 'mine') {
+          // Get requests they've proposed on
+          const { data: proposalIds } = await supabase
+            .from('service_proposals')
+            .select('request_id')
+            .eq('vendor_id', user!.id);
 
-        if (vendorError && vendorError.code !== 'PGRST116') {
-          throw vendorError;
+          const requestIds = proposalIds?.map(p => p.request_id) || [];
+          
+          query = query.in('id', requestIds);
+        } else if (activeTab !== 'all') {
+          // Filter by status
+          query = query.eq('status', activeTab);
         }
-
-        if (vendorData?.services_offered && vendorData.services_offered.length > 0) {
-          // Filter by service categories the vendor offers
-          query = query.in('category', vendorData.services_offered);
+      } else {
+        // For regular users, only show their requests
+        query = query.eq('requester_id', user!.id);
+        
+        if (activeTab !== 'all') {
+          // Filter by status
+          query = query.eq('status', activeTab);
         }
-
-        // Also get requests specifically targeting this vendor
-        query = query.or(`target_vendor_id.eq.${user!.id},target_vendor_id.is.null`);
       }
 
-      const { data, error } = await query.order('created_at', { ascending: false });
+      // Order by creation date
+      query = query.order('created_at', { ascending: false });
+
+      const { data, error } = await query;
 
       if (error) throw error;
 
-      setServiceRequests(data as ServiceRequest[]);
-      
-      // If vendor, fetch their proposals for these requests
-      if (roles.includes('vendor') && data && data.length > 0) {
-        await fetchVendorProposals(data.map(r => r.id));
+      // Add proposal count and process proposals for each request
+      const processedRequests = data?.map(request => {
+        const proposals = request.proposals || [];
+        return {
+          ...request,
+          proposal_count: proposals.length,
+          proposals: proposals.map((proposal: any) => ({
+            ...proposal,
+            // We'll fetch vendor details separately
+          }))
+        };
+      }) || [];
+
+      // Fetch vendor details for proposals if needed
+      if (processedRequests.length > 0) {
+        const requests_with_proposals = processedRequests.filter(r => r.proposal_count > 0);
+        
+        for (const request of requests_with_proposals) {
+          const vendorIds = request.proposals.map((p: any) => p.vendor_id);
+          
+          const { data: vendors } = await supabase
+            .from('profiles')
+            .select('id, first_name, last_name, email')
+            .in('id', vendorIds);
+            
+          if (vendors) {
+            // Map vendor details to proposals
+            request.proposals = request.proposals.map((proposal: any) => {
+              const vendor = vendors.find(v => v.id === proposal.vendor_id);
+              return {
+                ...proposal,
+                vendor
+              };
+            });
+          }
+        }
       }
+
+      setRequests(processedRequests);
     } catch (error) {
       console.error('Error fetching service requests:', error);
       toast({
-        title: 'Erreur',
-        description: 'Impossible de charger les demandes de service',
+        title: 'Error',
+        description: 'Failed to load service requests',
         variant: 'destructive',
       });
     } finally {
@@ -131,133 +184,145 @@ const ServiceRequests = () => {
     }
   };
 
-  const fetchVendorProposals = async (requestIds: string[]) => {
+  const handleProposalAction = async (proposalId: string, status: string) => {
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('service_proposals')
-        .select('*')
-        .eq('vendor_id', user!.id)
-        .in('request_id', requestIds);
+        .update({ status })
+        .eq('id', proposalId);
 
       if (error) throw error;
 
-      // Create a map of request_id to proposal
-      const proposalMap: Record<string, ServiceProposal> = {};
-      data.forEach(proposal => {
-        proposalMap[proposal.request_id] = proposal;
+      toast({
+        title: 'Success',
+        description: `Proposal ${status === 'accepted' ? 'accepted' : 'rejected'} successfully`,
       });
 
-      setMyProposals(proposalMap);
-    } catch (error) {
-      console.error('Error fetching vendor proposals:', error);
-    }
-  };
-
-  const handleSelectRequest = (request: ServiceRequest) => {
-    setSelectedRequest(request);
-    setDetailsOpen(true);
-    
-    // Pre-fill proposal if one exists
-    if (myProposals[request.id]) {
-      const proposal = myProposals[request.id];
-      setProposalPrice(proposal.price.toString());
-      setProposalDays(proposal.estimated_days.toString());
-      setProposalMessage(proposal.message);
-    } else {
-      // Reset form
-      setProposalPrice('');
-      setProposalDays('');
-      setProposalMessage('');
-    }
-  };
-
-  const handleSubmitProposal = async () => {
-    if (!selectedRequest) return;
-    
-    setProposalLoading(true);
-    try {
-      const price = parseFloat(proposalPrice);
-      const days = parseInt(proposalDays);
-      
-      if (isNaN(price) || isNaN(days)) {
-        toast({
-          title: 'Erreur de validation',
-          description: 'Veuillez entrer des valeurs numériques valides pour le prix et la durée.',
-          variant: 'destructive',
-        });
-        return;
+      // If accepted, update request status
+      if (status === 'accepted') {
+        const proposal = requests
+          .flatMap(r => r.proposals || [])
+          .find(p => p.id === proposalId);
+          
+        if (proposal) {
+          await supabase
+            .from('service_requests')
+            .update({ status: 'in_progress' })
+            .eq('id', proposal.request_id);
+        }
       }
 
-      // Check if we're updating an existing proposal
-      if (myProposals[selectedRequest.id]) {
-        const { error } = await supabase
-          .from('service_proposals')
-          .update({
-            price,
-            estimated_days: days,
-            message: proposalMessage,
-            updated_at: new Date().toISOString()
-          })
-          .eq('id', myProposals[selectedRequest.id].id);
-
-        if (error) throw error;
-
-        toast({
-          title: 'Proposition mise à jour',
-          description: 'Votre proposition a été mise à jour avec succès.',
-        });
-      } else {
-        // Create new proposal
-        const { error } = await supabase
-          .from('service_proposals')
-          .insert({
-            request_id: selectedRequest.id,
-            vendor_id: user!.id,
-            price,
-            estimated_days: days,
-            message: proposalMessage,
-            status: 'pending'
-          });
-
-        if (error) throw error;
-
-        toast({
-          title: 'Proposition envoyée',
-          description: 'Votre proposition a été envoyée avec succès.',
-        });
-      }
-      
       // Refresh data
       fetchServiceRequests();
-      setDetailsOpen(false);
     } catch (error) {
-      console.error('Error submitting proposal:', error);
+      console.error('Error updating proposal:', error);
       toast({
-        title: 'Erreur',
-        description: 'Impossible de soumettre la proposition',
+        title: 'Error',
+        description: 'Failed to update proposal status',
         variant: 'destructive',
       });
-    } finally {
-      setProposalLoading(false);
     }
   };
 
-  const getInitials = (firstName: string | null, lastName: string | null): string => {
-    const first = firstName?.charAt(0) || '';
-    const last = lastName?.charAt(0) || '';
-    return `${first}${last}`.toUpperCase();
+  const renderProposals = (request: ServiceRequest) => {
+    if (!request.proposals || request.proposals.length === 0) {
+      return (
+        <div className="p-4 text-center">
+          <p className="text-muted-foreground">No proposals yet</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="space-y-4">
+        {request.proposals.map((proposal) => (
+          <div key={proposal.id} className="border rounded-md p-4">
+            <div className="flex justify-between items-start mb-2">
+              <div>
+                <p className="font-medium">
+                  {proposal.vendor?.first_name} {proposal.vendor?.last_name}
+                </p>
+                <p className="text-sm text-muted-foreground">{proposal.vendor?.email}</p>
+              </div>
+              <Badge>{proposal.status}</Badge>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 mb-3">
+              <div className="text-sm">
+                <span className="text-muted-foreground">Price:</span>{' '}
+                {proposal.price.toLocaleString()} XOF
+              </div>
+              <div className="text-sm">
+                <span className="text-muted-foreground">Estimated time:</span>{' '}
+                {proposal.estimated_days} day{proposal.estimated_days !== 1 ? 's' : ''}
+              </div>
+            </div>
+            
+            <p className="text-sm mb-4">{proposal.message}</p>
+            
+            {!isVendor && proposal.status === 'pending' && (
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleProposalAction(proposal.id, 'rejected')}
+                >
+                  Reject
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => handleProposalAction(proposal.id, 'accepted')}
+                >
+                  Accept
+                </Button>
+              </div>
+            )}
+            
+            {proposal.status === 'accepted' && (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate(`/messages?vendor=${proposal.vendor_id}`)}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Contact
+                </Button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    );
   };
 
-  const getUrgencyColor = (urgency: string) => {
-    switch (urgency) {
-      case 'high':
-        return 'bg-red-500';
-      case 'medium':
-        return 'bg-yellow-500';
-      case 'low':
-        return 'bg-green-500';
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'open':
+        return <Badge variant="outline" className="bg-blue-100">Open</Badge>;
+      case 'in_progress':
+        return <Badge variant="outline" className="bg-yellow-100">In Progress</Badge>;
+      case 'completed':
+        return <Badge variant="outline" className="bg-green-100">Completed</Badge>;
+      case 'cancelled':
+        return <Badge variant="outline" className="bg-red-100">Cancelled</Badge>;
       default:
-        return 'bg-blue-500';
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getUrgencyBadge = (urgency: string) => {
+    switch (urgency) {
+      case 'low':
+        return <Badge variant="outline" className="bg-green-100">Low</Badge>;
+      case 'medium':
+        return <Badge variant="outline" className="bg-yellow-100">Medium</Badge>;
+      case 'high':
+        return <Badge variant="outline" className="bg-orange-100">High</Badge>;
+      case 'critical':
+        return <Badge variant="outline" className="bg-red-100">Critical</Badge>;
+      default:
+        return <Badge variant="outline">{urgency}</Badge>;
     }
   };
 
@@ -265,232 +330,152 @@ const ServiceRequests = () => {
     <Layout>
       <div className="container mx-auto py-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold">Demandes de service</h1>
-          {!roles.includes('vendor') && (
-            <Button onClick={() => navigate('/new-service-request')}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Nouvelle demande
+          <h1 className="text-3xl font-bold">{isVendor ? 'Service Requests' : 'My Service Requests'}</h1>
+          {!isVendor && (
+            <Button onClick={() => navigate('/contact-vendor')}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              New Service Request
             </Button>
           )}
         </div>
 
-        <Tabs defaultValue="open" value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid grid-cols-4 mb-6">
-            <TabsTrigger value="open">Ouvertes</TabsTrigger>
-            <TabsTrigger value="in_progress">En cours</TabsTrigger>
-            <TabsTrigger value="completed">Complétées</TabsTrigger>
-            <TabsTrigger value="cancelled">Annulées</TabsTrigger>
+        <Tabs defaultValue="all" onValueChange={setActiveTab} className="mb-8">
+          <TabsList>
+            <TabsTrigger value="all">All</TabsTrigger>
+            <TabsTrigger value="open">Open</TabsTrigger>
+            <TabsTrigger value="in_progress">In Progress</TabsTrigger>
+            <TabsTrigger value="completed">Completed</TabsTrigger>
+            {isVendor && <TabsTrigger value="mine">My Proposals</TabsTrigger>}
           </TabsList>
           
-          <TabsContent value={activeTab}>
-            {loading ? (
-              <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : serviceRequests.length === 0 ? (
-              <Card className="w-full">
-                <CardHeader>
-                  <CardTitle>Aucune demande de service</CardTitle>
-                  <CardDescription>
-                    {activeTab === 'open' 
-                      ? "Il n'y a actuellement aucune demande de service ouverte."
-                      : `Il n'y a pas de demande de service avec le statut "${activeTab}".`}
-                  </CardDescription>
-                </CardHeader>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {serviceRequests.map((request) => (
-                  <Card 
-                    key={request.id} 
-                    className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow" 
-                    onClick={() => handleSelectRequest(request)}
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="flex justify-between items-start">
-                        <CardTitle className="text-lg">{request.title}</CardTitle>
-                        <Badge 
-                          variant="outline" 
-                          className={`${getUrgencyColor(request.urgency)} text-white border-0`}
-                        >
-                          {request.urgency}
-                        </Badge>
-                      </div>
-                      <CardDescription>{request.category}</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="line-clamp-2 text-sm mb-4">{request.description}</p>
-                      
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <Avatar className="h-8 w-8">
-                            <AvatarImage src={request.requester?.avatar_url || ''} />
-                            <AvatarFallback>
-                              {getInitials(request.requester?.first_name, request.requester?.last_name)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="text-xs">
-                            <p className="font-medium">
-                              {request.requester?.first_name} {request.requester?.last_name}
-                            </p>
-                            <p className="text-muted-foreground">
-                              {new Date(request.created_at).toLocaleDateString()}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        {roles.includes('vendor') && myProposals[request.id] && (
-                          <Badge variant="secondary">Proposition envoyée</Badge>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
+          <TabsContent value="all" className="mt-6">
+            {renderRequestsList('all')}
           </TabsContent>
+          
+          <TabsContent value="open" className="mt-6">
+            {renderRequestsList('open')}
+          </TabsContent>
+          
+          <TabsContent value="in_progress" className="mt-6">
+            {renderRequestsList('in_progress')}
+          </TabsContent>
+          
+          <TabsContent value="completed" className="mt-6">
+            {renderRequestsList('completed')}
+          </TabsContent>
+          
+          {isVendor && (
+            <TabsContent value="mine" className="mt-6">
+              {renderRequestsList('mine')}
+            </TabsContent>
+          )}
         </Tabs>
       </div>
+    </Layout>
+  );
 
-      <Sheet open={detailsOpen} onOpenChange={setDetailsOpen}>
-        <SheetContent className="sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>{selectedRequest?.title}</SheetTitle>
-            <SheetDescription>
-              Demande de service - {selectedRequest?.category}
-            </SheetDescription>
-          </SheetHeader>
-          {selectedRequest && (
-            <ScrollArea className="h-[calc(100vh-150px)] pr-4">
-              <div className="py-6 space-y-6">
+  function renderRequestsList(filter: string) {
+    if (loading) {
+      return (
+        <div className="flex justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      );
+    }
+
+    if (requests.length === 0) {
+      return (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-xl font-medium mb-2">No service requests found</p>
+            <p className="text-muted-foreground mb-6">
+              {isVendor 
+                ? 'There are no service requests matching your criteria at the moment.'
+                : 'You have not created any service requests yet.'
+              }
+            </p>
+            {!isVendor && (
+              <Button onClick={() => navigate('/contact-vendor')}>
+                Create a Service Request
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      );
+    }
+
+    return (
+      <div className="space-y-6">
+        {requests.map((request) => (
+          <Card key={request.id}>
+            <CardHeader className="pb-3">
+              <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-sm font-medium mb-2">Description</h3>
-                  <p className="text-sm">{selectedRequest.description}</p>
+                  <CardTitle>{request.title}</CardTitle>
+                  <CardDescription>
+                    {new Date(request.created_at).toLocaleDateString()} • {request.category}
+                  </CardDescription>
                 </div>
-                
-                <div className="flex flex-col gap-2">
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Catégorie:</span>
-                    <span className="text-sm">{selectedRequest.category}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Urgence:</span>
-                    <Badge variant="outline" className={`${getUrgencyColor(selectedRequest.urgency)} text-white border-0`}>
-                      {selectedRequest.urgency}
-                    </Badge>
-                  </div>
-                  {selectedRequest.budget && (
-                    <div className="flex justify-between">
-                      <span className="text-sm font-medium">Budget:</span>
-                      <span className="text-sm">{selectedRequest.budget.toLocaleString()} XOF</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-sm font-medium">Date de création:</span>
-                    <span className="text-sm">{new Date(selectedRequest.created_at).toLocaleDateString()}</span>
-                  </div>
+                <div className="flex gap-2">
+                  {getStatusBadge(request.status)}
+                  {getUrgencyBadge(request.urgency)}
                 </div>
-                
-                {selectedRequest.property && (
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="mb-4">{request.description}</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                {request.budget && (
                   <div>
-                    <h3 className="text-sm font-medium mb-2">Propriété concernée</h3>
-                    <Card>
-                      <CardContent className="p-4">
-                        <p className="font-medium">{selectedRequest.property.title}</p>
-                        <p className="text-sm text-muted-foreground">{selectedRequest.property.address}</p>
-                      </CardContent>
-                    </Card>
+                    <p className="text-sm font-medium">Budget</p>
+                    <p className="text-sm text-muted-foreground">
+                      {request.budget.toLocaleString()} XOF
+                    </p>
                   </div>
                 )}
                 
-                <div>
-                  <h3 className="text-sm font-medium mb-2">Demandeur</h3>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src={selectedRequest.requester?.avatar_url || ''} />
-                      <AvatarFallback>
-                        {getInitials(selectedRequest.requester?.first_name, selectedRequest.requester?.last_name)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>{selectedRequest.requester?.first_name} {selectedRequest.requester?.last_name}</span>
-                  </div>
-                </div>
-                
-                {roles.includes('vendor') && activeTab === 'open' && (
-                  <div className="space-y-4 pt-4 border-t">
-                    <h3 className="text-base font-medium">
-                      {myProposals[selectedRequest.id] ? 'Modifier votre proposition' : 'Créer une proposition'}
-                    </h3>
-                    
-                    <div>
-                      <label className="text-sm font-medium">Prix (XOF)</label>
-                      <input
-                        type="number"
-                        value={proposalPrice}
-                        onChange={(e) => setProposalPrice(e.target.value)}
-                        className="w-full p-2 mt-1 border rounded-md"
-                        placeholder="Montant en XOF"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium">Durée estimée (jours)</label>
-                      <input
-                        type="number"
-                        value={proposalDays}
-                        onChange={(e) => setProposalDays(e.target.value)}
-                        className="w-full p-2 mt-1 border rounded-md"
-                        placeholder="Nombre de jours"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium">Message</label>
-                      <textarea
-                        value={proposalMessage}
-                        onChange={(e) => setProposalMessage(e.target.value)}
-                        className="w-full p-2 mt-1 border rounded-md"
-                        rows={4}
-                        placeholder="Détaillez votre proposition..."
-                      />
-                    </div>
-                    
-                    <div className="flex justify-end pt-4">
-                      <Button
-                        onClick={handleSubmitProposal}
-                        disabled={proposalLoading}
-                      >
-                        {proposalLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        {myProposals[selectedRequest.id] ? 'Mettre à jour' : 'Envoyer la proposition'}
-                      </Button>
-                    </div>
+                {request.property && (
+                  <div>
+                    <p className="text-sm font-medium">Property</p>
+                    <p className="text-sm text-muted-foreground truncate">
+                      {request.property.title || request.property.address}
+                    </p>
                   </div>
                 )}
                 
-                {!roles.includes('vendor') && (
-                  <div className="flex justify-between pt-4 border-t">
-                    <Button
-                      variant="outline"
-                      onClick={() => navigate(`/messages?request=${selectedRequest.id}`)}
-                    >
-                      Contacter
-                    </Button>
-                    
-                    <Button
-                      onClick={() => navigate(`/appointments?request=${selectedRequest.id}`)}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      Planifier
-                    </Button>
+                {!isVendor && request.requester && (
+                  <div>
+                    <p className="text-sm font-medium">Requested by</p>
+                    <p className="text-sm text-muted-foreground">
+                      {request.requester.first_name} {request.requester.last_name}
+                    </p>
                   </div>
                 )}
               </div>
-            </ScrollArea>
-          )}
-        </SheetContent>
-      </Sheet>
-    </Layout>
-  );
+              
+              <Separator className="my-4" />
+              
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <h4 className="font-medium">Proposals ({request.proposal_count || 0})</h4>
+                  {isVendor && request.status === 'open' && (
+                    <Button size="sm" variant="outline">
+                      <PlusCircle className="h-4 w-4 mr-2" />
+                      Submit Proposal
+                    </Button>
+                  )}
+                </div>
+                
+                {renderProposals(request)}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 };
 
 export default ServiceRequests;
