@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -8,7 +9,24 @@ import PropertyManagerTab from '@/components/dashboard/PropertyManagerTab';
 import MessagesTab from '@/components/dashboard/MessagesTab';
 import PaymentsTab from '@/components/dashboard/PaymentsTab';
 import MaintenanceTab from '@/components/dashboard/MaintenanceTab';
-import { Building, DollarSign, Wrench, FileText, Home, User, Users, CalendarDays, CheckCircle, Clock } from 'lucide-react';
+import { 
+  Building, 
+  DollarSign, 
+  Wrench, 
+  FileText, 
+  Home, 
+  User, 
+  Users, 
+  CalendarDays, 
+  CheckCircle, 
+  Clock,
+  Shield,
+  Clipboard,
+  Activity,
+  Bell,
+  Star,
+  HeartHandshake
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -35,7 +53,7 @@ const TenantDashboard = ({
         </p>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Mes locations" 
           value={properties.length.toString()} 
@@ -56,6 +74,13 @@ const TenantDashboard = ({
           description="Paiements en attente" 
           icon={DollarSign}
           className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900"
+        />
+        <StatCard 
+          title="Messages" 
+          value={messages.length.toString()} 
+          description="Messages non lus" 
+          icon={Bell}
+          className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900"
         />
       </div>
       
@@ -87,6 +112,166 @@ const TenantDashboard = ({
 };
 
 const ManagerDashboard = ({
+  properties,
+  maintenanceRequests,
+  payments,
+  messages,
+  stats
+}) => {
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col space-y-3">
+        <h1 className="text-3xl font-bold">Tableau de bord gestionnaire</h1>
+        <p className="text-muted-foreground">
+          Gérez efficacement votre portefeuille immobilier, supervisez les propriétés et maximisez leur rendement.
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard 
+          title="Revenu total" 
+          value={`${stats.totalRevenue.toLocaleString()} €`} 
+          description="Revenu annuel total" 
+          icon={DollarSign} 
+          className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900"
+        />
+        <StatCard 
+          title="Propriétés gérées" 
+          value={stats.propertiesCount.toString()} 
+          description="Nombre total de propriétés" 
+          icon={Building}
+          className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900" 
+        />
+        <StatCard 
+          title="Taux d'occupation" 
+          value={`${Math.min(100, stats.propertiesCount > 0 ? Math.round((stats.propertiesCount - stats.pendingPaymentsCount) / stats.propertiesCount * 100) : 0)}%`} 
+          description="Des propriétés louées" 
+          icon={CheckCircle}
+          className="bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-950 dark:to-rose-900" 
+        />
+        <StatCard 
+          title="Maintenance" 
+          value={stats.maintenanceCount.toString()} 
+          description="Demandes en attente" 
+          icon={Wrench}
+          className="bg-gradient-to-br from-violet-50 to-violet-100 dark:from-violet-950 dark:to-violet-900" 
+        />
+      </div>
+      
+      <Card className="p-6 border bg-card">
+        <Tabs defaultValue="properties" className="w-full">
+          <TabsList className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-2">
+            <TabsTrigger value="properties" className="data-[state=active]:bg-primary">Propriétés</TabsTrigger>
+            <TabsTrigger value="tenants" className="data-[state=active]:bg-primary">Locataires</TabsTrigger>
+            <TabsTrigger value="messages" className="data-[state=active]:bg-primary">Messages</TabsTrigger>
+            <TabsTrigger value="payments" className="data-[state=active]:bg-primary">Paiements</TabsTrigger>
+            <TabsTrigger value="maintenance" className="data-[state=active]:bg-primary">Maintenance</TabsTrigger>
+          </TabsList>
+          <TabsContent value="properties">
+            <PropertiesTab properties={properties} />
+          </TabsContent>
+          <TabsContent value="tenants">
+            <PropertyManagerTab properties={properties} maintenanceRequests={maintenanceRequests} />
+          </TabsContent>
+          <TabsContent value="messages">
+            <MessagesTab messages={messages} />
+          </TabsContent>
+          <TabsContent value="payments">
+            <PaymentsTab payments={payments} />
+          </TabsContent>
+          <TabsContent value="maintenance">
+            <MaintenanceTab maintenanceRequests={maintenanceRequests} />
+          </TabsContent>
+        </Tabs>
+      </Card>
+    </div>
+  );
+};
+
+const AgentDashboard = ({
+  properties,
+  maintenanceRequests,
+  payments,
+  messages,
+  stats
+}) => {
+  const today = new Date();
+  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const daysLeft = lastDayOfMonth.getDate() - today.getDate();
+  const viewingsCount = maintenanceRequests.length; // Using as placeholder for viewings
+  const leadsCount = messages.length; // Using as placeholder for leads
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col space-y-3">
+        <h1 className="text-3xl font-bold">Tableau de bord agent</h1>
+        <p className="text-muted-foreground">
+          Suivez vos performances, gérez vos visites et maximisez vos commissions.
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard 
+          title="Commissions" 
+          value={`${stats.totalRevenue.toLocaleString()} €`} 
+          description={`Objectif: ${(stats.totalRevenue * 1.5).toLocaleString()} €`} 
+          icon={DollarSign}
+          className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900"
+        />
+        <StatCard 
+          title="Visites planifiées" 
+          value={viewingsCount.toString()} 
+          description={`${daysLeft} jours restants ce mois`} 
+          icon={CalendarDays}
+          className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900"
+        />
+        <StatCard 
+          title="Leads actifs" 
+          value={leadsCount.toString()} 
+          description="À contacter cette semaine" 
+          icon={User}
+          className="bg-gradient-to-br from-sky-50 to-sky-100 dark:from-sky-950 dark:to-sky-900"
+        />
+        <StatCard 
+          title="Taux de conversion" 
+          value={`${(stats.pendingPaymentsCount * 10)}%`} 
+          description="Visites → Contrats" 
+          icon={CheckCircle}
+          className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900"
+        />
+      </div>
+      
+      <Card className="p-6 border bg-card">
+        <Tabs defaultValue="properties" className="w-full">
+          <TabsList className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-2">
+            <TabsTrigger value="properties" className="data-[state=active]:bg-primary">Propriétés</TabsTrigger>
+            <TabsTrigger value="leads" className="data-[state=active]:bg-primary">Leads</TabsTrigger>
+            <TabsTrigger value="viewings" className="data-[state=active]:bg-primary">Visites</TabsTrigger>
+            <TabsTrigger value="messages" className="data-[state=active]:bg-primary">Messages</TabsTrigger>
+            <TabsTrigger value="commissions" className="data-[state=active]:bg-primary">Commissions</TabsTrigger>
+          </TabsList>
+          <TabsContent value="properties">
+            <PropertiesTab properties={properties} />
+          </TabsContent>
+          <TabsContent value="leads">
+            <PropertyManagerTab properties={properties} maintenanceRequests={maintenanceRequests} />
+          </TabsContent>
+          <TabsContent value="viewings">
+            <MaintenanceTab maintenanceRequests={maintenanceRequests} />
+          </TabsContent>
+          <TabsContent value="messages">
+            <MessagesTab messages={messages} />
+          </TabsContent>
+          <TabsContent value="commissions">
+            <PaymentsTab payments={payments} />
+          </TabsContent>
+        </Tabs>
+      </Card>
+    </div>
+  );
+};
+
+const LandlordDashboard = ({
   properties,
   maintenanceRequests,
   payments,
@@ -156,83 +341,6 @@ const ManagerDashboard = ({
           </TabsContent>
           <TabsContent value="maintenance">
             <MaintenanceTab maintenanceRequests={maintenanceRequests} />
-          </TabsContent>
-        </Tabs>
-      </Card>
-    </div>
-  );
-};
-
-const AgentDashboard = ({
-  properties,
-  maintenanceRequests,
-  payments,
-  messages,
-  stats
-}) => {
-  const today = new Date();
-  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-  const daysLeft = lastDayOfMonth.getDate() - today.getDate();
-
-  return (
-    <div className="space-y-8">
-      <div className="flex flex-col space-y-3">
-        <h1 className="text-3xl font-bold">Tableau de bord agent</h1>
-        <p className="text-muted-foreground">
-          Suivez vos performances, gérez vos visites et maximisez vos commissions.
-        </p>
-      </div>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard 
-          title="Commissions" 
-          value={`${stats.totalRevenue.toLocaleString()} €`} 
-          description={`Objectif: ${(stats.totalRevenue * 1.5).toLocaleString()} €`} 
-          icon={DollarSign}
-          className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900"
-        />
-        <StatCard 
-          title="Propriétés" 
-          value={stats.propertiesCount.toString()} 
-          description="Propriétés gérées" 
-          icon={Building}
-          className="bg-gradient-to-br from-sky-50 to-sky-100 dark:from-sky-950 dark:to-sky-900"
-        />
-        <StatCard 
-          title="Visites planifiées" 
-          value={stats.maintenanceCount.toString()} 
-          description={`${daysLeft} jours restants ce mois`} 
-          icon={CalendarDays}
-          className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900"
-        />
-        <StatCard 
-          title="Taux de conversion" 
-          value={`${(stats.pendingPaymentsCount * 10)}%`} 
-          description="Visites → Contrats" 
-          icon={CheckCircle}
-          className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900"
-        />
-      </div>
-      
-      <Card className="p-6 border bg-card">
-        <Tabs defaultValue="properties" className="w-full">
-          <TabsList className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-2">
-            <TabsTrigger value="properties" className="data-[state=active]:bg-primary">Propriétés</TabsTrigger>
-            <TabsTrigger value="leads" className="data-[state=active]:bg-primary">Leads</TabsTrigger>
-            <TabsTrigger value="messages" className="data-[state=active]:bg-primary">Messages</TabsTrigger>
-            <TabsTrigger value="commissions" className="data-[state=active]:bg-primary">Commissions</TabsTrigger>
-          </TabsList>
-          <TabsContent value="properties">
-            <PropertiesTab properties={properties} />
-          </TabsContent>
-          <TabsContent value="leads">
-            <PropertyManagerTab properties={properties} maintenanceRequests={maintenanceRequests} />
-          </TabsContent>
-          <TabsContent value="messages">
-            <MessagesTab messages={messages} />
-          </TabsContent>
-          <TabsContent value="commissions">
-            <PaymentsTab payments={payments} />
           </TabsContent>
         </Tabs>
       </Card>
@@ -667,7 +775,9 @@ const Dashboard = () => {
     
     if (roles.includes('admin')) {
       return 'admin';
-    } else if (roles.includes('landlord') || roles.includes('manager')) {
+    } else if (roles.includes('landlord')) {
+      return 'landlord';
+    } else if (roles.includes('manager')) {
       return 'manager';
     } else if (roles.includes('agent')) {
       return 'agent';
@@ -710,6 +820,15 @@ const Dashboard = () => {
             )}
             {dashboardType === 'agent' && (
               <AgentDashboard 
+                properties={properties} 
+                maintenanceRequests={maintenanceRequests} 
+                payments={payments} 
+                messages={messages} 
+                stats={stats} 
+              />
+            )}
+            {dashboardType === 'landlord' && (
+              <LandlordDashboard 
                 properties={properties} 
                 maintenanceRequests={maintenanceRequests} 
                 payments={payments} 
