@@ -7,6 +7,7 @@ import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/contexts/AuthContext';
 import RoleSwitcher from './RoleSwitcher';
 import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
 
 interface MobileMenuProps {
   navItems: { name: string; path: string }[];
@@ -25,10 +26,37 @@ const MobileMenu = ({
 }: MobileMenuProps) => {
   const location = useLocation();
   
+  // Define role colors for role indicators
+  const roleColors = {
+    'tenant': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+    'landlord': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300',
+    'agent': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+    'admin': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
+    'manager': 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
+    'vendor': 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-300',
+    'mod': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
+  };
+
+  const getRoleColor = (role: string) => {
+    return roleColors[role as keyof typeof roleColors] || roleColors.tenant;
+  };
+  
   return (
     <ScrollArea className="h-full">
       <div className="flex flex-col p-4 space-y-4">
-        <h2 className="font-semibold">Navigation</h2>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold">Navigation</h2>
+          
+          {/* Active Role Badge */}
+          {isLoggedIn && (
+            <Badge 
+              variant="outline" 
+              className={cn("capitalize font-medium", getRoleColor(activeRole))}
+            >
+              {activeRole}
+            </Badge>
+          )}
+        </div>
         
         {/* Role Switcher - only for authenticated users with multiple roles */}
         {isLoggedIn && roles.length > 1 && (
@@ -38,7 +66,7 @@ const MobileMenu = ({
           </div>
         )}
         
-        {isLoggedIn && roles.length > 1 && <Separator />}
+        {isLoggedIn && roles.length > 1 && <Separator className="my-2" />}
         
         <div className="flex flex-col space-y-1">
           {navItems.map((item) => {
@@ -51,7 +79,7 @@ const MobileMenu = ({
                 variant={isActive ? "secondary" : "ghost"}
                 asChild
                 className={cn(
-                  "justify-start",
+                  "justify-start w-full",
                   isActive && "bg-primary/10 text-primary"
                 )}
                 onClick={onLinkClick}

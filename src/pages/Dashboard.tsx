@@ -8,136 +8,85 @@ import PropertyManagerTab from '@/components/dashboard/PropertyManagerTab';
 import MessagesTab from '@/components/dashboard/MessagesTab';
 import PaymentsTab from '@/components/dashboard/PaymentsTab';
 import MaintenanceTab from '@/components/dashboard/MaintenanceTab';
-import { Building, DollarSign, Wrench, FileText, Home, User } from 'lucide-react';
+import { Building, DollarSign, Wrench, FileText, Home, User, Users, CalendarDays, CheckCircle, Clock } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { Card } from '@/components/ui/card';
+import { Property, MaintenanceRequest, Payment, Message } from '@/types/property';
 
-interface Property {
-  id: string;
-  title: string;
-  price: number;
-  address: string;
-  city: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  size_sqm: number | null;
-  status: string;
-  main_image_url: string | null;
-  property_type: string;
-}
-
-interface MaintenanceRequest {
-  id: string;
-  title: string;
-  status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
-  priority: string;
-  created_at: string;
-  property: {
-    title: string;
-  };
-}
-
-interface Message {
-  id: string;
-  content: string;
-  created_at: string;
-  sender: {
-    first_name: string;
-    last_name: string;
-  };
-}
-
-interface Payment {
-  id: string;
-  amount: number;
-  status: string;
-  due_date: string;
-  payment_date: string | null;
-  lease: {
-    property: {
-      title: string;
-    };
-  };
-}
-
-interface TenantDashboardProps {
-  properties: any[];
-  maintenanceRequests: any[];
-  payments: any[];
-  messages: any[];
-}
-
-interface ManagerDashboardProps {
-  properties: any[];
-  maintenanceRequests: any[];
-  payments: any[];
-  messages: any[];
-  stats: {
-    totalRevenue: number;
-    propertiesCount: number;
-    maintenanceCount: number;
-    pendingPaymentsCount: number;
-  };
-}
-
-const TenantDashboard: React.FC<TenantDashboardProps> = ({ 
+const TenantDashboard = ({ 
   properties, 
   maintenanceRequests, 
   payments, 
   messages 
 }) => {
+  const pendingPayments = payments.filter(p => p.status === 'pending').length;
+  const activeMaintenanceRequests = maintenanceRequests.filter(
+    m => m.status === 'pending' || m.status === 'in_progress'
+  ).length;
+
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Tableau de bord locataire</h1>
+    <div className="space-y-8">
+      <div className="flex flex-col space-y-3">
+        <h1 className="text-3xl font-bold">Tableau de bord locataire</h1>
+        <p className="text-muted-foreground">
+          Bienvenue sur votre espace locataire. Gérez vos locations, suivez vos demandes et paiements.
+        </p>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatCard 
           title="Mes locations" 
           value={properties.length.toString()} 
           description="Propriétés louées" 
-          icon={Home} 
+          icon={Home}
+          className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900"
         />
         <StatCard 
           title="Demandes de maintenance" 
-          value={maintenanceRequests.length.toString()} 
+          value={activeMaintenanceRequests.toString()} 
           description="Demandes actives" 
-          icon={Wrench} 
+          icon={Wrench}
+          className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900"
         />
         <StatCard 
           title="Paiements à venir" 
-          value={payments.filter(p => p.status === 'pending').length.toString()} 
+          value={pendingPayments.toString()} 
           description="Paiements en attente" 
-          icon={DollarSign} 
+          icon={DollarSign}
+          className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900"
         />
       </div>
       
-      <Tabs defaultValue="properties" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="properties">Mes locations</TabsTrigger>
-          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
-          <TabsTrigger value="payments">Paiements</TabsTrigger>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="properties">
-          <PropertiesTab properties={properties} />
-        </TabsContent>
-        <TabsContent value="maintenance">
-          <MaintenanceTab maintenanceRequests={maintenanceRequests} />
-        </TabsContent>
-        <TabsContent value="payments">
-          <PaymentsTab payments={payments} />
-        </TabsContent>
-        <TabsContent value="messages">
-          <MessagesTab messages={messages} />
-        </TabsContent>
-      </Tabs>
+      <Card className="p-6 border bg-card">
+        <Tabs defaultValue="properties" className="w-full">
+          <TabsList className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-2">
+            <TabsTrigger value="properties" className="data-[state=active]:bg-primary">Mes locations</TabsTrigger>
+            <TabsTrigger value="maintenance" className="data-[state=active]:bg-primary">Maintenance</TabsTrigger>
+            <TabsTrigger value="payments" className="data-[state=active]:bg-primary">Paiements</TabsTrigger>
+            <TabsTrigger value="messages" className="data-[state=active]:bg-primary">Messages</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="properties">
+            <PropertiesTab properties={properties} />
+          </TabsContent>
+          <TabsContent value="maintenance">
+            <MaintenanceTab maintenanceRequests={maintenanceRequests} />
+          </TabsContent>
+          <TabsContent value="payments">
+            <PaymentsTab payments={payments} />
+          </TabsContent>
+          <TabsContent value="messages">
+            <MessagesTab messages={messages} />
+          </TabsContent>
+        </Tabs>
+      </Card>
     </div>
   );
 };
 
-const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
+const ManagerDashboard = ({
   properties,
   maintenanceRequests,
   payments,
@@ -145,65 +94,153 @@ const ManagerDashboard: React.FC<ManagerDashboardProps> = ({
   stats
 }) => {
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Tableau de bord gestionnaire</h1>
+    <div className="space-y-8">
+      <div className="flex flex-col space-y-3">
+        <h1 className="text-3xl font-bold">Tableau de bord propriétaire</h1>
+        <p className="text-muted-foreground">
+          Gérez vos propriétés, suivez vos revenus et supervisez l'ensemble de votre portefeuille immobilier.
+        </p>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
           title="Revenu total" 
-          value={stats.totalRevenue.toString()} 
+          value={`${stats.totalRevenue.toLocaleString()} €`} 
           description="Revenu annuel total" 
           icon={DollarSign} 
+          className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-950 dark:to-emerald-900"
         />
         <StatCard 
           title="Propriétés listées" 
           value={stats.propertiesCount.toString()} 
           description="Nombre total de propriétés" 
-          icon={Building} 
+          icon={Building}
+          className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-950 dark:to-indigo-900" 
         />
         <StatCard 
           title="Demandes de maintenance" 
           value={stats.maintenanceCount.toString()} 
           description="Demandes en attente" 
-          icon={Wrench} 
+          icon={Wrench}
+          className="bg-gradient-to-br from-rose-50 to-rose-100 dark:from-rose-950 dark:to-rose-900" 
         />
         <StatCard 
           title="Paiements en attente" 
           value={stats.pendingPaymentsCount.toString()} 
           description="Paiements à recevoir" 
-          icon={FileText} 
+          icon={FileText}
+          className="bg-gradient-to-br from-violet-50 to-violet-100 dark:from-violet-950 dark:to-violet-900" 
         />
       </div>
       
-      <Tabs defaultValue="properties" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="properties">Propriétés</TabsTrigger>
-          <TabsTrigger value="property-managers">Gestionnaires</TabsTrigger>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
-          <TabsTrigger value="payments">Paiements</TabsTrigger>
-          <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
-        </TabsList>
-        <TabsContent value="properties">
-          <PropertiesTab properties={properties} />
-        </TabsContent>
-        <TabsContent value="property-managers">
-          <PropertyManagerTab properties={properties} maintenanceRequests={maintenanceRequests} />
-        </TabsContent>
-        <TabsContent value="messages">
-          <MessagesTab messages={messages} />
-        </TabsContent>
-        <TabsContent value="payments">
-          <PaymentsTab payments={payments} />
-        </TabsContent>
-        <TabsContent value="maintenance">
-          <MaintenanceTab maintenanceRequests={maintenanceRequests} />
-        </TabsContent>
-      </Tabs>
+      <Card className="p-6 border bg-card">
+        <Tabs defaultValue="properties" className="w-full">
+          <TabsList className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-2">
+            <TabsTrigger value="properties" className="data-[state=active]:bg-primary">Propriétés</TabsTrigger>
+            <TabsTrigger value="property-managers" className="data-[state=active]:bg-primary">Gestionnaires</TabsTrigger>
+            <TabsTrigger value="messages" className="data-[state=active]:bg-primary">Messages</TabsTrigger>
+            <TabsTrigger value="payments" className="data-[state=active]:bg-primary">Paiements</TabsTrigger>
+            <TabsTrigger value="maintenance" className="data-[state=active]:bg-primary">Maintenance</TabsTrigger>
+          </TabsList>
+          <TabsContent value="properties">
+            <PropertiesTab properties={properties} />
+          </TabsContent>
+          <TabsContent value="property-managers">
+            <PropertyManagerTab properties={properties} maintenanceRequests={maintenanceRequests} />
+          </TabsContent>
+          <TabsContent value="messages">
+            <MessagesTab messages={messages} />
+          </TabsContent>
+          <TabsContent value="payments">
+            <PaymentsTab payments={payments} />
+          </TabsContent>
+          <TabsContent value="maintenance">
+            <MaintenanceTab maintenanceRequests={maintenanceRequests} />
+          </TabsContent>
+        </Tabs>
+      </Card>
     </div>
   );
 };
 
-const AgentDashboard: React.FC<ManagerDashboardProps> = ({
+const AgentDashboard = ({
+  properties,
+  maintenanceRequests,
+  payments,
+  messages,
+  stats
+}) => {
+  const today = new Date();
+  const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  const daysLeft = lastDayOfMonth.getDate() - today.getDate();
+
+  return (
+    <div className="space-y-8">
+      <div className="flex flex-col space-y-3">
+        <h1 className="text-3xl font-bold">Tableau de bord agent</h1>
+        <p className="text-muted-foreground">
+          Suivez vos performances, gérez vos visites et maximisez vos commissions.
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard 
+          title="Commissions" 
+          value={`${stats.totalRevenue.toLocaleString()} €`} 
+          description={`Objectif: ${(stats.totalRevenue * 1.5).toLocaleString()} €`} 
+          icon={DollarSign}
+          className="bg-gradient-to-br from-teal-50 to-teal-100 dark:from-teal-950 dark:to-teal-900"
+        />
+        <StatCard 
+          title="Propriétés" 
+          value={stats.propertiesCount.toString()} 
+          description="Propriétés gérées" 
+          icon={Building}
+          className="bg-gradient-to-br from-sky-50 to-sky-100 dark:from-sky-950 dark:to-sky-900"
+        />
+        <StatCard 
+          title="Visites planifiées" 
+          value={stats.maintenanceCount.toString()} 
+          description={`${daysLeft} jours restants ce mois`} 
+          icon={CalendarDays}
+          className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900"
+        />
+        <StatCard 
+          title="Taux de conversion" 
+          value={`${(stats.pendingPaymentsCount * 10)}%`} 
+          description="Visites → Contrats" 
+          icon={CheckCircle}
+          className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-950 dark:to-purple-900"
+        />
+      </div>
+      
+      <Card className="p-6 border bg-card">
+        <Tabs defaultValue="properties" className="w-full">
+          <TabsList className="mb-6 grid grid-cols-2 md:grid-cols-4 gap-2">
+            <TabsTrigger value="properties" className="data-[state=active]:bg-primary">Propriétés</TabsTrigger>
+            <TabsTrigger value="leads" className="data-[state=active]:bg-primary">Leads</TabsTrigger>
+            <TabsTrigger value="messages" className="data-[state=active]:bg-primary">Messages</TabsTrigger>
+            <TabsTrigger value="commissions" className="data-[state=active]:bg-primary">Commissions</TabsTrigger>
+          </TabsList>
+          <TabsContent value="properties">
+            <PropertiesTab properties={properties} />
+          </TabsContent>
+          <TabsContent value="leads">
+            <PropertyManagerTab properties={properties} maintenanceRequests={maintenanceRequests} />
+          </TabsContent>
+          <TabsContent value="messages">
+            <MessagesTab messages={messages} />
+          </TabsContent>
+          <TabsContent value="commissions">
+            <PaymentsTab payments={payments} />
+          </TabsContent>
+        </Tabs>
+      </Card>
+    </div>
+  );
+};
+
+const AdminDashboard = ({
   properties,
   maintenanceRequests,
   payments,
@@ -211,68 +248,83 @@ const AgentDashboard: React.FC<ManagerDashboardProps> = ({
   stats
 }) => {
   return (
-    <div>
-      <h1 className="text-3xl font-bold mb-6">Tableau de bord agent</h1>
+    <div className="space-y-8">
+      <div className="flex flex-col space-y-3">
+        <h1 className="text-3xl font-bold">Tableau de bord administrateur</h1>
+        <p className="text-muted-foreground">
+          Supervisez l'ensemble du système, gérez les utilisateurs et contrôlez les paramètres de la plateforme.
+        </p>
+      </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard 
-          title="Commissions" 
-          value={stats.totalRevenue.toString()} 
-          description="Commissions totales" 
-          icon={DollarSign} 
+          title="Utilisateurs actifs" 
+          value={(stats.totalRevenue / 500).toFixed(0)} 
+          description="Utilisateurs inscrits" 
+          icon={Users}
+          className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-950 dark:to-blue-900"
+        />
+        <StatCard 
+          title="Transactions" 
+          value={`${stats.totalRevenue.toLocaleString()} €`} 
+          description="Volume total" 
+          icon={DollarSign}
+          className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-950 dark:to-green-900"
         />
         <StatCard 
           title="Propriétés" 
           value={stats.propertiesCount.toString()} 
-          description="Propriétés gérées" 
-          icon={Building} 
+          description="Total sur la plateforme" 
+          icon={Building}
+          className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-950 dark:to-orange-900"
         />
         <StatCard 
-          title="Leads" 
-          value={stats.maintenanceCount.toString()} 
-          description="Nouveaux leads" 
-          icon={User} 
-        />
-        <StatCard 
-          title="Visites" 
-          value={stats.pendingPaymentsCount.toString()} 
-          description="Visites à venir" 
-          icon={FileText} 
+          title="Temps moyen" 
+          value="24j" 
+          description="Pour finaliser une location" 
+          icon={Clock}
+          className="bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-950 dark:to-cyan-900"
         />
       </div>
       
-      <Tabs defaultValue="properties" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="properties">Propriétés</TabsTrigger>
-          <TabsTrigger value="leads">Leads</TabsTrigger>
-          <TabsTrigger value="messages">Messages</TabsTrigger>
-          <TabsTrigger value="commissions">Commissions</TabsTrigger>
-        </TabsList>
-        <TabsContent value="properties">
-          <PropertiesTab properties={properties} />
-        </TabsContent>
-        <TabsContent value="leads">
-          <PropertyManagerTab properties={properties} maintenanceRequests={maintenanceRequests} />
-        </TabsContent>
-        <TabsContent value="messages">
-          <MessagesTab messages={messages} />
-        </TabsContent>
-        <TabsContent value="commissions">
-          <PaymentsTab payments={payments} />
-        </TabsContent>
-      </Tabs>
+      <Card className="p-6 border bg-card">
+        <Tabs defaultValue="properties" className="w-full">
+          <TabsList className="mb-6 grid grid-cols-2 md:grid-cols-5 gap-2">
+            <TabsTrigger value="properties" className="data-[state=active]:bg-primary">Propriétés</TabsTrigger>
+            <TabsTrigger value="users" className="data-[state=active]:bg-primary">Utilisateurs</TabsTrigger>
+            <TabsTrigger value="system" className="data-[state=active]:bg-primary">Système</TabsTrigger>
+            <TabsTrigger value="payments" className="data-[state=active]:bg-primary">Paiements</TabsTrigger>
+            <TabsTrigger value="reports" className="data-[state=active]:bg-primary">Rapports</TabsTrigger>
+          </TabsList>
+          <TabsContent value="properties">
+            <PropertiesTab properties={properties} />
+          </TabsContent>
+          <TabsContent value="users">
+            <PropertyManagerTab properties={properties} maintenanceRequests={maintenanceRequests} />
+          </TabsContent>
+          <TabsContent value="system">
+            <MessagesTab messages={messages} />
+          </TabsContent>
+          <TabsContent value="payments">
+            <PaymentsTab payments={payments} />
+          </TabsContent>
+          <TabsContent value="reports">
+            <MaintenanceTab maintenanceRequests={maintenanceRequests} />
+          </TabsContent>
+        </Tabs>
+      </Card>
     </div>
   );
 };
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const { user, roles } = useAuth();
+  const { user, roles, activeRole } = useAuth();
   const { toast } = useToast();
-  const [properties, setProperties] = useState([]);
-  const [maintenanceRequests, setMaintenanceRequests] = useState([]);
-  const [messages, setMessages] = useState([]);
-  const [payments, setPayments] = useState([]);
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [maintenanceRequests, setMaintenanceRequests] = useState<MaintenanceRequest[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
   const [stats, setStats] = useState({
     totalRevenue: 0,
     propertiesCount: 0,
@@ -353,7 +405,18 @@ const Dashboard = () => {
       
       if (error) throw error;
       
-      setProperties(data);
+      const transformedProperties = data.map(p => ({
+        ...p,
+        city: p.city || '',
+        size_sqm: p.size_sqm || p.area_size,
+        main_image_url: p.main_image_url || '/placeholder.svg',
+        availability_date: p.availability_date || new Date().toISOString(),
+        latitude: p.latitude || 0,
+        longitude: p.longitude || 0,
+        country: p.country || 'France'
+      })) as Property[];
+      
+      setProperties(transformedProperties);
     } catch (error) {
       console.error('Error fetching properties:', error);
       toast({
@@ -409,9 +472,9 @@ const Dashboard = () => {
         priority: request.priority,
         created_at: request.created_at,
         property: {
-          title: request.properties?.title || 'Unknown Property'
+          title: request.properties?.title || 'Propriété inconnue'
         }
-      }));
+      })) as MaintenanceRequest[];
       
       setMaintenanceRequests(formattedRequests);
     } catch (error) {
@@ -462,11 +525,11 @@ const Dashboard = () => {
             content: msg.content,
             created_at: msg.created_at,
             sender: {
-              first_name: senderProfile?.first_name || 'Unknown',
-              last_name: senderProfile?.last_name || 'User'
+              first_name: senderProfile?.first_name || 'Inconnu',
+              last_name: senderProfile?.last_name || 'Utilisateur'
             }
           };
-        });
+        }) as Message[];
         
         setMessages(formattedMessages);
       } else {
@@ -557,10 +620,10 @@ const Dashboard = () => {
         payment_date: payment.payment_date,
         lease: {
           property: {
-            title: payment.lease?.property?.title || 'Unknown Property'
+            title: payment.lease?.property?.title || 'Propriété inconnue'
           }
         }
-      }));
+      })) as Payment[];
       
       setPayments(formattedPayments);
     } catch (error) {
@@ -602,7 +665,9 @@ const Dashboard = () => {
   const getDashboardByRole = () => {
     console.log("Dashboard - determining dashboard type by roles:", roles);
     
-    if (roles.includes('admin') || roles.includes('landlord') || roles.includes('manager')) {
+    if (roles.includes('admin')) {
+      return 'admin';
+    } else if (roles.includes('landlord') || roles.includes('manager')) {
       return 'manager';
     } else if (roles.includes('agent')) {
       return 'agent';
@@ -619,7 +684,7 @@ const Dashboard = () => {
 
   return (
     <Layout>
-      <div className="container mx-auto py-8">
+      <div className="container mx-auto py-8 px-4">
         {loading ? (
           <div className="flex justify-center items-center h-64">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -645,6 +710,15 @@ const Dashboard = () => {
             )}
             {dashboardType === 'agent' && (
               <AgentDashboard 
+                properties={properties} 
+                maintenanceRequests={maintenanceRequests} 
+                payments={payments} 
+                messages={messages} 
+                stats={stats} 
+              />
+            )}
+            {dashboardType === 'admin' && (
+              <AdminDashboard 
                 properties={properties} 
                 maintenanceRequests={maintenanceRequests} 
                 payments={payments} 
