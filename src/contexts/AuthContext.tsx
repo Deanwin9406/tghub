@@ -1,4 +1,3 @@
-
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -6,12 +5,15 @@ import { Session, User, AuthError } from '@supabase/supabase-js';
 import { Profile } from '@/types/community';
 import { useToast } from '@/hooks/use-toast';
 
+// Define valid user roles as a type
+export type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor' | 'mod';
+
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   roles: string[];
-  activeRole: string;
-  setActiveRole: (role: string) => void;
+  activeRole: UserRole;
+  setActiveRole: (role: UserRole) => void;
   hasCompletedKyc: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | Error | null }>;
   signOut: () => Promise<void>;
@@ -36,7 +38,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<string[]>([]);
-  const [activeRole, setActiveRole] = useState<string>('tenant');
+  const [activeRole, setActiveRole] = useState<UserRole>('tenant');
   const [loading, setLoading] = useState(true);
   const [hasCompletedKyc, setHasCompletedKyc] = useState<boolean>(false);
   const { toast } = useToast();
@@ -45,10 +47,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   // Load active role from localStorage on initial load
   useEffect(() => {
     const savedRole = localStorage.getItem('activeRole');
-    if (savedRole) {
-      setActiveRole(savedRole);
+    if (savedRole && isValidRole(savedRole)) {
+      setActiveRole(savedRole as UserRole);
     }
   }, []);
+
+  // Function to check if a role is valid
+  const isValidRole = (role: string): boolean => {
+    return ['tenant', 'landlord', 'agent', 'admin', 'manager', 'vendor', 'mod'].includes(role);
+  };
 
   // Update localStorage when activeRole changes
   useEffect(() => {
@@ -98,7 +105,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     if (roles.length > 0 && !roles.includes(activeRole)) {
       // If current active role doesn't exist in user's roles, set to first available role
-      setActiveRole(roles[0]);
+      if (isValidRole(roles[0])) {
+        setActiveRole(roles[0] as UserRole);
+      }
     }
   }, [roles, activeRole]);
 
@@ -141,7 +150,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       
       // If user has roles but active role is not in their roles, set first available
       if (rolesArray.length > 0 && !rolesArray.includes(activeRole)) {
-        setActiveRole(rolesArray[0]);
+        if (isValidRole(rolesArray[0])) {
+          setActiveRole(rolesArray[0] as UserRole);
+        }
       }
     } catch (error) {
       console.error("Unexpected error fetching roles:", error);
@@ -360,12 +371,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   const resetPassword = sendPasswordResetEmail;
 
+  // Modified setActiveRole function with type validation
+  const handleSetActiveRole = (role: UserRole) => {
+    if (isValidRole(role)) {
+      setActiveRole(role);
+    } else {
+      console.error("Invalid role:", role);
+      // Set to a default role instead
+      setActiveRole('tenant');
+    }
+  };
+
   const contextValue = {
     user,
     profile,
     roles,
     activeRole,
-    setActiveRole,
+    setActiveRole: handleSetActiveRole,
     hasCompletedKyc,
     signIn,
     signOut,

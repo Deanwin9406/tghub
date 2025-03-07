@@ -121,7 +121,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <DesktopNav 
             navItems={navItems} 
             isLoggedIn={isAuthenticated} 
-            activeRole={activeRole}
+            activeRole={activeRole as "tenant" | "landlord" | "agent" | "admin" | "manager" | "vendor" | "mod"}
           />
           
           {/* Mobile Navigation and Right-side Controls */}

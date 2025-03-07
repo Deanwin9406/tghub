@@ -9,7 +9,7 @@ import { AlertCircle } from 'lucide-react';
 const PUBLIC_ROUTES = ['/', '/search', '/communities', '/agents', '/vendors', '/property'];
 
 // Define role-based route access
-const ROLE_ROUTES = {
+const ROLE_ROUTES: Record<string, string[]> = {
   tenant: ['/dashboard', '/profile', '/favorites', '/kyc'],
   landlord: ['/dashboard', '/profile', '/favorites', '/kyc', '/property-management', '/add-property', '/property/edit'],
   agent: ['/dashboard', '/profile', '/favorites', '/kyc', '/property-management'],
@@ -54,7 +54,7 @@ const AuthGuard = memo(() => {
     }
     
     // Check if active role has access to the current path
-    if (activeRole in ROLE_ROUTES && isPathInRoutes(ROLE_ROUTES[activeRole as keyof typeof ROLE_ROUTES], currentPath)) {
+    if (activeRole in ROLE_ROUTES && isPathInRoutes(ROLE_ROUTES[activeRole], currentPath)) {
       return true;
     }
     

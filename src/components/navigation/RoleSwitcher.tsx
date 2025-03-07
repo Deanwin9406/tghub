@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { translateRole } from '@/utils/formatUtils';
 import {
   Select,
@@ -16,8 +16,6 @@ interface RoleSwitcherProps {
   className?: string;
   variant?: 'default' | 'minimal';
 }
-
-type UserRole = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor' | 'mod';
 
 const getRoleDestination = (role: UserRole): string => {
   switch (role) {
@@ -49,9 +47,14 @@ const RoleSwitcher = ({ className = '', variant = 'default' }: RoleSwitcherProps
   const { roles, activeRole, setActiveRole } = useAuth();
   const navigate = useNavigate();
 
+  // Helper to check if a role is valid
+  const isValidRole = (role: string): boolean => {
+    return ['tenant', 'landlord', 'agent', 'admin', 'manager', 'vendor', 'mod'].includes(role);
+  };
+
   // SafelySetActiveRole ensures we only use valid role types
   const safelySetActiveRole = (role: string) => {
-    if (['tenant', 'landlord', 'agent', 'admin', 'manager', 'vendor', 'mod'].includes(role)) {
+    if (isValidRole(role)) {
       setActiveRole(role as UserRole);
       navigate(getRoleDestination(role as UserRole));
     }

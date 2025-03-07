@@ -16,7 +16,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User } from '@supabase/supabase-js';
 import { translateRole } from '@/utils/formatUtils';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, UserRole } from '@/contexts/AuthContext';
 import { Check } from 'lucide-react';
 
 export interface UserMenuProps {
@@ -38,14 +38,20 @@ const UserMenu = ({ user, onSignOut, activeRole = 'tenant', roles = [] }: UserMe
   };
 
   const handleRoleChange = (role: string) => {
-    setActiveRole(role);
-    
-    // Navigate to appropriate dashboard based on role
-    if (role === 'vendor') {
-      navigate('/vendor-dashboard');
-    } else {
-      navigate('/dashboard');
+    if (isValidRole(role)) {
+      setActiveRole(role as UserRole);
+      
+      // Navigate to appropriate dashboard based on role
+      if (role === 'vendor') {
+        navigate('/vendor-dashboard');
+      } else {
+        navigate('/dashboard');
+      }
     }
+  };
+
+  const isValidRole = (role: string): boolean => {
+    return ['tenant', 'landlord', 'agent', 'admin', 'manager', 'vendor', 'mod'].includes(role);
   };
 
   const getMainDashboardLink = () => {

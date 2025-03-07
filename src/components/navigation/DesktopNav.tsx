@@ -26,8 +26,8 @@ const DesktopNav = ({ navItems, isLoggedIn, activeRole = 'tenant' }: DesktopNavP
     'mod': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
   };
 
-  const getRoleColor = (role: string) => {
-    return roleColors[role as Role] || roleColors.tenant;
+  const getRoleColor = (role: Role) => {
+    return roleColors[role] || roleColors.tenant;
   };
   
   return (
