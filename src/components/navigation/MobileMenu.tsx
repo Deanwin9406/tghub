@@ -4,7 +4,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator'; 
-import { useAuth, UserRole } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import RoleSwitcher from './RoleSwitcher';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
@@ -69,25 +69,29 @@ const MobileMenu = ({
         {isLoggedIn && roles.length > 1 && <Separator className="my-2" />}
         
         <div className="flex flex-col space-y-1">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.path || 
-                           (item.path !== '/' && location.pathname.startsWith(item.path));
-            
-            return (
-              <Button
-                key={item.name}
-                variant={isActive ? "secondary" : "ghost"}
-                asChild
-                className={cn(
-                  "justify-start w-full",
-                  isActive && "bg-primary/10 text-primary"
-                )}
-                onClick={onLinkClick}
-              >
-                <Link to={item.path}>{item.name}</Link>
-              </Button>
-            );
-          })}
+          {navItems && navItems.length > 0 ? (
+            navItems.map((item) => {
+              const isActive = location.pathname === item.path || 
+                            (item.path !== '/' && location.pathname.startsWith(item.path));
+              
+              return (
+                <Button
+                  key={item.name}
+                  variant={isActive ? "secondary" : "ghost"}
+                  asChild
+                  className={cn(
+                    "justify-start w-full",
+                    isActive && "bg-primary/10 text-primary"
+                  )}
+                  onClick={onLinkClick}
+                >
+                  <Link to={item.path}>{item.name}</Link>
+                </Button>
+              );
+            })
+          ) : (
+            <div className="text-sm text-muted-foreground">Aucun élément de navigation</div>
+          )}
         </div>
       </div>
     </ScrollArea>

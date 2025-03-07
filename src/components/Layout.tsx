@@ -98,8 +98,9 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
+  // Get the navigation items based on authentication status and role
   const navItems = getNavItems();
-
+  
   const handleSignOut = async () => {
     await signOut();
   };

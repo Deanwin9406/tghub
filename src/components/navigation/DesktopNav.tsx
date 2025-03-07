@@ -42,25 +42,29 @@ const DesktopNav = ({ navItems, isLoggedIn, activeRole = 'tenant' }: DesktopNavP
       )}
       
       <div className="flex space-x-1">
-        {navItems.map((item) => {
-          const isActive = location.pathname === item.path || 
-                        (item.path !== '/' && location.pathname.startsWith(item.path));
-          
-          return (
-            <Link
-              key={item.name}
-              to={item.path}
-              className={cn(
-                "px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                isActive 
-                  ? "bg-primary/10 text-primary" 
-                  : "hover:bg-accent hover:text-accent-foreground"
-              )}
-            >
-              {item.name}
-            </Link>
-          );
-        })}
+        {navItems && navItems.length > 0 ? (
+          navItems.map((item) => {
+            const isActive = location.pathname === item.path || 
+                          (item.path !== '/' && location.pathname.startsWith(item.path));
+            
+            return (
+              <Link
+                key={item.name}
+                to={item.path}
+                className={cn(
+                  "px-3 py-2 rounded-md text-sm font-medium transition-colors",
+                  isActive 
+                    ? "bg-primary/10 text-primary" 
+                    : "hover:bg-accent hover:text-accent-foreground"
+                )}
+              >
+                {item.name}
+              </Link>
+            );
+          })
+        ) : (
+          <div className="text-sm text-muted-foreground">Aucun élément de navigation</div>
+        )}
       </div>
     </nav>
   );
