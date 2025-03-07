@@ -8,30 +8,14 @@ import PropertyForm from '@/components/PropertyForm';
 import { supabase } from '@/integrations/supabase/client';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle, Loader2 } from 'lucide-react';
-
-interface PropertyType {
-  id: string;
-  title: string;
-  address: string;
-  city: string;
-  price: number;
-  property_type: string;
-  bedrooms: number | null;
-  bathrooms: number | null;
-  main_image_url: string | null;
-  status: string;
-  description: string | null;
-  size_sqm: number | null;
-  amenities: string[] | null;
-  owner_id: string;
-}
+import { PropertyType } from '@/types/property';
 
 const EditProperty = () => {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const { user, roles } = useAuth();
   const navigate = useNavigate();
-  const [property, setProperty] = useState<PropertyType | null>(null);
+  const [property, setProperty] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [hasPermission, setHasPermission] = useState(false);
 
@@ -125,7 +109,8 @@ const EditProperty = () => {
           city: propertyData.location,
           address: propertyData.address,
           country: propertyData.country || 'Togo',
-          amenities: propertyData.amenities
+          amenities: propertyData.amenities,
+          status: 'available'
         })
         .eq('id', id);
         

@@ -4,17 +4,19 @@ import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 
+type Role = 'tenant' | 'landlord' | 'agent' | 'admin' | 'manager' | 'vendor' | 'mod';
+
 interface DesktopNavProps {
   navItems: { name: string; path: string }[];
   isLoggedIn: boolean;
-  activeRole?: string;
+  activeRole?: Role;
 }
 
 const DesktopNav = ({ navItems, isLoggedIn, activeRole = 'tenant' }: DesktopNavProps) => {
   const location = useLocation();
   
   // Define role colors for role indicators
-  const roleColors = {
+  const roleColors: Record<Role, string> = {
     'tenant': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
     'landlord': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300',
     'agent': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
@@ -25,7 +27,7 @@ const DesktopNav = ({ navItems, isLoggedIn, activeRole = 'tenant' }: DesktopNavP
   };
 
   const getRoleColor = (role: string) => {
-    return roleColors[role as keyof typeof roleColors] || roleColors.tenant;
+    return roleColors[role as Role] || roleColors.tenant;
   };
   
   return (

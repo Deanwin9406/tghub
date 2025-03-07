@@ -24,6 +24,8 @@ export interface PropertyType {
   year_built?: number;
   energy_rating?: string;
   verification_status?: string;
+  square_footage?: number; // Added for compatibility
+  image_urls?: string[]; // Added for compatibility
 }
 
 export interface Property extends PropertyType {
@@ -39,6 +41,11 @@ export interface ExtendedPropertyType extends PropertyType {
     last_name: string;
   };
   new?: boolean;
+  purpose?: 'rent' | 'sale';
+  type?: string;
+  beds?: number;
+  baths?: number;
+  area?: number;
 }
 
 export interface MaintenanceRequest {
@@ -82,6 +89,11 @@ export interface SystemSetting {
   setting_description: string;
   created_at: string;
   updated_at: string;
+  // Support for the existing system settings structure
+  email?: any;
+  security?: any;
+  notifications?: any;
+  system?: any;
 }
 
 export interface ServiceRequest {
@@ -148,4 +160,17 @@ export interface Viewing {
     email: string;
     phone: string;
   };
+}
+
+export interface Profile {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  avatar_url?: string;
+  address?: string;
+  city?: string;
+  country?: string;
+  two_factor_enabled?: boolean;
 }

@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 import PropertyFormBasicInfo from './property/PropertyFormBasicInfo';
 import PropertyFormPricing from './property/PropertyFormPricing';
 import PropertyFormDetails from './property/PropertyFormDetails';
+import { PropertyType } from '@/types/property';
 
 interface PropertyFormProps {
   onSubmit: (data: any) => void;
@@ -70,11 +71,11 @@ const PropertyForm = ({ onSubmit, initialData, propertyId, isEditing = false }: 
     setSubmitting(true);
     
     try {
-      const propertyData = {
+      const propertyData: Partial<PropertyType> = {
         title: formData.title,
         description: formData.description,
         price: formData.price,
-        property_type: formData.type,
+        property_type: formData.type as PropertyType['property_type'],
         bedrooms: formData.beds,
         bathrooms: formData.baths,
         size_sqm: formData.area,
@@ -84,7 +85,7 @@ const PropertyForm = ({ onSubmit, initialData, propertyId, isEditing = false }: 
         country: formData.country,
         amenities: formData.amenities,
         owner_id: user.id,
-        status: 'available' as 'available' | 'rented' | 'sold' | 'under_maintenance',
+        status: 'available' as PropertyType['status'],
       };
       
       let result;

@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import PropertyCard from './PropertyCard';
-import { PropertyType } from '@/types/property';
+import { PropertyType, ExtendedPropertyType } from '@/types/property';
 import { motion } from 'framer-motion';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +22,7 @@ const FeaturedProperties = ({
   limit = 6,
   type = 'featured'
 }: FeaturedPropertiesProps) => {
-  const [properties, setProperties] = useState<PropertyType[]>([]);
+  const [properties, setProperties] = useState<ExtendedPropertyType[]>([]);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   
@@ -48,28 +48,31 @@ const FeaturedProperties = ({
       }
       
       if (data) {
-        const formattedProperties = data.map(property => ({
+        const formattedProperties: ExtendedPropertyType[] = data.map(property => ({
           id: property.id,
           title: property.title,
           price: property.price,
           property_type: property.property_type,
           status: property.status,
           address: property.address,
-          city: property.city,
-          country: property.country || "Unknown", // Add default country value
+          city: property.city || "",
+          country: property.country || "Unknown",
           bedrooms: property.bedrooms,
           bathrooms: property.bathrooms,
-          square_footage: property.size_sqm || 0,
-          size_sqm: property.size_sqm || 0,
+          square_footage: property.area_size || 0,
+          size_sqm: property.size_sqm || property.area_size || 0,
           main_image_url: property.main_image_url || 'https://placehold.co/600x400',
           description: property.description || '',
           image_urls: property.main_image_url ? [property.main_image_url] : ['https://placehold.co/600x400'],
-          year_built: new Date().getFullYear(), // Default if not available
+          year_built: property.year_built || new Date().getFullYear(),
           amenities: property.amenities || [],
           availability_date: property.availability_date || new Date().toISOString(),
-          latitude: property.latitude,
-          longitude: property.longitude,
-          featured: property.featured
+          latitude: property.latitude || 0,
+          longitude: property.longitude || 0,
+          featured: property.featured || false,
+          area_size: property.area_size || 0,
+          created_at: property.created_at,
+          owner_id: property.owner_id
         }));
         
         setProperties(formattedProperties);
@@ -99,7 +102,7 @@ const FeaturedProperties = ({
   };
   
   // Fallback mock data function
-  const getMockProperties = (): PropertyType[] => {
+  const getMockProperties = (): ExtendedPropertyType[] => {
     return [
       {
         id: "1",
@@ -109,7 +112,7 @@ const FeaturedProperties = ({
         status: "available",
         address: "Lomé, Agbalépédogan",
         city: "Lomé",
-        country: "Togo", // Add country
+        country: "Togo",
         bedrooms: 4,
         bathrooms: 3,
         size_sqm: 250,
@@ -123,7 +126,10 @@ const FeaturedProperties = ({
         latitude: 6.1319,
         longitude: 1.2254,
         featured: true,
-        new: false
+        new: false,
+        area_size: 250,
+        created_at: new Date().toISOString(),
+        owner_id: "1"
       },
       {
         id: "2",
@@ -133,7 +139,7 @@ const FeaturedProperties = ({
         status: "available",
         address: "Lomé, Adidogomé",
         city: "Lomé",
-        country: "Togo", // Add country
+        country: "Togo",
         bedrooms: 2,
         bathrooms: 2,
         size_sqm: 100,
@@ -147,7 +153,10 @@ const FeaturedProperties = ({
         latitude: 6.1419,
         longitude: 1.2154,
         featured: false,
-        new: true
+        new: true,
+        area_size: 100,
+        created_at: new Date().toISOString(),
+        owner_id: "2"
       },
     ];
   };
