@@ -15,7 +15,7 @@ const ROLE_ROUTES: Record<string, string[]> = {
   agent: ['/dashboard', '/profile', '/favorites', '/kyc', '/property-management'],
   manager: ['/dashboard', '/profile', '/favorites', '/kyc', '/property-management'],
   admin: ['/dashboard', '/profile', '/favorites', '/kyc', '/property-management', '/add-property', '/property/edit'],
-  vendor: ['/vendor-dashboard', '/profile', '/favorites', '/kyc', '/communities']
+  vendor: ['/vendor-dashboard', '/profile', '/favorites', '/kyc', '/communities', '/service-requests', '/appointments']
 };
 
 const AuthGuard = memo(() => {
@@ -49,8 +49,7 @@ const AuthGuard = memo(() => {
     
     // Vendors need special handling - redirect to vendor dashboard
     if (activeRole === 'vendor' && currentPath === '/dashboard') {
-      window.location.href = '/vendor-dashboard';
-      return false;
+      return false; // Will trigger redirect to vendor dashboard
     }
     
     // Check if active role has access to the current path
@@ -115,7 +114,7 @@ const AuthGuard = memo(() => {
           </AlertDescription>
         </Alert>
         <div className="flex justify-center">
-          <Navigate to="/" state={{ from: location }} replace />
+          <Navigate to="/auth" state={{ from: location }} replace />
         </div>
       </div>
     );

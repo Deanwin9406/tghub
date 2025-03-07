@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
@@ -444,9 +443,10 @@ const Dashboard = () => {
   useEffect(() => {
     if (user) {
       console.log("Dashboard - User roles:", roles);
+      console.log("Dashboard - Active role:", activeRole);
       fetchDashboardData();
     }
-  }, [user, roles]);
+  }, [user, roles, activeRole]);
 
   const fetchDashboardData = async () => {
     setLoading(true);
@@ -771,22 +771,25 @@ const Dashboard = () => {
   };
 
   const getDashboardByRole = () => {
-    console.log("Dashboard - determining dashboard type by roles:", roles);
+    console.log("Dashboard - determining dashboard type by active role:", activeRole);
     
-    if (roles.includes('admin')) {
-      return 'admin';
-    } else if (roles.includes('landlord')) {
-      return 'landlord';
-    } else if (roles.includes('manager')) {
-      return 'manager';
-    } else if (roles.includes('agent')) {
-      return 'agent';
-    } else if (roles.includes('tenant')) {
-      return 'tenant';
+    switch(activeRole) {
+      case 'admin':
+        return 'admin';
+      case 'landlord':
+        return 'landlord';
+      case 'manager':
+        return 'manager';
+      case 'agent':
+        return 'agent';
+      case 'tenant':
+        return 'tenant';
+      case 'vendor':
+        navigate('/vendor-dashboard');
+        return 'tenant';
+      default:
+        return 'tenant';
     }
-    
-    // Default to tenant if no specific role found
-    return 'tenant';
   };
 
   const dashboardType = getDashboardByRole();
